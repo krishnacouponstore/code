@@ -5,11 +5,11 @@
 export const mockCredentials = {
   user: {
     email: "rohan@gmail.com",
-    password: "rohan123",
+    password: "rohan16",
   },
   admin: {
-    email: "rohanphogatt@gmail.com",
-    password: "rohan16",
+    email: "krishna@gmail.com",
+    password: "krishna",
   },
 }
 
