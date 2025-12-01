@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "CouponHub | Buy Premium Coupon Codes",
+  title: "Code Crate",
   description: "Your trusted platform for buying premium coupon codes at the best prices",
-  generator: "v0.app",
+  generator: "@rohanphogatt",
   icons: {
     icon: "/icon.svg",
   },
