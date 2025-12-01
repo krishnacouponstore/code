@@ -14,7 +14,7 @@ export const mockCredentials = {
 }
 
 export const mockUser = {
-  name: "Rohan Kumar",
+  name: "Rohan Phogat",
   email: "rohan@gmail.com",
   wallet_balance: 2450.0,
   total_purchased: 245,
@@ -23,8 +23,8 @@ export const mockUser = {
 }
 
 export const mockAdmin = {
-  name: "Rohan Phogat",
-  email: "rohanphogatt@gmail.com",
+  name: "Krishna Arora",
+  email: "krishna@gmail.com",
   wallet_balance: 0,
   total_purchased: 0,
   total_spent: 0,
