@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import { mockUser, mockAdmin, mockCredentials } from "./mock-data"
 
 export type User = {
@@ -15,6 +16,7 @@ export type User = {
 type AuthContextType = {
   user: User | null
   isLoading: boolean
+  isLoggingOut: boolean // Added flag to track logout state
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string; isAdmin?: boolean }>
   logout: () => void
   isAuthenticated: boolean
@@ -25,8 +27,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoggingOut, setIsLoggingOut] = useState(false) // Track logout state
+  const router = useRouter()
 
-  // Check for existing session on mount
   useEffect(() => {
     const storedUser = localStorage.getItem("codecrate_user")
     if (storedUser) {
@@ -43,17 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string,
     password: string,
   ): Promise<{ success: boolean; error?: string; isAdmin?: boolean }> => {
-    // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // Check user credentials
     if (email === mockCredentials.user.email && password === mockCredentials.user.password) {
       setUser(mockUser)
       localStorage.setItem("codecrate_user", JSON.stringify(mockUser))
       return { success: true, isAdmin: false }
     }
 
-    // Check admin credentials
     if (email === mockCredentials.admin.email && password === mockCredentials.admin.password) {
       setUser(mockAdmin)
       localStorage.setItem("codecrate_user", JSON.stringify(mockAdmin))
@@ -64,8 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
+    setIsLoggingOut(true)
     setUser(null)
     localStorage.removeItem("codecrate_user")
+    router.push("/home")
   }
 
   return (
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isLoading,
+        isLoggingOut,
         login,
         logout,
         isAuthenticated: !!user,

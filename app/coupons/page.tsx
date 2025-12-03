@@ -14,7 +14,7 @@ import { Search, PackageX } from "lucide-react"
 type SortOption = "stock-high" | "stock-low" | "price-high" | "price-low" | "name-asc" | "name-desc"
 
 export default function CouponsPage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [searchQuery, setSearchQuery] = useState("")
@@ -23,10 +23,15 @@ export default function CouponsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
+    if (isLoggingOut) return
+
     if (!isLoading && !isAuthenticated) {
       router.push(`/signup?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [isAuthenticated, isLoading, router, pathname])
+    if (!isLoading && user?.is_admin) {
+      router.push("/admin/dashboard")
+    }
+  }, [isAuthenticated, isLoading, router, pathname, isLoggingOut, user])
 
   const filteredAndSortedSlots = useMemo(() => {
     let slots = mockSlots.filter((slot) => slot.is_published)
@@ -105,16 +110,16 @@ export default function CouponsPage() {
                 placeholder="Search coupons..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-full sm:w-64 bg-secondary border-border rounded-full"
+                className="pl-10 w-full sm:w-64 bg-secondary border-[hsl(200,15%,20%)] rounded-full"
               />
             </div>
 
             {/* Sort */}
             <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
-              <SelectTrigger className="w-full sm:w-48 bg-secondary border-border rounded-full">
+              <SelectTrigger className="w-full sm:w-48 bg-secondary border-[hsl(200,15%,20%)] rounded-full">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
-              <SelectContent className="bg-card border-border">
+              <SelectContent className="bg-card border-[hsl(200,15%,20%)]">
                 <SelectItem value="stock-high">Stock: High to Low</SelectItem>
                 <SelectItem value="stock-low">Stock: Low to High</SelectItem>
                 <SelectItem value="price-low">Price: Low to High</SelectItem>
@@ -135,8 +140,8 @@ export default function CouponsPage() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-6">
-              <PackageX className="h-10 w-10 text-muted-foreground" />
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-6">
+              <PackageX className="h-10 w-10 text-primary" />
             </div>
             <h2 className="text-xl font-semibold text-foreground mb-2">No coupons available right now</h2>
             <p className="text-muted-foreground max-w-md">

@@ -14,6 +14,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { PublicHeader } from "@/components/shared/public-header"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface DashboardHeaderProps {
   walletBalance?: number
@@ -31,7 +32,7 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
 
   const handleLogout = () => {
     logout()
-    router.push("/login")
+    router.push("/home")
   }
 
   const navItems = [
@@ -64,7 +65,10 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo and Nav */}
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="flex items-center gap-3">
+          <Link href="/home" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-lg">C</span>
+            </div>
             <span className="text-foreground text-xl font-semibold">CodeCrate</span>
           </Link>
           <nav className="hidden md:flex items-center gap-1">
@@ -120,8 +124,13 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
           </nav>
         </div>
 
-        {/* Right Side - Wallet, Add Balance, User Menu */}
+        {/* Right Side - Theme Toggle, Wallet, Add Balance, User Menu */}
         <div className="flex items-center gap-3">
+          {/* Theme Toggle */}
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
+
           {/* Wallet Balance */}
           <Link
             href="/add-balance"
@@ -141,7 +150,11 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild className="hidden md:flex">
-              <Button variant="ghost" className="rounded-full h-10 w-10 bg-secondary hover:bg-secondary/80">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-foreground rounded-full h-10 w-10 bg-secondary hover:bg-secondary/80"
+              >
                 <User className="h-5 w-5 text-foreground" />
                 <span className="sr-only">User menu</span>
               </Button>
@@ -179,6 +192,12 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
                 <SheetTitle className="text-left text-foreground">Menu</SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-4">
+                {/* Theme Toggle */}
+                <div className="flex items-center justify-between p-4 rounded-xl bg-secondary">
+                  <span className="text-muted-foreground">Theme</span>
+                  <ThemeToggle />
+                </div>
+
                 {/* Mobile Wallet */}
                 <Link href="/add-balance" className="flex items-center justify-between p-4 rounded-xl bg-secondary">
                   <div className="flex items-center gap-3">

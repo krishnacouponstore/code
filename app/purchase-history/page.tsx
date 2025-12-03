@@ -33,7 +33,7 @@ import { formatCurrency, formatDate, formatTime } from "@/lib/utils" // Import f
 const ITEMS_PER_PAGE = 10
 
 export default function PurchaseHistoryPage() {
-  const { user, isLoading, isAuthenticated } = useAuth()
+  const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
@@ -46,10 +46,15 @@ export default function PurchaseHistoryPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
+    if (isLoggingOut) return
+
     if (!isLoading && !isAuthenticated) {
       router.push(`/signup?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [user, isLoading, isAuthenticated, router, pathname])
+    if (!isLoading && user?.is_admin) {
+      router.push("/admin/dashboard")
+    }
+  }, [user, isLoading, isAuthenticated, router, pathname, isLoggingOut])
 
   // Filter and sort purchases
   const filteredPurchases = useMemo(() => {

@@ -17,16 +17,21 @@ const contactInfo = {
 }
 
 export default function AddBalancePage() {
-  const { user, isLoading, isAuthenticated } = useAuth()
+  const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
 
   useEffect(() => {
+    if (isLoggingOut) return
+
     if (!isLoading && !isAuthenticated) {
       router.push(`/signup?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [isLoading, isAuthenticated, router, pathname])
+    if (!isLoading && user?.is_admin) {
+      router.push("/admin/dashboard")
+    }
+  }, [isLoading, isAuthenticated, router, pathname, isLoggingOut, user])
 
   if (isLoading) {
     return (

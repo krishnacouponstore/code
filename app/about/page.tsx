@@ -145,9 +145,12 @@ export default function AboutPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {keyPoints.map((point, index) => (
-              <Card key={index} className="bg-card border-border hover:border-primary/50 transition-all duration-300">
+              <Card
+                key={index}
+                className="bg-gradient-to-b from-[hsl(160,35%,97%)] to-[hsl(160,30%,94%)] dark:from-[hsl(200,15%,13%)] dark:to-[hsl(200,15%,10%)] border-[hsl(160,20%,85%)] dark:border-[hsl(200,15%,20%)] rounded-2xl transition-all duration-300 hover:border-primary/30 hover:-translate-y-1 hover:shadow-lg"
+              >
                 <CardContent className="p-5 text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4 transition-transform duration-300 hover:scale-110">
                     <point.icon className="h-6 w-6 text-primary" />
                   </div>
                   <h3 className="font-semibold text-foreground text-sm mb-2">{point.title}</h3>
@@ -165,12 +168,12 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {howItWorks.map((item, index) => (
               <div key={index} className="relative">
-                <Card className="bg-card border-border h-full hover:border-primary/50 transition-all duration-300">
+                <Card className="bg-gradient-to-b from-[hsl(160,35%,97%)] to-[hsl(160,30%,94%)] dark:from-[hsl(200,15%,13%)] dark:to-[hsl(200,15%,10%)] border-[hsl(160,20%,85%)] dark:border-[hsl(200,15%,20%)] rounded-2xl h-full transition-all duration-300 hover:border-primary/30 hover:-translate-y-1 hover:shadow-lg">
                   <CardContent className="p-6 text-center">
                     <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-bold text-lg mb-4">
                       {item.step}
                     </div>
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-secondary mb-4">
+                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4 transition-transform duration-300 hover:scale-110">
                       <item.icon className="h-7 w-7 text-primary" />
                     </div>
                     <h3 className="font-semibold text-foreground mb-2">{item.title}</h3>
@@ -193,10 +196,13 @@ export default function AboutPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {whyChooseUs.map((feature, index) => (
-              <Card key={index} className="bg-card border-border hover:border-primary/50 transition-all duration-300">
+              <Card
+                key={index}
+                className="bg-gradient-to-b from-[hsl(160,35%,97%)] to-[hsl(160,30%,94%)] dark:from-[hsl(200,15%,13%)] dark:to-[hsl(200,15%,10%)] border-[hsl(160,20%,85%)] dark:border-[hsl(200,15%,20%)] rounded-2xl transition-all duration-300 hover:border-primary/30 hover:-translate-y-1 hover:shadow-lg"
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
+                    <div className="flex-shrink-0 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 transition-transform duration-300 hover:scale-110">
                       <feature.icon className="h-6 w-6 text-primary" />
                     </div>
                     <div>
@@ -212,7 +218,7 @@ export default function AboutPage() {
 
         {/* Our Mission Section */}
         <section className="mb-20">
-          <Card className="bg-secondary/50 border-border">
+          <Card className="bg-gradient-to-b from-[hsl(160,35%,97%)] to-[hsl(160,30%,94%)] dark:from-[hsl(200,15%,13%)] dark:to-[hsl(200,15%,10%)] border-[hsl(160,20%,85%)] dark:border-[hsl(200,15%,20%)] rounded-2xl">
             <CardContent className="p-8 md:p-12 text-center">
               <h2 className="text-3xl font-bold text-foreground mb-6">Our Mission</h2>
               <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
@@ -225,7 +231,7 @@ export default function AboutPage() {
 
         {/* Contact CTA Section */}
         <section>
-          <Card className="bg-card border-border overflow-hidden">
+          <Card className="bg-gradient-to-b from-[hsl(160,35%,97%)] to-[hsl(160,30%,94%)] dark:from-[hsl(200,15%,13%)] dark:to-[hsl(200,15%,10%)] border-[hsl(160,20%,85%)] dark:border-[hsl(200,15%,20%)] rounded-2xl overflow-hidden">
             <CardContent className="p-8 md:p-12">
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div>
@@ -233,7 +239,7 @@ export default function AboutPage() {
                   <p className="text-muted-foreground">Get in touch with us for any queries or support</p>
                 </div>
                 <Link href="/contact">
-                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-8 py-6 font-medium text-lg gap-2">
+                  <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-8 py-6 font-medium text-lg gap-2 transition-transform duration-300 hover:scale-105">
                     Contact Us
                     <ArrowRight className="h-5 w-5" />
                   </Button>

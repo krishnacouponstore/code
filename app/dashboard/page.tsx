@@ -12,11 +12,13 @@ import { Wallet, ShoppingBag, TrendingUp, Loader2 } from "lucide-react"
 import { Toaster } from "@/components/ui/toaster"
 
 export default function DashboardPage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
+    if (isLoggingOut) return
+
     if (!isLoading && !isAuthenticated) {
       router.push(`/signup?redirect=${encodeURIComponent(pathname)}`)
     }
@@ -24,7 +26,7 @@ export default function DashboardPage() {
     if (!isLoading && user?.is_admin) {
       router.push("/admin/dashboard")
     }
-  }, [isLoading, isAuthenticated, user, router, pathname])
+  }, [isLoading, isAuthenticated, user, router, pathname, isLoggingOut])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {

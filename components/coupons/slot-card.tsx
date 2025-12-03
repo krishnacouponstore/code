@@ -26,10 +26,15 @@ export function SlotCard({ slot, onCheckPricing }: SlotCardProps) {
 
   return (
     <Card
-      className={`group relative bg-card border-border overflow-hidden transition-all duration-300 ${
+      className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 ease-out hover:-translate-y-1 ${
         isOutOfStock
-          ? "opacity-60 cursor-not-allowed"
-          : "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1"
+          ? "opacity-60 cursor-not-allowed bg-muted/50 border-border"
+          : `border-border/50
+             bg-gradient-to-br from-[hsl(160,35%,97%)] to-[hsl(160,30%,94%)] 
+             hover:border-primary/40 hover:shadow-[0_8px_32px_rgba(16,185,129,0.12),0_4px_16px_rgba(16,185,129,0.08)]
+             dark:bg-gradient-to-b dark:from-[hsl(200,15%,13%)] dark:to-[hsl(200,15%,10%)] 
+             dark:border-[hsl(200,15%,20%)] dark:hover:border-primary/40 
+             dark:hover:shadow-[0_8px_32px_hsl(165,96%,71%,0.1),0_0_0_1px_hsl(165,96%,71%,0.1)]`
       }`}
     >
       {/* Stock Badge */}
@@ -41,20 +46,26 @@ export function SlotCard({ slot, onCheckPricing }: SlotCardProps) {
         ) : isLowStock ? (
           <Badge className="bg-chart-4/20 text-chart-4 border-chart-4/30">Low Stock</Badge>
         ) : (
-          <Badge variant="secondary" className="bg-secondary text-muted-foreground">
+          <Badge
+            variant="secondary"
+            className="bg-secondary/80 text-muted-foreground border-border/50 backdrop-blur-sm"
+          >
             {slot.available_stock} available
           </Badge>
         )}
       </div>
 
       <CardContent className="p-6">
-        {/* Icon */}
         <div
-          className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-colors ${
-            isOutOfStock ? "bg-muted" : "bg-primary/10 group-hover:bg-primary/20"
+          className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 ${
+            isOutOfStock
+              ? "bg-muted"
+              : "bg-gradient-to-br from-primary/15 to-primary/5 dark:from-primary/20 dark:to-primary/5"
           }`}
         >
-          <ShoppingBag className={`h-7 w-7 ${isOutOfStock ? "text-muted-foreground" : "text-primary"}`} />
+          <ShoppingBag
+            className={`h-7 w-7 transition-colors ${isOutOfStock ? "text-muted-foreground" : "text-primary"}`}
+          />
         </div>
 
         {/* Name */}
@@ -72,14 +83,13 @@ export function SlotCard({ slot, onCheckPricing }: SlotCardProps) {
           </div>
         </div>
 
-        {/* CTA Button */}
         {isOutOfStock ? (
           <Button disabled className="w-full rounded-full bg-muted text-muted-foreground cursor-not-allowed">
             Out of Stock
           </Button>
         ) : (
           <Button
-            className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] font-medium"
             onClick={onCheckPricing}
           >
             Check Pricing

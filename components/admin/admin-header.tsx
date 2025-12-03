@@ -13,6 +13,7 @@ import { Menu, LogOut, ChevronDown, Shield } from "lucide-react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function AdminHeader() {
   const { logout, user } = useAuth()
@@ -21,12 +22,11 @@ export function AdminHeader() {
 
   const handleLogout = () => {
     logout()
-    router.push("/login")
   }
 
   const navItems = [
     { name: "Dashboard", href: "/admin/dashboard" },
-    { name: "Orders", href: "/admin/orders" }, // Add "Orders" to navItems between Dashboard and Manage Coupons
+    { name: "Orders", href: "/admin/orders" },
     { name: "Manage Coupons", href: "/admin/slots" },
     { name: "Users", href: "/admin/users" },
     { name: "Revenue", href: "/admin/revenue" },
@@ -47,7 +47,10 @@ export function AdminHeader() {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo and Nav */}
         <div className="flex items-center gap-6">
-          <Link href="/admin/dashboard" className="flex items-center gap-2">
+          <Link href="/home" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-lg">C</span>
+            </div>
             <span className="text-foreground text-xl font-semibold">CodeCrate</span>
             <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-medium">
               Admin
@@ -97,11 +100,19 @@ export function AdminHeader() {
           </nav>
         </div>
 
-        {/* Right Side - User Menu */}
+        {/* Right Side - Theme Toggle, User Menu */}
         <div className="flex items-center gap-3">
+          <div className="hidden md:block">
+            <ThemeToggle />
+          </div>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild className="hidden md:flex">
-              <Button variant="ghost" className="rounded-full h-10 w-10 bg-secondary hover:bg-secondary/80">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-foreground rounded-full h-10 w-10 bg-secondary hover:bg-secondary/80"
+              >
                 <Shield className="h-5 w-5 text-primary" />
                 <span className="sr-only">Admin menu</span>
               </Button>
@@ -139,6 +150,11 @@ export function AdminHeader() {
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-secondary">
+                  <span className="text-muted-foreground">Theme</span>
+                  <ThemeToggle />
+                </div>
+
                 <nav className="flex flex-col gap-2">
                   {navItems.map((item) => (
                     <Link
