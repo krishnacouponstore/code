@@ -10,7 +10,25 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, Mail, Lock, Loader2, Check } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/lib/auth-context"
+import { useSignInEmailPassword } from "@nhost/nextjs"
+import { GraphQLClient, gql } from "graphql-request"
+
+const GRAPHQL_ENDPOINT = "https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql"
+const ADMIN_SECRET = "b%$=u(i'FPeG9hGIhasTLkdcYz5c'7vr"
+
+const adminClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
+  headers: {
+    "x-hasura-admin-secret": ADMIN_SECRET,
+  },
+})
+
+const CHECK_ADMIN_ROLE = gql`
+  query CheckAdminRole($userId: uuid!) {
+    authUserRoles(where: { userId: { _eq: $userId }, role: { _eq: "admin" } }) {
+      role
+    }
+  }
+`
 
 interface LoginFormProps {
   redirectTo?: string
@@ -21,11 +39,10 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
 
-  const { login } = useAuth()
+  const { signInEmailPassword, isLoading, error: nhostError } = useSignInEmailPassword()
   const router = useRouter()
 
   const validateForm = () => {
@@ -53,39 +70,65 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
     if (!validateForm()) return
 
     setErrors({})
-    setIsLoading(true)
 
     try {
-      const result = await login(email, password)
+      const result = await signInEmailPassword(email, password)
 
-      if (result.success) {
-        setIsLoading(false)
+      if (result.isSuccess && result.user) {
         setIsSuccess(true)
+
+        let isAdmin = false
+        try {
+          const data: { authUserRoles: { role: string }[] } = await adminClient.request(CHECK_ADMIN_ROLE, {
+            userId: result.user.id,
+          })
+          isAdmin = data.authUserRoles && data.authUserRoles.length > 0
+        } catch {
+          // If role check fails, default to non-admin
+          isAdmin = false
+        }
 
         setTimeout(() => {
           if (redirectTo) {
-            router.push(redirectTo)
-          } else if (result.isAdmin) {
-            router.push("/admin/dashboard")
+            router.replace(redirectTo)
+          } else if (isAdmin) {
+            router.replace("/admin/dashboard")
           } else {
-            router.push("/dashboard")
+            router.replace("/dashboard")
           }
         }, 1000)
+      } else if (result.needsEmailVerification) {
+        setErrors({
+          general: "Please verify your email address before logging in. Check your inbox for a verification link.",
+        })
+      } else if (result.error) {
+        const errorMessage = result.error.message || "Invalid email or password. Please try again."
+
+        // Check for specific Nhost error messages
+        if (errorMessage.toLowerCase().includes("unverified")) {
+          setErrors({
+            general: "Please verify your email address before logging in. Check your inbox for a verification link.",
+          })
+        } else if (errorMessage.toLowerCase().includes("invalid") || errorMessage.toLowerCase().includes("incorrect")) {
+          setErrors({ general: "Invalid email or password. Please try again." })
+        } else {
+          setErrors({ general: errorMessage })
+        }
       } else {
-        setErrors({ general: result.error })
-        setIsLoading(false)
+        setErrors({ general: "Invalid email or password. Please try again." })
       }
     } catch {
       setErrors({ general: "An unexpected error occurred. Please try again." })
-      setIsLoading(false)
     }
   }
 
+  const displayError = errors.general || (nhostError?.message && !isSuccess ? nhostError.message : null)
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {errors.general && (
+      {displayError && (
         <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
-          {errors.general}
+          {displayError}
         </div>
       )}
 

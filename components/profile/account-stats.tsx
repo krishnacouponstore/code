@@ -1,11 +1,13 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wallet, ShoppingCart, CreditCard, Package } from "lucide-react"
+import { Wallet, ShoppingCart, CreditCard, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { mockUserProfile } from "@/lib/mock-data"
+import { useUserProfile } from "@/hooks/use-user-profile"
 
 export function AccountStats() {
+  const { data: profile, isLoading } = useUserProfile()
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -13,31 +15,37 @@ export function AccountStats() {
     }).format(amount)
   }
 
+  if (isLoading) {
+    return (
+      <Card className="bg-card border-border">
+        <CardContent className="p-6 flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!profile) return null
+
   const stats = [
     {
       icon: Wallet,
       label: "Wallet Balance",
-      value: formatCurrency(mockUserProfile.wallet_balance),
+      value: formatCurrency(profile.wallet_balance),
       link: { href: "/add-balance", text: "Add Balance" },
       iconColor: "text-primary",
     },
     {
       icon: ShoppingCart,
       label: "Total Purchases",
-      value: `${mockUserProfile.total_purchased} coupons`,
+      value: `${profile.total_purchased} coupons`,
       iconColor: "text-blue-400",
     },
     {
       icon: CreditCard,
       label: "Total Spent",
-      value: formatCurrency(mockUserProfile.total_spent),
+      value: formatCurrency(profile.total_spent),
       iconColor: "text-green-400",
-    },
-    {
-      icon: Package,
-      label: "Total Orders",
-      value: `${mockUserProfile.total_orders} orders`,
-      iconColor: "text-orange-400",
     },
   ]
 

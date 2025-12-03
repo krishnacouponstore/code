@@ -7,12 +7,17 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2, CheckCircle2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuthenticationStatus, useUserData } from "@nhost/nextjs"
+import { verifyAndChangePassword } from "@/app/actions/change-password"
 
 export function ChangePasswordForm() {
   const { toast } = useToast()
+  const { isAuthenticated } = useAuthenticationStatus()
+  const user = useUserData()
   const [isLoading, setIsLoading] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -29,6 +34,10 @@ export function ChangePasswordForm() {
     // Clear error when user types
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
+    }
+    // Reset success state when user types
+    if (isSuccess) {
+      setIsSuccess(false)
     }
   }
 
@@ -79,28 +88,53 @@ export function ChangePasswordForm() {
 
     if (!validateForm()) return
 
-    setIsLoading(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // Mock validation - check if current password is correct
-    if (formData.currentPassword !== "rohan123") {
-      setIsLoading(false)
-      setErrors({ currentPassword: "Current password is incorrect" })
+    if (!isAuthenticated || !user?.email) {
       toast({
         title: "Error",
-        description: "Current password is incorrect",
+        description: "You must be logged in to change password",
         variant: "destructive",
       })
       return
     }
 
-    setIsLoading(false)
-    setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" })
-    toast({
-      title: "Success",
-      description: "Password changed successfully!",
-    })
+    setIsLoading(true)
+    setErrors({})
+
+    try {
+      const result = await verifyAndChangePassword(user.email, formData.currentPassword, formData.newPassword)
+
+      if (!result.success) {
+        if (result.error?.includes("incorrect")) {
+          setErrors({ currentPassword: "Current password is incorrect" })
+        } else {
+          toast({
+            title: "Error",
+            description: result.error || "Failed to change password",
+            variant: "destructive",
+          })
+        }
+        setIsLoading(false)
+        return
+      }
+
+      setIsSuccess(true)
+      setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+      toast({
+        title: "Success",
+        description: "Password changed successfully!",
+      })
+
+      // Reset success state after 3 seconds
+      setTimeout(() => setIsSuccess(false), 3000)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to change password",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const isFormValid = formData.currentPassword && formData.newPassword && formData.confirmPassword
@@ -226,16 +260,23 @@ export function ChangePasswordForm() {
             type="submit"
             variant="outline"
             disabled={!isFormValid || isLoading}
-            className={`w-full rounded-full font-medium ${
-              isFormValid && !isLoading
-                ? "bg-primary text-primary-foreground hover:bg-primary/90 border-primary"
-                : "border-border text-foreground hover:bg-secondary bg-transparent"
+            className={`w-full rounded-full font-medium transition-all duration-300 ${
+              isSuccess
+                ? "bg-green-500 text-white border-green-500 hover:bg-green-600"
+                : isFormValid && !isLoading
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 border-primary"
+                  : "border-border text-foreground hover:bg-secondary bg-transparent"
             }`}
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Updating...
+              </>
+            ) : isSuccess ? (
+              <>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Password Changed!
               </>
             ) : (
               "Update Password"

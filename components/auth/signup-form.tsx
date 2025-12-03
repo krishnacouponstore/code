@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Eye, EyeOff, Mail, Lock, User, Phone, Loader2, Check } from "lucide-react"
 import Link from "next/link"
+import { useSignUpEmailPassword } from "@nhost/nextjs"
+import { createUserProfile } from "@/app/actions/create-user-profile"
+import { useQueryClient } from "@tanstack/react-query"
 
 // Password strength calculation
 const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
@@ -36,11 +39,12 @@ export function SignupForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  const { signUpEmailPassword, isLoading, error: nhostError } = useSignUpEmailPassword()
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const passwordStrength = useMemo(() => getPasswordStrength(formData.password), [formData.password])
 
@@ -94,32 +98,54 @@ export function SignupForm() {
 
     if (!validateForm()) return
 
-    setIsLoading(true)
-
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      console.log("Signup attempt:", formData)
+      const result = await signUpEmailPassword(formData.email, formData.password, {
+        displayName: formData.fullName,
+        metadata: {
+          phone: formData.phone || null,
+        },
+      })
 
-      setIsLoading(false)
-      setIsSuccess(true)
+      if (result.isSuccess && result.user) {
+        const profileResult = await createUserProfile(result.user.id)
 
-      setTimeout(() => {
-        router.push("/login")
-      }, 1000)
-    } catch {
+        if (!profileResult.success) {
+          setErrors({
+            general: `Account created but profile setup failed: ${profileResult.error}. Please contact support.`,
+          })
+          return
+        }
+
+        queryClient.invalidateQueries({ queryKey: ["userProfile"] })
+        setIsSuccess(true)
+        setTimeout(() => {
+          router.replace("/dashboard")
+        }, 1500)
+      } else if (result.needsEmailVerification && result.user) {
+        await createUserProfile(result.user.id)
+
+        setIsSuccess(true)
+        setTimeout(() => {
+          router.replace("/login?message=Please check your email to verify your account")
+        }, 1500)
+      } else {
+        setErrors({ general: result.error?.message || "Something went wrong. Please try again." })
+      }
+    } catch (err) {
       setErrors({ general: "Something went wrong. Please try again." })
-      setIsLoading(false)
     }
   }
+
+  const displayError = errors.general || nhostError?.message
 
   const inputClass =
     "h-11 bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {errors.general && (
+      {displayError && (
         <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
-          {errors.general}
+          {displayError}
         </div>
       )}
 

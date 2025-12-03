@@ -37,7 +37,7 @@ import {
 } from "lucide-react"
 
 export default function ManageCouponsPage() {
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading, isLoggingOut } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -50,12 +50,13 @@ export default function ManageCouponsPage() {
   const [salesData, setSalesData] = useState<SalesData | null>(null)
 
   useEffect(() => {
+    if (isLoggingOut) return
     if (!authLoading && (!user || !user.is_admin)) {
-      router.push("/login")
+      router.replace("/login")
     }
-  }, [user, authLoading, router])
+  }, [user, authLoading, router, isLoggingOut])
 
-  if (authLoading || !user?.is_admin) {
+  if (authLoading || !user?.is_admin || isLoggingOut) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>

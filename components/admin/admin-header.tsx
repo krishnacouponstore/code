@@ -18,7 +18,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useState } from "react"
 
 export function AdminHeader() {
-  const { logout, user } = useAuth()
+  const { logout, user, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
@@ -132,9 +132,13 @@ export function AdminHeader() {
                 </div>
               </div>
               <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="cursor-pointer text-destructive"
+                disabled={isLoggingOut}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
-                Logout
+                {isLoggingOut ? "Logging out..." : "Logout"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -234,10 +238,11 @@ export function AdminHeader() {
                       setIsOpen(false)
                       handleLogout()
                     }}
+                    disabled={isLoggingOut}
                     className="w-full rounded-xl h-12 border-destructive/30 text-destructive hover:bg-destructive/10 bg-transparent"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                    {isLoggingOut ? "Logging out..." : "Logout"}
                   </Button>
                 </div>
               </div>

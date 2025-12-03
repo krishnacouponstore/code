@@ -27,18 +27,19 @@ import Link from "next/link"
 import { adminStats, adminRecentOrders, lowStockAlerts, topSlots } from "@/lib/mock-data"
 
 export default function AdminDashboardPage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, isLoggingOut } = useAuth()
   const router = useRouter()
   const [dateRange, setDateRange] = useState("today")
 
   useEffect(() => {
+    if (isLoggingOut) return
     if (!isLoading && !isAuthenticated) {
-      router.push("/login")
+      router.replace("/login")
     }
     if (!isLoading && user && !user.is_admin) {
-      router.push("/dashboard")
+      router.replace("/dashboard")
     }
-  }, [isLoading, isAuthenticated, user, router])
+  }, [isLoading, isAuthenticated, user, router, isLoggingOut])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -47,7 +48,7 @@ export default function AdminDashboardPage() {
     }).format(amount)
   }
 
-  if (isLoading || !user) {
+  if (isLoading || !user || isLoggingOut) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

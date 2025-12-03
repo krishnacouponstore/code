@@ -40,7 +40,7 @@ import {
 } from "lucide-react"
 
 export default function RevenuePage() {
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading, isLoggingOut } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -56,10 +56,11 @@ export default function RevenuePage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (isLoggingOut) return
     if (!authLoading && (!user || !user.is_admin)) {
-      router.push("/login")
+      router.replace("/login")
     }
-  }, [user, authLoading, router])
+  }, [user, authLoading, router, isLoggingOut])
 
   // Calculate stats
   const stats = useMemo(() => {

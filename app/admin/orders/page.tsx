@@ -37,7 +37,7 @@ import { useToast } from "@/hooks/use-toast"
 import { mockAdminOrders, mockOrderStats, type AdminOrder } from "@/lib/mock-data"
 
 export default function AdminOrdersPage() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading, isLoggingOut } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -53,13 +53,14 @@ export default function AdminOrdersPage() {
   const ordersPerPage = 25
 
   useEffect(() => {
+    if (isLoggingOut) return
     if (!isLoading && !isAuthenticated) {
-      router.push("/login")
+      router.replace("/login")
     }
     if (!isLoading && user && !user.is_admin) {
-      router.push("/dashboard")
+      router.replace("/dashboard")
     }
-  }, [isLoading, isAuthenticated, user, router])
+  }, [isLoading, isAuthenticated, user, router, isLoggingOut])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -204,7 +205,7 @@ export default function AdminOrdersPage() {
 
   const uniqueCoupons = [...new Set(mockAdminOrders.map((o) => o.slot_name))]
 
-  if (isLoading || !user) {
+  if (isLoading || !user || isLoggingOut) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
