@@ -7,6 +7,7 @@ import { AdminHeader } from "@/components/admin/admin-header"
 import { SlotFormModal } from "@/components/admin/slot-form-modal"
 import { DeleteSlotDialog } from "@/components/admin/delete-slot-dialog"
 import { UploadCodesModal } from "@/components/admin/upload-codes-modal"
+import { ViewSalesModal } from "@/components/admin/view-sales-modal"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -17,13 +18,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { mockAdminSlots, type AdminSlot } from "@/lib/mock-data"
+import { mockAdminSlots, type AdminSlot, getMockSalesData, type SalesData } from "@/lib/mock-data"
 import { formatCurrency } from "@/lib/utils"
 import {
   Plus,
   MoreVertical,
   Pencil,
-  DollarSign,
   Upload,
   BarChart3,
   Eye,
@@ -45,7 +45,9 @@ export default function ManageCouponsPage() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const [isViewSalesModalOpen, setIsViewSalesModalOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<AdminSlot | null>(null)
+  const [salesData, setSalesData] = useState<SalesData | null>(null)
 
   useEffect(() => {
     if (!authLoading && (!user || !user.is_admin)) {
@@ -202,6 +204,17 @@ export default function ManageCouponsPage() {
       title: "Codes uploaded successfully",
       description: `${codesCount} codes have been added to "${selectedSlot?.name}".`,
     })
+  }
+
+  const handleViewSales = (slot: AdminSlot) => {
+    setSelectedSlot(slot)
+    setSalesData(getMockSalesData(slot))
+    setIsViewSalesModalOpen(true)
+  }
+
+  const handleViewAllOrders = () => {
+    setIsViewSalesModalOpen(false)
+    router.push("/admin/orders")
   }
 
   return (
@@ -366,15 +379,11 @@ export default function ManageCouponsPage() {
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit Coupon
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
-                              <DollarSign className="mr-2 h-4 w-4" />
-                              Manage Pricing
-                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleUploadCodes(slot)} className="cursor-pointer">
                               <Upload className="mr-2 h-4 w-4" />
                               Upload Codes
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
+                            <DropdownMenuItem onClick={() => handleViewSales(slot)} className="cursor-pointer">
                               <BarChart3 className="mr-2 h-4 w-4" />
                               View Sales
                             </DropdownMenuItem>
@@ -433,6 +442,10 @@ export default function ManageCouponsPage() {
                           <Upload className="mr-2 h-4 w-4" />
                           Upload Codes
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewSales(slot)} className="cursor-pointer">
+                          <BarChart3 className="mr-2 h-4 w-4" />
+                          View Sales
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleTogglePublish(slot)} className="cursor-pointer">
                           {slot.is_published ? (
                             <>
@@ -467,7 +480,7 @@ export default function ManageCouponsPage() {
                       {getStockBadge(slot.available_stock)}
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Price Range</p>
+                      <p className="text-muted-foreground">Price</p>
                       <p className="text-foreground font-medium">{getPriceRange(slot)}</p>
                     </div>
                   </div>
@@ -484,10 +497,15 @@ export default function ManageCouponsPage() {
                         Draft
                       </span>
                     )}
-                    <span className="text-xs text-muted-foreground">
-                      Created{" "}
-                      {new Date(slot.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
-                    </span>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => handleUploadCodes(slot)}
+                      className="text-primary h-auto p-0"
+                    >
+                      <Upload className="h-3 w-3 mr-1" />
+                      Upload Codes
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -500,8 +518,8 @@ export default function ManageCouponsPage() {
       <SlotFormModal
         open={isFormModalOpen}
         onOpenChange={setIsFormModalOpen}
-        slot={selectedSlot}
         onSubmit={handleFormSubmit}
+        slot={selectedSlot}
       />
 
       <DeleteSlotDialog
@@ -516,6 +534,18 @@ export default function ManageCouponsPage() {
         onOpenChange={setIsUploadModalOpen}
         slot={selectedSlot}
         onUploadSuccess={handleUploadSuccess}
+      />
+
+      <ViewSalesModal
+        open={isViewSalesModalOpen}
+        onOpenChange={setIsViewSalesModalOpen}
+        salesData={salesData}
+        onUploadCodes={() => {
+          if (selectedSlot) {
+            handleUploadCodes(selectedSlot)
+          }
+        }}
+        onViewAllOrders={handleViewAllOrders}
       />
     </div>
   )

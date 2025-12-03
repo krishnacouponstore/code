@@ -1035,3 +1035,128 @@ export const getMockUserPurchases = (userId: string): PurchaseHistoryItem[] => {
   }
   return mockPurchaseHistory.slice(0, 3)
 }
+
+export type SalesData = {
+  coupon_id: string
+  coupon_name: string
+  description: string
+  overview: {
+    total_revenue: number
+    units_sold: number
+    remaining_stock: number
+    total_orders: number
+    avg_unit_price: number
+    avg_order_size: number
+  }
+  tier_breakdown: {
+    tier_label: string
+    tier_description: string
+    quantity_sold: number
+    orders_count: number
+    unit_price: number
+    revenue: number
+  }[]
+  recent_sales: {
+    order_number: string
+    customer_email: string
+    quantity: number
+    amount: number
+    created_at: string
+  }[]
+  stock_status: {
+    available: number
+    total_uploaded: number
+    percentage: number
+    status: "healthy" | "low" | "out"
+  }
+  sales_trend: {
+    last_7_days: { revenue: number; orders: number }
+    last_30_days: { revenue: number; orders: number }
+    all_time: { revenue: number; orders: number }
+  }
+}
+
+export const getMockSalesData = (slot: AdminSlot): SalesData => {
+  const stockPercentage = slot.total_uploaded > 0 ? Math.round((slot.available_stock / slot.total_uploaded) * 100) : 0
+
+  const stockStatus: "healthy" | "low" | "out" =
+    slot.available_stock === 0 ? "out" : slot.available_stock <= 100 ? "low" : "healthy"
+
+  const avgPrice =
+    slot.pricing_tiers.length > 0
+      ? slot.pricing_tiers.reduce((acc, t) => acc + t.unit_price, 0) / slot.pricing_tiers.length
+      : 10
+
+  const totalRevenue = slot.total_sold * avgPrice
+  const totalOrders = Math.ceil(slot.total_sold / 12)
+
+  return {
+    coupon_id: slot.id,
+    coupon_name: slot.name,
+    description: slot.description,
+    overview: {
+      total_revenue: totalRevenue,
+      units_sold: slot.total_sold,
+      remaining_stock: slot.available_stock,
+      total_orders: totalOrders,
+      avg_unit_price: avgPrice,
+      avg_order_size: 12,
+    },
+    tier_breakdown: slot.pricing_tiers.map((tier, index) => ({
+      tier_label: tier.max_quantity ? `${tier.min_quantity}-${tier.max_quantity} codes` : `${tier.min_quantity}+ codes`,
+      tier_description: tier.label || (index === slot.pricing_tiers.length - 1 ? "Best value" : "Standard pricing"),
+      quantity_sold: Math.floor(slot.total_sold / slot.pricing_tiers.length),
+      orders_count: Math.ceil(totalOrders / slot.pricing_tiers.length),
+      unit_price: tier.unit_price,
+      revenue: Math.floor(slot.total_sold / slot.pricing_tiers.length) * tier.unit_price,
+    })),
+    recent_sales: [
+      {
+        order_number: "ORD045",
+        customer_email: "rohan@example.com",
+        quantity: 50,
+        amount: 500.0,
+        created_at: "2 mins ago",
+      },
+      {
+        order_number: "ORD042",
+        customer_email: "user@example.com",
+        quantity: 75,
+        amount: 750.0,
+        created_at: "1 hour ago",
+      },
+      {
+        order_number: "ORD039",
+        customer_email: "test@example.com",
+        quantity: 100,
+        amount: 800.0,
+        created_at: "3 hours ago",
+      },
+      {
+        order_number: "ORD035",
+        customer_email: "admin@example.com",
+        quantity: 25,
+        amount: 300.0,
+        created_at: "5 hours ago",
+      },
+      {
+        order_number: "ORD031",
+        customer_email: "demo@example.com",
+        quantity: 30,
+        amount: 360.0,
+        created_at: "1 day ago",
+      },
+    ],
+    stock_status: {
+      available: slot.available_stock,
+      total_uploaded: slot.total_uploaded,
+      percentage: stockPercentage,
+      status: stockStatus,
+    },
+    sales_trend: {
+      last_7_days: { revenue: totalRevenue * 0.15, orders: Math.ceil(totalOrders * 0.15) },
+      last_30_days: { revenue: totalRevenue * 0.4, orders: Math.ceil(totalOrders * 0.4) },
+      all_time: { revenue: totalRevenue, orders: totalOrders },
+    },
+  }
+}
