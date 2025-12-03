@@ -8,13 +8,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Menu, Plus, User, LogOut, Wallet, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { PublicHeader } from "@/components/shared/public-header"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useState } from "react"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface DashboardHeaderProps {
   walletBalance?: number
@@ -25,6 +27,8 @@ interface DashboardHeaderProps {
 export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = "" }: DashboardHeaderProps) {
   const { logout, isAuthenticated, user } = useAuth()
   const router = useRouter()
+  const [isOpen, setIsOpen] = useState(false)
+  const [moreExpanded, setMoreExpanded] = useState(false)
 
   if (!isAuthenticated || !user) {
     return <PublicHeader />
@@ -180,77 +184,119 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
           </DropdownMenu>
 
           {/* Mobile Menu */}
-          <Sheet>
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon" className="text-foreground">
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="bg-background border-t border-border">
-              <SheetHeader>
-                <SheetTitle className="text-left text-foreground">Menu</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4 space-y-4">
+            <SheetContent
+              side="right"
+              className="w-[300px] sm:w-[350px] bg-gradient-to-b from-background via-background to-muted/30 border-l border-border/50 p-0"
+            >
+              <div className="p-6 border-b border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                    <span className="text-primary-foreground font-bold text-xl">C</span>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-foreground">CodeCrate</h2>
+                    <p className="text-xs text-muted-foreground">{displayName}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-180px)]">
                 {/* Theme Toggle */}
-                <div className="flex items-center justify-between p-4 rounded-xl bg-secondary">
-                  <span className="text-muted-foreground">Theme</span>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
+                  <span className="text-muted-foreground text-sm">Theme</span>
                   <ThemeToggle />
                 </div>
 
                 {/* Mobile Wallet */}
-                <Link href="/add-balance" className="flex items-center justify-between p-4 rounded-xl bg-secondary">
+                <Link
+                  href="/add-balance"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                >
                   <div className="flex items-center gap-3">
                     <Wallet className="h-5 w-5 text-primary" />
-                    <span className="text-muted-foreground">Wallet Balance</span>
+                    <span className="text-muted-foreground text-sm">Wallet</span>
                   </div>
                   <span className="font-semibold text-foreground">{formatCurrency(displayBalance)}</span>
                 </Link>
 
-                <nav className="flex flex-col gap-2">
+                {/* Divider */}
+                <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+
+                {/* Nav Items */}
+                <nav className="space-y-1">
                   {navItems.map((item) => (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className="text-muted-foreground hover:text-foreground py-3 px-2 rounded-lg hover:bg-secondary transition-colors"
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center justify-between p-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200"
                     >
-                      {item.name}
+                      <span className="font-medium">{item.name}</span>
                     </Link>
                   ))}
                 </nav>
 
-                <div className="border-t border-border pt-4">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide px-2 mb-2">More</p>
-                  <nav className="flex flex-col gap-2">
-                    {moreItems.map((item) => (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className="text-muted-foreground hover:text-foreground py-3 px-2 rounded-lg hover:bg-secondary transition-colors"
-                      >
-                        {item.name}
-                      </Link>
-                    ))}
-                  </nav>
-                </div>
+                <Collapsible open={moreExpanded} onOpenChange={setMoreExpanded}>
+                  <CollapsibleTrigger asChild>
+                    <button className="w-full flex items-center justify-between p-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200">
+                      <span className="font-medium">More</span>
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform duration-200 ${moreExpanded ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+                    <div className="pl-4 mt-1 space-y-1 border-l-2 border-primary/30 ml-3">
+                      {moreItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          onClick={() => setIsOpen(false)}
+                          className="block p-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200"
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Divider */}
+                <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent" />
 
                 {/* Mobile Actions */}
-                <div className="flex flex-col gap-3 pt-4 border-t border-border">
-                  <Link href="/add-balance">
-                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium gap-2">
+                <div className="space-y-3 pt-2">
+                  <Link href="/add-balance" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl h-12 font-medium gap-2 shadow-lg shadow-primary/20">
                       <Plus className="h-4 w-4" />
                       Add Balance
                     </Button>
                   </Link>
                   <Button
                     variant="outline"
-                    onClick={handleLogout}
-                    className="w-full rounded-full border-border text-destructive bg-transparent"
+                    onClick={() => {
+                      setIsOpen(false)
+                      handleLogout()
+                    }}
+                    className="w-full rounded-xl h-12 border-destructive/30 text-destructive hover:bg-destructive/10 bg-transparent"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     Logout
                   </Button>
                 </div>
+              </div>
+
+              {/* Footer */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border/50 bg-muted/20">
+                <p className="text-xs text-center text-muted-foreground">100% Verified Codes</p>
               </div>
             </SheetContent>
           </Sheet>

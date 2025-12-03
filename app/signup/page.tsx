@@ -43,7 +43,6 @@ function SignupContent() {
             </div>
             <span className="text-foreground text-2xl font-semibold">CodeCrate</span>
           </Link>
-          <p className="text-sm text-muted-foreground mt-1">Your Trusted Coupon Marketplace</p>
         </div>
 
         {redirect && (

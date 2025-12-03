@@ -3,11 +3,12 @@
 import type React from "react"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Mail, Lock, User, Phone, Loader2, CheckCircle2, Zap } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, Phone, Loader2, Check } from "lucide-react"
 import Link from "next/link"
 
 // Password strength calculation
@@ -36,7 +37,10 @@ export function SignupForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const router = useRouter()
 
   const passwordStrength = useMemo(() => getPasswordStrength(formData.password), [formData.password])
 
@@ -95,9 +99,15 @@ export function SignupForm() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1500))
       console.log("Signup attempt:", formData)
+
+      setIsLoading(false)
+      setIsSuccess(true)
+
+      setTimeout(() => {
+        router.push("/login")
+      }, 1000)
     } catch {
       setErrors({ general: "Something went wrong. Please try again." })
-    } finally {
       setIsLoading(false)
     }
   }
@@ -291,32 +301,27 @@ export function SignupForm() {
 
       <Button
         type="submit"
-        className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium shadow-sm"
-        disabled={isLoading}
+        className={`w-full h-11 rounded-full font-medium shadow-sm transition-all duration-300 ${
+          isSuccess
+            ? "bg-green-500 hover:bg-green-500 text-white scale-105"
+            : "bg-primary text-primary-foreground hover:bg-primary/90"
+        }`}
+        disabled={isLoading || isSuccess}
       >
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             Creating account...
           </>
+        ) : isSuccess ? (
+          <span className="flex items-center justify-center gap-2 animate-in zoom-in-50 duration-300">
+            <Check className="w-5 h-5" />
+            Account Created!
+          </span>
         ) : (
           "Create Account"
         )}
       </Button>
-
-      {/* Trust badges */}
-      <div className="pt-4 border-t border-border mt-6">
-        <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-primary" />
-            <span>Free to Join</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Zap className="w-4 h-4 text-primary" />
-            <span>Instant Access</span>
-          </div>
-        </div>
-      </div>
     </form>
   )
 }

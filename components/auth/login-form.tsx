@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Mail, Lock, Loader2, CheckCircle2, Shield } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, Loader2, Check } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 
@@ -22,6 +22,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
 
   const { login } = useAuth()
@@ -58,19 +59,24 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       const result = await login(email, password)
 
       if (result.success) {
-        if (redirectTo) {
-          router.push(redirectTo)
-        } else if (result.isAdmin) {
-          router.push("/admin/dashboard")
-        } else {
-          router.push("/dashboard")
-        }
+        setIsLoading(false)
+        setIsSuccess(true)
+
+        setTimeout(() => {
+          if (redirectTo) {
+            router.push(redirectTo)
+          } else if (result.isAdmin) {
+            router.push("/admin/dashboard")
+          } else {
+            router.push("/dashboard")
+          }
+        }, 1000)
       } else {
         setErrors({ general: result.error })
+        setIsLoading(false)
       }
     } catch {
       setErrors({ general: "An unexpected error occurred. Please try again." })
-    } finally {
       setIsLoading(false)
     }
   }
@@ -166,32 +172,27 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
 
       <Button
         type="submit"
-        className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium shadow-sm"
-        disabled={isLoading}
+        className={`w-full h-11 rounded-full font-medium shadow-sm transition-all duration-300 ${
+          isSuccess
+            ? "bg-green-500 hover:bg-green-500 text-white scale-105"
+            : "bg-primary text-primary-foreground hover:bg-primary/90"
+        }`}
+        disabled={isLoading || isSuccess}
       >
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             Signing in...
           </>
+        ) : isSuccess ? (
+          <span className="flex items-center justify-center gap-2 animate-in zoom-in-50 duration-300">
+            <Check className="w-5 h-5" />
+            Success!
+          </span>
         ) : (
           "Login"
         )}
       </Button>
-
-      {/* Trust badges */}
-      <div className="pt-4 border-t border-border mt-6">
-        <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-primary" />
-            <span>Secure Login</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Shield className="w-4 h-4 text-primary" />
-            <span>256-bit Encryption</span>
-          </div>
-        </div>
-      </div>
     </form>
   )
 }

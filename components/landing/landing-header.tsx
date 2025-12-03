@@ -1,31 +1,17 @@
 "use client"
 
-import type React from "react"
-
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Shield } from "lucide-react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Menu, Shield, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth-context"
+import { useState } from "react"
 
 export function LandingHeader() {
   const { user, isAuthenticated } = useAuth()
   const isAdmin = user?.is_admin ?? false
-
-  const navItems = [
-    { name: "Features", href: "#features" },
-    { name: "Testimonials", href: "#testimonials" },
-  ]
-
-  const handleScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    e.preventDefault()
-    const targetId = href.substring(1)
-    const targetElement = document.getElementById(targetId)
-    if (targetElement) {
-      targetElement.scrollIntoView({ behavior: "smooth" })
-    }
-  }
+  const [isOpen, setIsOpen] = useState(false)
 
   return (
     <header className="w-full py-4 px-6">
@@ -37,18 +23,6 @@ export function LandingHeader() {
             </div>
             <span className="text-foreground text-xl font-semibold">CodeCrate</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-2">
-            {navItems.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                onClick={(e) => handleScroll(e, item.href)}
-                className="text-muted-foreground hover:text-foreground px-4 py-2 rounded-full font-medium transition-colors"
-              >
-                {item.name}
-              </a>
-            ))}
-          </nav>
         </div>
         <div className="flex items-center gap-3">
           <ThemeToggle />
@@ -81,56 +55,72 @@ export function LandingHeader() {
               </Link>
             </>
           )}
-          <Sheet>
+
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" className="text-foreground">
+              <Button variant="ghost" size="icon" className="text-foreground relative">
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="bg-background border-t border-border">
-              <SheetHeader>
-                <SheetTitle className="text-left text-xl font-semibold text-foreground">Navigation</SheetTitle>
-              </SheetHeader>
-              <nav className="flex flex-col gap-4 mt-6">
-                {navItems.map((item) => (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    onClick={(e) => handleScroll(e, item.href)}
-                    className="text-muted-foreground hover:text-foreground text-lg py-2"
-                  >
-                    {item.name}
-                  </a>
-                ))}
-                <div className="flex flex-col gap-3 mt-4">
-                  {isAuthenticated ? (
-                    isAdmin ? (
-                      <Link href="/admin/dashboard">
-                        <Button className="w-full bg-primary text-primary-foreground rounded-full flex items-center justify-center gap-2">
-                          <Shield className="w-4 h-4" />
-                          Admin Panel
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Link href="/dashboard">
-                        <Button className="w-full bg-primary text-primary-foreground rounded-full">Dashboard</Button>
-                      </Link>
-                    )
-                  ) : (
-                    <>
-                      <Link href="/login">
-                        <Button variant="outline" className="w-full rounded-full bg-transparent">
-                          Sign In
-                        </Button>
-                      </Link>
-                      <Link href="/signup">
-                        <Button className="w-full bg-primary text-primary-foreground rounded-full">Get Started</Button>
-                      </Link>
-                    </>
-                  )}
+            <SheetContent
+              side="right"
+              className="w-[300px] sm:w-[350px] bg-gradient-to-b from-background via-background to-muted/30 border-l border-border/50 p-0"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+                    <span className="text-primary-foreground font-bold text-xl">C</span>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-foreground">CodeCrate</h2>
+                    <p className="text-xs text-muted-foreground">Premium Coupons</p>
+                  </div>
                 </div>
-              </nav>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-4 space-y-3">
+                {isAuthenticated ? (
+                  isAdmin ? (
+                    <Link href="/admin/dashboard" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200">
+                        <Shield className="w-5 h-5" />
+                        Admin Panel
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200">
+                        Go to Dashboard
+                      </Button>
+                    </Link>
+                  )
+                ) : (
+                  <>
+                    <Link href="/login" onClick={() => setIsOpen(false)}>
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-xl h-12 bg-transparent border-border/50 hover:bg-muted/50 transition-all duration-200"
+                      >
+                        Sign In
+                      </Button>
+                    </Link>
+                    <Link href="/signup" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200 flex items-center justify-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        Get Started Free
+                      </Button>
+                    </Link>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border/50 bg-muted/20">
+                <p className="text-xs text-center text-muted-foreground">100% Verified Codes</p>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
