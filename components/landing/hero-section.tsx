@@ -169,7 +169,7 @@ export function HeroSection() {
         <div className="space-y-4 md:space-y-5 lg:space-y-6 mb-8 max-w-md md:max-w-[550px] lg:max-w-[650px] w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-4">
             <Shield className="w-4 h-4 text-primary" />
-            <span className="text-primary text-sm font-medium">100% Verified Codes</span>
+            <span className="text-primary text-sm font-medium">99% Success Rate</span>
           </div>
           <h1 className="text-foreground text-3xl md:text-4xl lg:text-6xl font-semibold leading-tight text-balance">
             Premium Coupons at Unbeatable Prices
@@ -233,8 +233,8 @@ export function HeroSection() {
           </div>
           <div className="w-px h-8 sm:h-10 bg-border" />
           <div className="text-center">
-            <p className="text-foreground text-xl sm:text-2xl md:text-3xl font-semibold">100%</p>
-            <p className="text-muted-foreground text-xs sm:text-sm">Verified Codes</p>
+            <p className="text-foreground text-xl sm:text-2xl md:text-3xl font-semibold">99%</p>
+            <p className="text-muted-foreground text-xs sm:text-sm">Success Rate</p>
           </div>
         </div>
       </div>
