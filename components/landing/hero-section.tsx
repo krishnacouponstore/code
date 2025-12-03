@@ -169,7 +169,7 @@ export function HeroSection() {
         <div className="space-y-4 md:space-y-5 lg:space-y-6 mb-8 max-w-md md:max-w-[550px] lg:max-w-[650px] w-full">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-4">
             <Shield className="w-4 h-4 text-primary" />
-            <span className="text-primary text-sm font-medium">99% Success Rate</span>
+            <span className="text-primary text-sm font-medium">100% Verified Codes</span>
           </div>
           <h1 className="text-foreground text-3xl md:text-4xl lg:text-6xl font-semibold leading-tight text-balance">
             Premium Coupons at Unbeatable Prices
