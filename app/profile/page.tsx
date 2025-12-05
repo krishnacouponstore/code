@@ -34,9 +34,18 @@ export default function ProfilePage() {
   }, [isLoading, isAuthenticated, router, pathname, isLoggingOut, user])
 
   useEffect(() => {
+    console.log("[v0] Profile page - checking password reset flag")
+    console.log("[v0] isLoading:", isLoading)
+    console.log("[v0] isAuthenticated:", isAuthenticated)
+    console.log("[v0] user:", user?.email)
+
+    const pendingReset = localStorage.getItem("codecrate_password_reset_pending")
+    console.log("[v0] localStorage codecrate_password_reset_pending:", pendingReset)
+
     if (!isLoading && isAuthenticated && user) {
-      const pendingReset = localStorage.getItem("codecrate_password_reset_pending")
+      console.log("[v0] Conditions met, pendingReset value:", pendingReset)
       if (pendingReset === "true") {
+        console.log("[v0] Showing password reset modal!")
         setShowPasswordResetModal(true)
       }
     }
