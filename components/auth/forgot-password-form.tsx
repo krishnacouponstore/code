@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge"
 import { Mail, Loader2, CheckCircle2, Clock, Lock, AlertCircle } from "lucide-react"
 import { nhost } from "@/lib/nhost"
 
+export const MAGIC_LINK_PASSWORD_RESET_KEY = "codecrate_password_reset_pending"
+
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -48,9 +50,6 @@ export function ForgotPasswordForm() {
       // Send Magic Link using Nhost passwordless sign-in
       const { error: magicLinkError } = await nhost.auth.signIn({
         email,
-        options: {
-          redirectTo: `${window.location.origin}/change-password`,
-        },
       })
 
       if (magicLinkError) {
@@ -59,12 +58,14 @@ export function ForgotPasswordForm() {
           // Still show success for security (don't reveal if email exists)
           setIsSubmitted(true)
           setCountdown(60)
+          localStorage.setItem(MAGIC_LINK_PASSWORD_RESET_KEY, "true")
         } else {
           setError(magicLinkError.message || "Failed to send magic link. Please try again.")
         }
       } else {
         setIsSubmitted(true)
         setCountdown(60)
+        localStorage.setItem(MAGIC_LINK_PASSWORD_RESET_KEY, "true")
       }
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.")
@@ -81,15 +82,13 @@ export function ForgotPasswordForm() {
     try {
       const { error: magicLinkError } = await nhost.auth.signIn({
         email,
-        options: {
-          redirectTo: `${window.location.origin}/change-password`,
-        },
       })
 
       if (magicLinkError && !magicLinkError.message?.includes("user-not-found")) {
         setError("Failed to resend. Please try again.")
       } else {
         setCountdown(60)
+        localStorage.setItem(MAGIC_LINK_PASSWORD_RESET_KEY, "true")
       }
     } catch {
       setError("Failed to resend. Please try again.")
