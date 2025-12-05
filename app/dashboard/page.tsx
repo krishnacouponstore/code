@@ -75,7 +75,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <div className="text-center space-y-4">
-          <h2 className="text-xl font-semibold text-foreground">Unable to load profile</h2>
+          <h2 className="text-3xl font-semibold text-foreground">Unable to load profile</h2>
           <p className="text-muted-foreground">
             {profileError ? `Error: ${profileError.message}` : "Your profile is being set up. Please try again."}
           </p>
@@ -102,8 +102,8 @@ export default function DashboardPage() {
   const transformedPurchases =
     purchases?.map((p) => ({
       id: p.id,
-      order_id: p.order_number,
-      coupon_name: p.slot?.name || "Unknown Coupon",
+      order_id: p.order_number || `ORD${Date.now()}`,
+      slot_name: p.slot?.name || "Unknown Coupon",
       quantity: p.quantity,
       amount: p.total_price,
       date: p.created_at,

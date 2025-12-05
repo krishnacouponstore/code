@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const nhostUser = useUserData()
   const { signOut } = useSignOut()
   const { data: profile, isLoading: isProfileLoading, refetch } = useUserProfile()
-  const { data: rolesData, isLoading: isRolesLoading } = useUserRoles()
+  const { data: rolesData, isLoading: isRolesLoading, isFetching: isRolesFetching } = useUserRoles()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [profileChecked, setProfileChecked] = useState(false)
   const queryClient = useQueryClient()
@@ -89,17 +89,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setIsLoggingOut(true)
 
-    // Redirect immediately for instant feedback
+    queryClient.clear()
+
+    // Sign out from Nhost
+    await signOut()
+
+    // Small delay to ensure cleanup completes
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    // Redirect after cleanup
     router.replace("/home")
 
-    // Cleanup in background after navigation starts
+    // Reset logging out state after redirect
     setTimeout(() => {
-      queryClient.clear()
-      signOut()
-    }, 50)
+      setIsLoggingOut(false)
+    }, 500)
   }
 
-  const isLoading = isAuthenticated === undefined || (isAuthenticated && (isProfileLoading || isRolesLoading))
+  const isLoading =
+    isAuthenticated === undefined || (isAuthenticated && (isProfileLoading || isRolesLoading || isRolesFetching))
 
   return (
     <AuthContext.Provider

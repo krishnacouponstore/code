@@ -11,13 +11,13 @@ import Link from "next/link"
 
 const contactInfo = {
   telegram: {
-    username: "@alexencrypter",
-    url: "https://t.me/alexencrypter",
+    username: "@Krishna_Arora_New",
+    url: "https://t.me/Krishna_Arora_New",
     response_time: "Usually responds within 1 hour",
     availability: "24/7",
   },
   email: {
-    address: "support@codecrate.com",
+    address: "krishnacouponstore@gmail.com",
     response_time: "We respond within 24 hours",
     hours: "Monday - Saturday, 9 AM - 9 PM IST",
   },
@@ -36,7 +36,7 @@ const quickLinks = [
 ]
 
 const topUpSteps = [
-  "Message us on Telegram (@alexencrypter)",
+  "Message us on Telegram (@Krishna_Arora_New)",
   "Provide your registered email address",
   "Specify the amount you want to add (minimum ₹100)",
   "Complete payment via UPI/Bank Transfer",

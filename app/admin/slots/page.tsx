@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { mockAdminSlots, type AdminSlot, getMockSalesData, type SalesData } from "@/lib/mock-data"
+import { useSlots, useDeleteSlot, useToggleSlotPublish, useUploadCodes, type Slot } from "@/hooks/use-slots"
 import { formatCurrency } from "@/lib/utils"
 import {
   Plus,
@@ -34,6 +34,7 @@ import {
   FileText,
   AlertTriangle,
   PackageX,
+  Loader2,
 } from "lucide-react"
 
 export default function ManageCouponsPage() {
@@ -41,13 +42,16 @@ export default function ManageCouponsPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const [slots, setSlots] = useState<AdminSlot[]>(mockAdminSlots)
+  const { data: slots = [], isLoading: slotsLoading, refetch } = useSlots()
+  const deleteSlotMutation = useDeleteSlot()
+  const togglePublishMutation = useToggleSlotPublish()
+  const uploadCodesMutation = useUploadCodes()
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [isViewSalesModalOpen, setIsViewSalesModalOpen] = useState(false)
-  const [selectedSlot, setSelectedSlot] = useState<AdminSlot | null>(null)
-  const [salesData, setSalesData] = useState<SalesData | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
 
   useEffect(() => {
     if (isLoggingOut) return
@@ -70,8 +74,8 @@ export default function ManageCouponsPage() {
   const unpublishedSlots = totalSlots - publishedSlots
   const totalStock = slots.reduce((acc, s) => acc + s.available_stock, 0)
 
-  const getPriceRange = (slot: AdminSlot) => {
-    if (slot.pricing_tiers.length === 0) return "No pricing"
+  const getPriceRange = (slot: Slot) => {
+    if (!slot.pricing_tiers || slot.pricing_tiers.length === 0) return "No pricing"
     const prices = slot.pricing_tiers.map((t) => t.unit_price)
     const min = Math.min(...prices)
     const max = Math.max(...prices)
@@ -104,112 +108,77 @@ export default function ManageCouponsPage() {
     setIsFormModalOpen(true)
   }
 
-  const handleEditSlot = (slot: AdminSlot) => {
+  const handleEditSlot = (slot: Slot) => {
     setSelectedSlot(slot)
     setIsFormModalOpen(true)
   }
 
-  const handleDeleteSlot = (slot: AdminSlot) => {
+  const handleDeleteSlot = (slot: Slot) => {
     setSelectedSlot(slot)
     setIsDeleteDialogOpen(true)
   }
 
-  const handleUploadCodes = (slot: AdminSlot) => {
+  const handleUploadCodes = (slot: Slot) => {
     setSelectedSlot(slot)
     setIsUploadModalOpen(true)
   }
 
-  const handleTogglePublish = (slot: AdminSlot) => {
-    setSlots(slots.map((s) => (s.id === slot.id ? { ...s, is_published: !s.is_published } : s)))
-    toast({
-      title: slot.is_published ? "Coupon unpublished" : "Coupon published",
-      description: `"${slot.name}" is now ${slot.is_published ? "hidden from" : "visible to"} customers.`,
+  const handleTogglePublish = async (slot: Slot) => {
+    const result = await togglePublishMutation.mutateAsync({
+      id: slot.id,
+      is_published: !slot.is_published,
     })
-  }
 
-  const handleFormSubmit = (data: {
-    name: string
-    description: string
-    image_url: string
-    is_published: boolean
-    pricing_tiers: AdminSlot["pricing_tiers"]
-    codes_to_upload: string[]
-  }) => {
-    if (selectedSlot) {
-      // Edit existing slot
-      setSlots(
-        slots.map((s) =>
-          s.id === selectedSlot.id
-            ? {
-                ...s,
-                name: data.name,
-                description: data.description,
-                image_url: data.image_url || null,
-                is_published: data.is_published,
-                pricing_tiers: data.pricing_tiers,
-              }
-            : s,
-        ),
-      )
+    if (result.success) {
       toast({
-        title: "Coupon updated",
-        description: `"${data.name}" has been updated successfully.`,
+        title: slot.is_published ? "Coupon unpublished" : "Coupon published",
+        description: `"${slot.name}" is now ${slot.is_published ? "hidden from" : "visible to"} customers.`,
       })
     } else {
-      // Create new slot
-      const codesCount = data.codes_to_upload?.length || 0
-      const newSlot: AdminSlot = {
-        id: String(Date.now()),
-        name: data.name,
-        description: data.description,
-        image_url: data.image_url || null,
-        is_published: data.is_published,
-        available_stock: codesCount,
-        total_uploaded: codesCount,
-        total_sold: 0,
-        created_at: new Date().toISOString().split("T")[0],
-        pricing_tiers: data.pricing_tiers,
-      }
-      setSlots([...slots, newSlot])
       toast({
-        title: "Coupon created",
-        description:
-          codesCount > 0
-            ? `"${data.name}" created with ${codesCount} codes uploaded.`
-            : `"${data.name}" has been created. You can upload codes later.`,
+        title: "Error",
+        description: result.error || "Failed to update coupon",
+        variant: "destructive",
       })
     }
   }
 
-  const handleConfirmDelete = () => {
+  const handleFormSuccess = () => {
+    refetch()
+  }
+
+  const handleConfirmDelete = async () => {
     if (selectedSlot) {
-      setSlots(slots.filter((s) => s.id !== selectedSlot.id))
-      toast({
-        title: "Coupon deleted",
-        description: `"${selectedSlot.name}" has been permanently deleted.`,
-        variant: "destructive",
-      })
-      setSelectedSlot(null)
+      const result = await deleteSlotMutation.mutateAsync(selectedSlot.id)
+
+      if (result.success) {
+        toast({
+          title: "Coupon deleted",
+          description: `"${selectedSlot.name}" has been permanently deleted.`,
+          variant: "destructive",
+        })
+        setSelectedSlot(null)
+        setIsDeleteDialogOpen(false)
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete coupon",
+          variant: "destructive",
+        })
+      }
     }
   }
 
   const handleUploadSuccess = (slotId: string, codesCount: number) => {
-    setSlots(
-      slots.map((s) =>
-        s.id === slotId
-          ? { ...s, available_stock: s.available_stock + codesCount, total_uploaded: s.total_uploaded + codesCount }
-          : s,
-      ),
-    )
+    refetch()
     toast({
       title: "Codes uploaded successfully",
       description: `${codesCount} codes have been added to "${selectedSlot?.name}".`,
     })
   }
 
-  const handleViewSales = (slot: AdminSlot) => {
+  const handleViewSales = (slot: Slot) => {
     setSelectedSlot(slot)
-    setSalesData(getMockSalesData(slot))
     setIsViewSalesModalOpen(true)
   }
 
@@ -223,7 +192,7 @@ export default function ManageCouponsPage() {
       <AdminHeader />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Page Header - Updated to use "Coupon" terminology */}
+        {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Manage Coupons</h1>
@@ -238,7 +207,7 @@ export default function ManageCouponsPage() {
           </Button>
         </div>
 
-        {/* Stats Summary - Updated labels to use "Coupon" terminology */}
+        {/* Stats Summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center gap-3">
@@ -286,9 +255,14 @@ export default function ManageCouponsPage() {
           </div>
         </div>
 
-        {/* Coupons Table */}
-        {slots.length === 0 ? (
-          // Empty State - Updated to use "Coupon" terminology
+        {/* Loading State */}
+        {slotsLoading ? (
+          <div className="bg-card border border-border rounded-xl p-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading coupons...</p>
+          </div>
+        ) : slots.length === 0 ? (
+          // Empty State
           <div className="bg-card border border-border rounded-xl p-12 text-center">
             <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <Package className="h-8 w-8 text-muted-foreground" />
@@ -305,7 +279,7 @@ export default function ManageCouponsPage() {
           </div>
         ) : (
           <>
-            {/* Desktop Table - Updated header to use "Coupon Name" */}
+            {/* Desktop Table */}
             <div className="hidden md:block bg-card border border-border rounded-xl overflow-hidden">
               <Table>
                 <TableHeader>
@@ -329,7 +303,7 @@ export default function ManageCouponsPage() {
                             <span className="text-foreground">
                               {slot.available_stock.toLocaleString()} / {slot.total_uploaded.toLocaleString()}
                             </span>
-                            {slot.available_stock === 0 && (
+                            {slot.available_stock === 0 && slot.total_uploaded === 0 && (
                               <Button
                                 variant="link"
                                 size="sm"
@@ -339,7 +313,7 @@ export default function ManageCouponsPage() {
                                 Upload Codes
                               </Button>
                             )}
-                            {slot.available_stock > 0 && (
+                            {slot.total_uploaded > 0 && (
                               <Button
                                 variant="link"
                                 size="sm"
@@ -389,7 +363,11 @@ export default function ManageCouponsPage() {
                               View Sales
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-border" />
-                            <DropdownMenuItem onClick={() => handleTogglePublish(slot)} className="cursor-pointer">
+                            <DropdownMenuItem
+                              onClick={() => handleTogglePublish(slot)}
+                              className="cursor-pointer"
+                              disabled={togglePublishMutation.isPending}
+                            >
                               {slot.is_published ? (
                                 <>
                                   <EyeOff className="mr-2 h-4 w-4" />
@@ -419,7 +397,7 @@ export default function ManageCouponsPage() {
               </Table>
             </div>
 
-            {/* Mobile Cards - Updated to use "Coupon" terminology */}
+            {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
               {slots.map((slot) => (
                 <div key={slot.id} className="bg-card border border-border rounded-xl p-4">
@@ -472,17 +450,17 @@ export default function ManageCouponsPage() {
                     </DropdownMenu>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">Stock</p>
-                      <p className="text-foreground font-medium">
+                      <p className="font-medium text-foreground">
                         {slot.available_stock.toLocaleString()} / {slot.total_uploaded.toLocaleString()}
                       </p>
                       {getStockBadge(slot.available_stock)}
                     </div>
                     <div>
                       <p className="text-muted-foreground">Price</p>
-                      <p className="text-foreground font-medium">{getPriceRange(slot)}</p>
+                      <p className="font-medium text-foreground">{getPriceRange(slot)}</p>
                     </div>
                   </div>
 
@@ -498,15 +476,16 @@ export default function ManageCouponsPage() {
                         Draft
                       </span>
                     )}
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={() => handleUploadCodes(slot)}
-                      className="text-primary h-auto p-0"
-                    >
-                      <Upload className="h-3 w-3 mr-1" />
-                      Upload Codes
-                    </Button>
+                    {slot.total_uploaded === 0 && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={() => handleUploadCodes(slot)}
+                        className="text-primary h-auto p-0 text-xs"
+                      >
+                        Upload Codes
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -519,33 +498,29 @@ export default function ManageCouponsPage() {
       <SlotFormModal
         open={isFormModalOpen}
         onOpenChange={setIsFormModalOpen}
-        onSubmit={handleFormSubmit}
         slot={selectedSlot}
+        onSuccess={handleFormSuccess}
       />
 
       <DeleteSlotDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
-        slot={selectedSlot}
+        slotName={selectedSlot?.name || ""}
         onConfirm={handleConfirmDelete}
+        isDeleting={deleteSlotMutation.isPending}
       />
 
       <UploadCodesModal
         open={isUploadModalOpen}
         onOpenChange={setIsUploadModalOpen}
         slot={selectedSlot}
-        onUploadSuccess={handleUploadSuccess}
+        onSuccess={handleUploadSuccess}
       />
 
       <ViewSalesModal
         open={isViewSalesModalOpen}
         onOpenChange={setIsViewSalesModalOpen}
-        salesData={salesData}
-        onUploadCodes={() => {
-          if (selectedSlot) {
-            handleUploadCodes(selectedSlot)
-          }
-        }}
+        slot={selectedSlot}
         onViewAllOrders={handleViewAllOrders}
       />
     </div>

@@ -7,7 +7,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Lock, Loader2, AlertCircle, CheckCircle, RefreshCw } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Lock, Loader2, CheckCircle2, AlertCircle, RefreshCw, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import { useUserData, useSendVerificationEmail, useNhostClient } from "@nhost/nextjs"
@@ -18,10 +27,11 @@ export function ProfileForm() {
   const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useUserProfile()
   const nhostUser = useUserData()
   const nhostClient = useNhostClient()
-  const { sendEmail, isSent: verificationSent } = useSendVerificationEmail()
+  const { sendEmail, isLoading: isSendingEmail, isSent, isError, error } = useSendVerificationEmail()
 
   const [isLoading, setIsLoading] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
   const [formData, setFormData] = useState({
     displayName: "",
     phoneNumber: "",
@@ -146,11 +156,7 @@ export function ProfileForm() {
 
   const handleSendVerification = async () => {
     if (nhostUser?.email) {
-      await sendEmail({ email: nhostUser.email })
-      toast({
-        title: "Verification Email Sent",
-        description: "Please check your inbox to verify your email address.",
-      })
+      await sendEmail(nhostUser.email)
     }
   }
 
@@ -174,118 +180,204 @@ export function ProfileForm() {
   const isEmailVerified = nhostUser?.emailVerified
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader>
-        <div className="flex items-start gap-4">
-          <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center text-2xl font-bold text-primary-foreground">
-            {(nhostUser.displayName || "U").charAt(0)}
+    <>
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <div className="flex items-start gap-4">
+            <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center text-2xl font-bold text-primary-foreground">
+              {(nhostUser.displayName || "U").charAt(0)}
+            </div>
+            <div className="flex-1">
+              <CardTitle className="text-xl text-foreground">{nhostUser.displayName || "User"}</CardTitle>
+              <CardDescription className="text-muted-foreground">{nhostUser.email}</CardDescription>
+              <p className="text-xs text-muted-foreground mt-1">Member since {memberSince}</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleRefreshStatus}
+              disabled={isRefreshing}
+              className="text-muted-foreground hover:text-foreground"
+              title="Refresh account status"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            </Button>
           </div>
-          <div className="flex-1">
-            <CardTitle className="text-xl text-foreground">{nhostUser.displayName || "User"}</CardTitle>
-            <CardDescription className="text-muted-foreground">{nhostUser.email}</CardDescription>
-            <p className="text-xs text-muted-foreground mt-1">Member since {memberSince}</p>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={handleRefreshStatus}
-            disabled={isRefreshing}
-            className="text-muted-foreground hover:text-foreground"
-            title="Refresh account status"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isEmailVerified && (
-            <div className="p-3 rounded-lg bg-chart-4/10 border border-chart-4/20 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-chart-4" />
-                <span className="text-sm text-chart-4">Email not verified</span>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="displayName" className="text-foreground">
+                Full Name
+              </Label>
+              <Input
+                id="displayName"
+                name="displayName"
+                value={formData.displayName}
+                onChange={handleChange}
+                className="bg-secondary border-border text-foreground"
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email" className="text-foreground flex items-center gap-2">
+                Email
+                <Lock className="h-3 w-3 text-muted-foreground" />
+              </Label>
+              <div className="relative">
+                <Input
+                  id="email"
+                  name="email"
+                  value={nhostUser.email || ""}
+                  disabled
+                  className="bg-secondary/50 border-border text-muted-foreground cursor-not-allowed pr-28"
+                />
+                {/* Verification Button */}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {isEmailVerified ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-green-500/10 text-green-600 border-green-500/20 text-xs hover:bg-green-500/10"
+                    >
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Verified
+                    </Badge>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowVerificationModal(true)}
+                      className="h-6 px-2 bg-orange-500/10 text-orange-500 border-orange-500/20 text-xs hover:bg-orange-500/20 hover:text-orange-400 transition-all"
+                    >
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      Verify
+                    </Button>
+                  )}
+                </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSendVerification}
-                disabled={verificationSent}
-                className="text-chart-4 border-chart-4/30 hover:bg-chart-4/10 bg-transparent"
-              >
-                {verificationSent ? "Email Sent" : "Verify Email"}
-              </Button>
+              <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
-          )}
 
-          {isEmailVerified && (
-            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-primary" />
-              <span className="text-sm text-primary">Email verified</span>
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumber" className="text-foreground">
+                Phone Number <span className="text-muted-foreground">(Optional)</span>
+              </Label>
+              <Input
+                id="phoneNumber"
+                name="phoneNumber"
+                type="tel"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                className="bg-secondary border-border text-foreground"
+                placeholder="+91 XXXXX XXXXX"
+              />
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="displayName" className="text-foreground">
-              Full Name
-            </Label>
-            <Input
-              id="displayName"
-              name="displayName"
-              value={formData.displayName}
-              onChange={handleChange}
-              className="bg-secondary border-border text-foreground"
-              placeholder="Enter your full name"
-            />
-          </div>
+            <Button
+              type="submit"
+              disabled={!hasChanges || isLoading}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-foreground flex items-center gap-2">
-              Email
-              <Lock className="h-3 w-3 text-muted-foreground" />
-            </Label>
-            <Input
-              id="email"
-              name="email"
-              value={nhostUser.email || ""}
-              disabled
-              className="bg-secondary/50 border-border text-muted-foreground cursor-not-allowed"
-            />
-            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
-          </div>
+      <Dialog open={showVerificationModal} onOpenChange={setShowVerificationModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{isSent ? "Check Your Email" : "Verify Your Email"}</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-4 pt-4">
+                {!isSent ? (
+                  <>
+                    <div className="flex items-center justify-center">
+                      <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                        <Mail className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    </div>
+                    <p className="text-center text-sm text-muted-foreground">Verification email will be sent to:</p>
+                    <p className="text-center font-medium text-foreground">{nhostUser?.email}</p>
+                    <p className="text-center text-sm text-muted-foreground">
+                      Check your inbox and click the link to verify your account.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-center">
+                      <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center">
+                        <CheckCircle2 className="h-8 w-8 text-green-500" />
+                      </div>
+                    </div>
+                    <p className="text-center font-medium text-green-600">Verification email sent!</p>
+                    <p className="text-center text-sm text-muted-foreground">We sent a verification link to:</p>
+                    <p className="text-center font-medium text-foreground">{nhostUser?.email}</p>
+                    <div className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+                      <p className="font-medium mb-1">Didn&apos;t receive it?</p>
+                      <ul className="list-disc list-inside space-y-1 text-xs">
+                        <li>Check your spam folder</li>
+                        <li>Wait a few minutes</li>
+                      </ul>
+                    </div>
+                  </>
+                )}
+                {isError && (
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-center">
+                    <p className="text-sm text-destructive">
+                      {error?.message || "Failed to send verification email. Please try again."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber" className="text-foreground">
-              Phone Number <span className="text-muted-foreground">(Optional)</span>
-            </Label>
-            <Input
-              id="phoneNumber"
-              name="phoneNumber"
-              type="tel"
-              value={formData.phoneNumber}
-              onChange={handleChange}
-              className="bg-secondary border-border text-foreground"
-              placeholder="+91 XXXXX XXXXX"
-            />
-          </div>
-
-          <Button
-            type="submit"
-            disabled={!hasChanges || isLoading}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium"
-          >
-            {isLoading ? (
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {!isSent ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                <Button variant="ghost" onClick={() => setShowVerificationModal(false)} className="sm:order-1">
+                  Cancel
+                </Button>
+                <Button onClick={handleSendVerification} disabled={isSendingEmail} className="sm:order-2">
+                  {isSendingEmail ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Verification Email"
+                  )}
+                </Button>
               </>
             ) : (
-              "Save Changes"
+              <>
+                <Button variant="outline" onClick={handleSendVerification} disabled={isSendingEmail}>
+                  {isSendingEmail ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Resend Email"
+                  )}
+                </Button>
+                <Button onClick={() => setShowVerificationModal(false)}>Close</Button>
+              </>
             )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

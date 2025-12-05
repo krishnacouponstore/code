@@ -128,7 +128,7 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-semibold text-foreground mb-4">2. How to Request a Refund</h2>
               <div className="space-y-4 text-muted-foreground">
                 <ol className="list-decimal pl-6 space-y-3">
-                  <li>Contact us via Telegram (@alexencrypter) within 24 hours of purchase</li>
+                  <li>Contact us via Telegram (@Krishna_Arora_New) within 24 hours of purchase</li>
                   <li>Provide your order ID and registered email address</li>
                   <li>Describe the issue with specific details</li>
                   <li>Provide screenshot proof if applicable (e.g., showing code is invalid)</li>
@@ -154,8 +154,9 @@ export default function RefundPolicyPage() {
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">4. Dispute Resolution</h2>
               <p className="text-muted-foreground">
-                If you disagree with our refund decision, you may escalate the issue by emailing support@codecrate.com
-                with "Refund Dispute" in the subject line. Our team will review your case within 3-5 business days.
+                If you disagree with our refund decision, you may escalate the issue by emailing
+                krishnacouponstore@gmail.com with "Refund Dispute" in the subject line. Our team will review your case
+                within 3-5 business days.
               </p>
             </section>
 
@@ -166,7 +167,7 @@ export default function RefundPolicyPage() {
                 <Link href="/contact" className="text-primary hover:underline">
                   contact page
                 </Link>{" "}
-                or message us on Telegram at @alexencrypter.
+                or message us on Telegram at @Krishna_Arora_New.
               </p>
             </section>
           </CardContent>

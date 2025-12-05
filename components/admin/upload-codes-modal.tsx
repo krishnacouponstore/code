@@ -15,14 +15,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Upload, FileText, CheckCircle, AlertTriangle, XCircle, Loader2, Copy, File } from "lucide-react"
-import type { AdminSlot } from "@/lib/mock-data"
+import { useUploadCodes, type Slot } from "@/hooks/use-slots"
+import { useToast } from "@/hooks/use-toast"
 
 type ValidationResult = {
   total_lines: number
   valid_codes: number
   duplicates: number
   invalid_format: number
-  already_exist: number
   ready_to_upload: number
   codes: string[]
 }
@@ -30,16 +30,18 @@ type ValidationResult = {
 type UploadCodesModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  slot: AdminSlot | null
-  onUploadSuccess: (slotId: string, codesCount: number) => void
+  slot: Slot | null
+  onSuccess: (slotId: string, codesCount: number) => void
 }
 
-export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: UploadCodesModalProps) {
+export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: UploadCodesModalProps) {
+  const { toast } = useToast()
+  const uploadCodesMutation = useUploadCodes()
+
   const [activeTab, setActiveTab] = useState<"paste" | "file">("paste")
   const [pastedCodes, setPastedCodes] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isValidating, setIsValidating] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
   const [validation, setValidation] = useState<ValidationResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -50,7 +52,6 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
     setActiveTab("paste")
   }, [])
 
-  // Reset when modal opens/closes
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       resetState()
@@ -63,16 +64,12 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
-    const validCodeRegex = /^[A-Za-z0-9-]{10,30}$/
+    const validCodeRegex = /^[A-Za-z0-9-]{5,50}$/
 
     const validCodes: string[] = []
     const seenCodes = new Set<string>()
     let duplicates = 0
     let invalidFormat = 0
-
-    // Mock: simulate some codes already existing in database
-    const existingCodes = new Set(["FKG00000000000001", "FKG00000000000002"])
-    let alreadyExist = 0
 
     for (const line of lines) {
       if (!validCodeRegex.test(line)) {
@@ -85,12 +82,6 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
         continue
       }
 
-      if (existingCodes.has(line)) {
-        alreadyExist++
-        seenCodes.add(line)
-        continue
-      }
-
       seenCodes.add(line)
       validCodes.push(line)
     }
@@ -100,7 +91,6 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
       valid_codes: validCodes.length,
       duplicates,
       invalid_format: invalidFormat,
-      already_exist: alreadyExist,
       ready_to_upload: validCodes.length,
       codes: validCodes,
     }
@@ -110,7 +100,6 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
     setPastedCodes(value)
     if (value.trim()) {
       setIsValidating(true)
-      // Simulate validation delay
       setTimeout(() => {
         setValidation(validateCodes(value))
         setIsValidating(false)
@@ -156,16 +145,26 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
   const handleUpload = async () => {
     if (!slot || !validation || validation.ready_to_upload === 0) return
 
-    setIsUploading(true)
-    // Simulate upload
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    const result = await uploadCodesMutation.mutateAsync({
+      slotId: slot.id,
+      codes: validation.codes,
+    })
 
-    onUploadSuccess(slot.id, validation.ready_to_upload)
-    setIsUploading(false)
-    handleOpenChange(false)
+    if (result.success) {
+      onSuccess(slot.id, result.uploadedCount || 0)
+      handleOpenChange(false)
+    } else {
+      toast({
+        title: "Upload Failed",
+        description: result.error || "Failed to upload codes",
+        variant: "destructive",
+      })
+    }
   }
 
   if (!slot) return null
+
+  const isUploading = uploadCodesMutation.isPending
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -266,7 +265,6 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
 
         {validation && !isValidating && (
           <div className="space-y-4 mt-4">
-            {/* Validation Summary */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-secondary rounded-lg p-3 text-center">
                 <p className="text-2xl font-bold text-foreground">{validation.total_lines}</p>
@@ -286,7 +284,6 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
               </div>
             </div>
 
-            {/* Detailed Status */}
             <div className="space-y-2">
               {validation.valid_codes > 0 && (
                 <div className="flex items-center gap-2 text-sm">
@@ -300,14 +297,6 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
                   <span className="text-muted-foreground">{validation.duplicates} duplicates (will skip)</span>
                 </div>
               )}
-              {validation.already_exist > 0 && (
-                <div className="flex items-center gap-2 text-sm">
-                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                  <span className="text-muted-foreground">
-                    {validation.already_exist} already in database (will skip)
-                  </span>
-                </div>
-              )}
               {validation.invalid_format > 0 && (
                 <div className="flex items-center gap-2 text-sm">
                   <XCircle className="h-4 w-4 text-destructive" />
@@ -316,7 +305,6 @@ export function UploadCodesModal({ open, onOpenChange, slot, onUploadSuccess }: 
               )}
             </div>
 
-            {/* Preview */}
             {validation.codes.length > 0 && (
               <div className="bg-secondary rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">

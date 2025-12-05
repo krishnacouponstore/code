@@ -10,9 +10,9 @@ import { useToast } from "@/hooks/use-toast"
 import { Wallet, Clock, Send, Copy, Mail, Info, ExternalLink } from "lucide-react"
 
 const contactInfo = {
-  telegram: "@alexencrypter",
-  telegram_url: "https://t.me/alexencrypter",
-  email: "support@codecrate.com",
+  telegram: "@Krishna_Arora_New",
+  telegram_url: "https://t.me/Krishna_Arora_New",
+  email: "krishnacouponstore@gmail.com",
   min_topup: 100,
 }
 

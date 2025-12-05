@@ -30,7 +30,7 @@ export function FooterSection() {
         </p>
         <div className="flex justify-start items-start gap-4">
           <a
-            href="https://t.me/rohanphogatt"
+            href="https://t.me/Krishna_Arora_New"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Telegram"
@@ -39,7 +39,7 @@ export function FooterSection() {
             <Send className="w-full h-full" />
           </a>
           <a
-            href="mailto:contact@codecrate.com"
+            href="mailto:krishnacouponstore@gmail.com"
             aria-label="Email"
             className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
           >

@@ -11,9 +11,12 @@ import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
-import { mockUser, mockPurchaseHistory, mockPurchaseStats, type PurchaseHistoryItem } from "@/lib/mock-data"
+import { usePurchaseStats, usePurchases } from "@/hooks/use-purchases"
+import { getGraphQLClient } from "@/lib/graphql-client"
+import { GET_PURCHASE_CODES } from "@/lib/graphql/purchases"
 import {
   Search,
   ShoppingBag,
@@ -28,12 +31,12 @@ import {
   ChevronRight,
 } from "lucide-react"
 import Link from "next/link"
-import { formatCurrency, formatDate, formatTime } from "@/lib/utils" // Import formatCurrency, formatDate, formatTime
+import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
 
 const ITEMS_PER_PAGE = 10
 
 export default function PurchaseHistoryPage() {
-  const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth()
+  const { user, isLoading: authLoading, isAuthenticated, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
@@ -42,107 +45,103 @@ export default function PurchaseHistoryPage() {
   const [dateFilter, setDateFilter] = useState("all")
   const [sortBy, setSortBy] = useState("newest")
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedPurchase, setSelectedPurchase] = useState<PurchaseHistoryItem | null>(null)
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const { data: stats, isLoading: statsLoading } = usePurchaseStats()
+  const { data: purchases = [], isLoading: purchasesLoading } = usePurchases({
+    searchQuery,
+    dateFilter,
+    sortBy,
+  })
+
+  const isLoading = authLoading || statsLoading || purchasesLoading
 
   useEffect(() => {
     if (isLoggingOut) return
 
-    if (!isLoading && !isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       router.push(`/signup?redirect=${encodeURIComponent(pathname)}`)
     }
-    if (!isLoading && user?.is_admin) {
+    if (!authLoading && user?.is_admin) {
       router.push("/admin/dashboard")
     }
-  }, [user, isLoading, isAuthenticated, router, pathname, isLoggingOut])
-
-  // Filter and sort purchases
-  const filteredPurchases = useMemo(() => {
-    let result = [...mockPurchaseHistory]
-
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(
-        (p) => p.order_id.toLowerCase().includes(query) || p.slot_name.toLowerCase().includes(query),
-      )
-    }
-
-    // Date filter
-    const now = new Date()
-    if (dateFilter === "7days") {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      result = result.filter((p) => new Date(p.date) >= weekAgo)
-    } else if (dateFilter === "30days") {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-      result = result.filter((p) => new Date(p.date) >= monthAgo)
-    } else if (dateFilter === "3months") {
-      const threeMonthsAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-      result = result.filter((p) => new Date(p.date) >= threeMonthsAgo)
-    }
-
-    // Sort
-    if (sortBy === "newest") {
-      result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    } else if (sortBy === "oldest") {
-      result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    } else if (sortBy === "amount") {
-      result.sort((a, b) => b.amount - a.amount)
-    }
-
-    return result
-  }, [searchQuery, dateFilter, sortBy])
+  }, [user, authLoading, isAuthenticated, router, pathname, isLoggingOut])
 
   // Pagination
-  const totalPages = Math.ceil(filteredPurchases.length / ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(purchases.length / ITEMS_PER_PAGE)
   const paginatedPurchases = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE
-    return filteredPurchases.slice(start, start + ITEMS_PER_PAGE)
-  }, [filteredPurchases, currentPage])
+    return purchases.slice(start, start + ITEMS_PER_PAGE)
+  }, [purchases, currentPage])
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, dateFilter, sortBy])
 
-  const handleViewCodes = (purchase: PurchaseHistoryItem) => {
-    setSelectedPurchase(purchase)
+  const handleViewCodes = (purchaseId: string) => {
+    setSelectedPurchaseId(purchaseId)
     setIsModalOpen(true)
   }
 
-  const handleDownload = (purchase: PurchaseHistoryItem, format: "csv" | "txt") => {
-    const date = new Date(purchase.date).toISOString().split("T")[0].replace(/-/g, "")
-    const filename = `codecrate_${purchase.order_id.replace("#", "")}_${date}`
+  const handleDownload = async (purchaseId: string, orderNumber: string, format: "csv" | "txt") => {
+    try {
+      const client = getGraphQLClient()
+      const result: any = await client.request(GET_PURCHASE_CODES, { purchaseId })
+      const purchaseData = result.purchases_by_pk
 
-    if (format === "csv") {
-      const csvContent = ["Serial No,Coupon Code", ...purchase.codes.map((code, i) => `${i + 1},${code}`)].join("\n")
+      if (!purchaseData || !purchaseData.coupons.length) {
+        toast({
+          title: "No codes found",
+          description: "This purchase has no codes available",
+          variant: "destructive",
+        })
+        return
+      }
 
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `${filename}.csv`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-    } else {
-      const txtContent = purchase.codes.join("\n")
-      const blob = new Blob([txtContent], { type: "text/plain;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `${filename}.txt`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      const date = new Date(purchaseData.created_at).toISOString().split("T")[0].replace(/-/g, "")
+      const filename = `codecrate_${orderNumber.replace("#", "")}_${date}`
+
+      if (format === "csv") {
+        const csvContent = [
+          "Serial No,Coupon Code",
+          ...purchaseData.coupons.map((c: any, i: number) => `${i + 1},${c.code}`),
+        ].join("\n")
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = `${filename}.csv`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      } else {
+        const txtContent = purchaseData.coupons.map((c: any) => c.code).join("\n")
+        const blob = new Blob([txtContent], { type: "text/plain;charset=utf-8;" })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = `${filename}.txt`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+      }
+
+      toast({
+        title: "Downloaded!",
+        description: `${format.toUpperCase()} file has been downloaded`,
+      })
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Failed to download codes. Please try again.",
+        variant: "destructive",
+      })
     }
-
-    toast({
-      title: "Downloaded!",
-      description: `${format.toUpperCase()} file has been downloaded`,
-    })
   }
 
   const getStatusBadge = (status: string) => {
@@ -158,7 +157,7 @@ export default function PurchaseHistoryPage() {
     }
   }
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -168,11 +167,9 @@ export default function PurchaseHistoryPage() {
 
   if (!user) return null
 
-  const walletBalance = user.is_admin ? 0 : mockUser.wallet_balance
-
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader walletBalance={walletBalance} userName={user.name} userEmail={user.email} />
+      <DashboardHeader walletBalance={user.wallet_balance || 0} userName={user.name} userEmail={user.email} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Page Header */}
@@ -181,7 +178,7 @@ export default function PurchaseHistoryPage() {
           <p className="text-muted-foreground">View and download your past coupon purchases</p>
         </div>
 
-        {/* Stats Summary */}
+        {/* Stats Summary - Now uses real stats from GraphQL */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
@@ -190,7 +187,11 @@ export default function PurchaseHistoryPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Orders</p>
-                <p className="text-2xl font-bold text-foreground">{mockPurchaseStats.total_orders}</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{stats?.totalOrders || 0}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -202,7 +203,11 @@ export default function PurchaseHistoryPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Coupons</p>
-                <p className="text-2xl font-bold text-foreground">{mockPurchaseStats.total_coupons}</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-16" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{stats?.totalCoupons || 0}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -214,7 +219,11 @@ export default function PurchaseHistoryPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Spent</p>
-                <p className="text-2xl font-bold text-foreground">{formatCurrency(mockPurchaseStats.total_spent)}</p>
+                {statsLoading ? (
+                  <Skeleton className="h-8 w-20" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{formatCurrency(stats?.totalSpent || 0)}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -257,7 +266,51 @@ export default function PurchaseHistoryPage() {
         </div>
 
         {/* Content */}
-        {filteredPurchases.length === 0 ? (
+        {purchasesLoading ? (
+          /* Loading State */
+          <Card className="bg-card border-border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-secondary/50 border-border">
+                  <TableHead className="text-foreground">Order ID</TableHead>
+                  <TableHead className="text-foreground">Date & Time</TableHead>
+                  <TableHead className="text-foreground">Coupon Name</TableHead>
+                  <TableHead className="text-foreground text-center">Quantity</TableHead>
+                  <TableHead className="text-foreground text-right">Amount</TableHead>
+                  <TableHead className="text-foreground text-center">Status</TableHead>
+                  <TableHead className="text-foreground text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16 mx-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-20 ml-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16 mx-auto" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-24 ml-auto" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        ) : purchases.length === 0 ? (
           /* Empty State */
           <Card className="bg-card border-border">
             <CardContent className="flex flex-col items-center justify-center py-16">
@@ -295,17 +348,17 @@ export default function PurchaseHistoryPage() {
                   <TableBody>
                     {paginatedPurchases.map((purchase) => (
                       <TableRow key={purchase.id} className="hover:bg-secondary/30 border-border transition-colors">
-                        <TableCell className="font-medium text-foreground">{purchase.order_id}</TableCell>
+                        <TableCell className="font-medium text-foreground">#{purchase.order_number}</TableCell>
                         <TableCell>
                           <div>
-                            <p className="text-foreground">{formatDate(purchase.date)}</p>
-                            <p className="text-xs text-muted-foreground">{formatTime(purchase.date)}</p>
+                            <p className="text-foreground">{formatDate(purchase.created_at)}</p>
+                            <p className="text-xs text-muted-foreground">{formatTime(purchase.created_at)}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="text-foreground">{purchase.slot_name}</TableCell>
+                        <TableCell className="text-foreground">{purchase.slot.name}</TableCell>
                         <TableCell className="text-center text-foreground">{purchase.quantity} codes</TableCell>
                         <TableCell className="text-right font-medium text-foreground">
-                          {formatCurrency(purchase.amount)}
+                          {formatCurrency(purchase.total_price)}
                         </TableCell>
                         <TableCell className="text-center">{getStatusBadge(purchase.status)}</TableCell>
                         <TableCell className="text-right">
@@ -314,7 +367,7 @@ export default function PurchaseHistoryPage() {
                               variant="outline"
                               size="sm"
                               className="rounded-full border-border bg-transparent"
-                              onClick={() => handleViewCodes(purchase)}
+                              onClick={() => handleViewCodes(purchase.id)}
                             >
                               <Eye className="h-4 w-4 mr-1" />
                               View Codes
@@ -332,14 +385,14 @@ export default function PurchaseHistoryPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="bg-card border-border">
                                 <DropdownMenuItem
-                                  onClick={() => handleDownload(purchase, "csv")}
+                                  onClick={() => handleDownload(purchase.id, purchase.order_number, "csv")}
                                   className="cursor-pointer"
                                 >
                                   <Download className="h-4 w-4 mr-2" />
                                   Download CSV
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => handleDownload(purchase, "txt")}
+                                  onClick={() => handleDownload(purchase.id, purchase.order_number, "txt")}
                                   className="cursor-pointer"
                                 >
                                   <FileText className="h-4 w-4 mr-2" />
@@ -362,22 +415,22 @@ export default function PurchaseHistoryPage() {
                 <Card key={purchase.id} className="bg-card border-border">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
-                      <p className="font-semibold text-foreground">{purchase.order_id}</p>
+                      <p className="font-semibold text-foreground">#{purchase.order_number}</p>
                       {getStatusBadge(purchase.status)}
                     </div>
-                    <p className="text-foreground font-medium mb-1">{purchase.slot_name}</p>
+                    <p className="text-foreground font-medium mb-1">{purchase.slot.name}</p>
                     <p className="text-sm text-muted-foreground mb-3">
-                      {purchase.quantity} codes &bull; {formatCurrency(purchase.amount)}
+                      {purchase.quantity} codes &bull; {formatCurrency(purchase.total_price)}
                     </p>
                     <p className="text-xs text-muted-foreground mb-4">
-                      {formatDate(purchase.date)} at {formatTime(purchase.date)}
+                      {formatDate(purchase.created_at)} at {formatTime(purchase.created_at)}
                     </p>
                     <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         className="flex-1 rounded-full border-border bg-transparent"
-                        onClick={() => handleViewCodes(purchase)}
+                        onClick={() => handleViewCodes(purchase.id)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         View Codes
@@ -389,11 +442,17 @@ export default function PurchaseHistoryPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-card border-border">
-                          <DropdownMenuItem onClick={() => handleDownload(purchase, "csv")} className="cursor-pointer">
+                          <DropdownMenuItem
+                            onClick={() => handleDownload(purchase.id, purchase.order_number, "csv")}
+                            className="cursor-pointer"
+                          >
                             <Download className="h-4 w-4 mr-2" />
                             Download CSV
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDownload(purchase, "txt")} className="cursor-pointer">
+                          <DropdownMenuItem
+                            onClick={() => handleDownload(purchase.id, purchase.order_number, "txt")}
+                            className="cursor-pointer"
+                          >
                             <FileText className="h-4 w-4 mr-2" />
                             Download TXT
                           </DropdownMenuItem>
@@ -435,8 +494,15 @@ export default function PurchaseHistoryPage() {
         )}
       </main>
 
-      {/* View Codes Modal */}
-      <ViewCodesModal purchase={selectedPurchase} open={isModalOpen} onOpenChange={setIsModalOpen} />
+      {/* View Codes Modal - Now uses purchase ID */}
+      <ViewCodesModal
+        purchaseId={selectedPurchaseId}
+        open={isModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open)
+          if (!open) setSelectedPurchaseId(null)
+        }}
+      />
     </div>
   )
 }

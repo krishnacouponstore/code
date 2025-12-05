@@ -119,7 +119,7 @@ export default function PrivacyPage() {
                 <Link href="/contact" className="text-primary hover:underline">
                   our contact page
                 </Link>{" "}
-                or email us at support@codecrate.com.
+                or email us at krishnacouponstore@gmail.com.
               </p>
             </section>
           </CardContent>

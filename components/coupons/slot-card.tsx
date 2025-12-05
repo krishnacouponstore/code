@@ -4,7 +4,16 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ShoppingBag } from "lucide-react"
-import type { Slot } from "@/lib/mock-data"
+
+interface Slot {
+  id: string
+  name: string
+  description: string
+  image_url?: string | null
+  available_stock: number
+  starting_price: number
+  is_published?: boolean
+}
 
 interface SlotCardProps {
   slot: Slot
@@ -24,6 +33,21 @@ export function SlotCard({ slot, onCheckPricing }: SlotCardProps) {
     }).format(amount)
   }
 
+  function getStockBadge() {
+    if (isOutOfStock) {
+      return { text: "Out of Stock", className: "bg-destructive/20 text-destructive border-destructive/30" }
+    } else if (isLowStock) {
+      return { text: "Low Stock", className: "bg-chart-4/20 text-chart-4 border-chart-4/30" }
+    } else {
+      return {
+        text: `${slot.available_stock} available`,
+        className: "bg-secondary/80 text-muted-foreground border-border/50 backdrop-blur-sm",
+      }
+    }
+  }
+
+  const badge = getStockBadge()
+
   return (
     <Card
       className={`group relative overflow-hidden rounded-2xl border transition-all duration-300 ease-out hover:-translate-y-1 ${
@@ -39,20 +63,9 @@ export function SlotCard({ slot, onCheckPricing }: SlotCardProps) {
     >
       {/* Stock Badge */}
       <div className="absolute top-4 right-4 z-10">
-        {isOutOfStock ? (
-          <Badge variant="destructive" className="bg-destructive/20 text-destructive border-destructive/30">
-            Out of Stock
-          </Badge>
-        ) : isLowStock ? (
-          <Badge className="bg-chart-4/20 text-chart-4 border-chart-4/30">Low Stock</Badge>
-        ) : (
-          <Badge
-            variant="secondary"
-            className="bg-secondary/80 text-muted-foreground border-border/50 backdrop-blur-sm"
-          >
-            {slot.available_stock} available
-          </Badge>
-        )}
+        <Badge variant="secondary" className={badge.className}>
+          {badge.text}
+        </Badge>
       </div>
 
       <CardContent className="p-6">

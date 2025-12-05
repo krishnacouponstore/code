@@ -3,18 +3,15 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Download, Package } from "lucide-react"
+import { Package } from "lucide-react"
 import Link from "next/link"
 import type { Purchase } from "@/lib/mock-data"
-import { useToast } from "@/components/ui/use-toast"
 
 interface RecentPurchasesProps {
   purchases: Purchase[]
 }
 
 export function RecentPurchases({ purchases }: RecentPurchasesProps) {
-  const { toast } = useToast()
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -27,13 +24,6 @@ export function RecentPurchases({ purchases }: RecentPurchasesProps) {
       year: "numeric",
       month: "short",
       day: "numeric",
-    })
-  }
-
-  const handleDownload = (orderId: string) => {
-    toast({
-      title: "Download started",
-      description: `Downloading coupon codes for order ${orderId}`,
     })
   }
 
@@ -94,7 +84,6 @@ export function RecentPurchases({ purchases }: RecentPurchasesProps) {
                 <TableHead className="text-muted-foreground text-center">Quantity</TableHead>
                 <TableHead className="text-muted-foreground text-right">Amount</TableHead>
                 <TableHead className="text-muted-foreground">Date</TableHead>
-                <TableHead className="text-muted-foreground text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -104,24 +93,13 @@ export function RecentPurchases({ purchases }: RecentPurchasesProps) {
                   className="border-border/30 dark:border-[hsl(200,15%,20%)] transition-colors duration-200
                     hover:bg-primary/5 dark:hover:bg-primary/5"
                 >
-                  <TableCell className="font-medium text-foreground">#{purchase.id}</TableCell>
+                  <TableCell className="font-medium text-foreground">#{purchase.order_id}</TableCell>
                   <TableCell className="text-primary font-medium">{purchase.slot_name}</TableCell>
                   <TableCell className="text-center text-muted-foreground">{purchase.quantity} codes</TableCell>
                   <TableCell className="text-right text-foreground font-medium">
                     {formatCurrency(purchase.amount)}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{formatDate(purchase.date)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDownload(purchase.id)}
-                      className="text-primary hover:text-primary/80 hover:bg-primary/10 transition-all duration-200 hover:scale-105"
-                    >
-                      <Download className="h-4 w-4 mr-1" />
-                      Download
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

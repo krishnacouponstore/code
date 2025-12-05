@@ -6,7 +6,9 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Mail, Loader2, CheckCircle2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Mail, Loader2, CheckCircle2, Clock, Lock, AlertCircle } from "lucide-react"
+import { nhost } from "@/lib/nhost"
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
@@ -43,12 +45,29 @@ export function ForgotPasswordForm() {
     setIsLoading(true)
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      console.log("Reset password for:", email)
-      setIsSubmitted(true)
-      setCountdown(60)
-    } catch {
-      setError("Something went wrong. Please try again.")
+      // Send Magic Link using Nhost passwordless sign-in
+      const { error: magicLinkError } = await nhost.auth.signIn({
+        email,
+        options: {
+          redirectTo: `${window.location.origin}/change-password`,
+        },
+      })
+
+      if (magicLinkError) {
+        // Don't reveal if email exists for security
+        if (magicLinkError.message?.includes("user-not-found") || magicLinkError.message?.includes("invalid")) {
+          // Still show success for security (don't reveal if email exists)
+          setIsSubmitted(true)
+          setCountdown(60)
+        } else {
+          setError(magicLinkError.message || "Failed to send magic link. Please try again.")
+        }
+      } else {
+        setIsSubmitted(true)
+        setCountdown(60)
+      }
+    } catch (err: any) {
+      setError(err.message || "Something went wrong. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -57,9 +76,21 @@ export function ForgotPasswordForm() {
   const handleResend = async () => {
     if (countdown > 0) return
     setIsLoading(true)
+    setError("")
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      setCountdown(60)
+      const { error: magicLinkError } = await nhost.auth.signIn({
+        email,
+        options: {
+          redirectTo: `${window.location.origin}/change-password`,
+        },
+      })
+
+      if (magicLinkError && !magicLinkError.message?.includes("user-not-found")) {
+        setError("Failed to resend. Please try again.")
+      } else {
+        setCountdown(60)
+      }
     } catch {
       setError("Failed to resend. Please try again.")
     } finally {
@@ -74,13 +105,49 @@ export function ForgotPasswordForm() {
           <CheckCircle2 className="w-8 h-8 text-primary" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Check your email</h3>
+          <h3 className="text-lg font-semibold text-foreground">Magic Link Sent!</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {"We've sent a password reset link to "}
+            {"We've sent a secure login link to "}
             <strong className="text-foreground">{email}</strong>
           </p>
         </div>
-        <div className="pt-4">
+
+        {/* Status Card */}
+        <div className="p-4 border border-border rounded-lg bg-secondary/50 text-left">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-foreground">Link Status</span>
+            <Badge variant="default" className="bg-primary text-primary-foreground">
+              Active
+            </Badge>
+          </div>
+
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div className="flex items-center gap-2">
+              <Mail className="w-3.5 h-3.5" />
+              <span>Sent to: {email}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5" />
+              <span>Valid for: 1 hour</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Single use only</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Instructions */}
+        <div className="text-left p-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <p className="text-xs font-medium text-foreground mb-1">Next Steps:</p>
+          <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+            <li>Check your email inbox (and spam folder)</li>
+            <li>Click the magic link in the email</li>
+            <li>{"You'll be logged in and can set a new password"}</li>
+          </ol>
+        </div>
+
+        <div className="pt-2">
           <p className="text-sm text-muted-foreground">
             {"Didn't receive the email? "}
             {countdown > 0 ? (
@@ -91,7 +158,7 @@ export function ForgotPasswordForm() {
                 disabled={isLoading}
                 className="text-primary font-medium hover:underline disabled:opacity-50"
               >
-                {isLoading ? "Sending..." : "Resend"}
+                {isLoading ? "Sending..." : "Resend Magic Link"}
               </button>
             )}
           </p>
@@ -103,8 +170,9 @@ export function ForgotPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
-          {error}
+        <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
@@ -140,12 +208,17 @@ export function ForgotPasswordForm() {
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Sending...
+            Sending Magic Link...
           </>
         ) : (
-          "Send Reset Link"
+          "Send Magic Link"
         )}
       </Button>
+
+      {/* Info text */}
+      <p className="text-xs text-center text-muted-foreground">
+        {"We'll send you a secure login link via email (valid for 1 hour)"}
+      </p>
     </form>
   )
 }

@@ -7,34 +7,47 @@ import { SlotCard } from "@/components/coupons/slot-card"
 import { PurchaseModal } from "@/components/coupons/purchase-modal"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { mockSlots, mockSlotDetails, mockUser, type SlotDetail } from "@/lib/mock-data"
 import { useAuth } from "@/lib/auth-context"
-import { Search, PackageX } from "lucide-react"
+import { useAvailableCoupons } from "@/hooks/use-available-coupons"
+import { Search, PackageX, Loader2 } from "lucide-react"
 
-type SortOption = "stock-high" | "stock-low" | "price-high" | "price-low" | "name-asc" | "name-desc"
+type SortOption = "stock-high" | "stock-low" | "price-high" | "price-low" | "name-asc" | "name-desc" | "newest"
 
 export default function CouponsPage() {
-  const { user, isAuthenticated, isLoading, isLoggingOut } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<SortOption>("stock-high")
-  const [selectedSlot, setSelectedSlot] = useState<SlotDetail | null>(null)
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const { data: coupons, isLoading: couponsLoading } = useAvailableCoupons()
 
   useEffect(() => {
     if (isLoggingOut) return
 
-    if (!isLoading && !isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       router.push(`/signup?redirect=${encodeURIComponent(pathname)}`)
     }
-    if (!isLoading && user?.is_admin) {
+    if (!authLoading && user?.is_admin) {
       router.push("/admin/dashboard")
     }
-  }, [isAuthenticated, isLoading, router, pathname, isLoggingOut, user])
+  }, [isAuthenticated, authLoading, router, pathname, isLoggingOut, user])
 
   const filteredAndSortedSlots = useMemo(() => {
-    let slots = mockSlots.filter((slot) => slot.is_published)
+    if (!coupons) return []
+
+    let slots = coupons.map((coupon) => ({
+      id: coupon.id,
+      name: coupon.name,
+      description: coupon.description || "",
+      image_url: coupon.image_url,
+      available_stock: coupon.available_stock,
+      starting_price: coupon.pricing_tiers?.[0]?.unit_price || 0,
+      created_at: coupon.created_at,
+      is_published: true,
+    }))
 
     // Filter by search query
     if (searchQuery) {
@@ -59,39 +72,37 @@ export default function CouponsPage() {
           return a.name.localeCompare(b.name)
         case "name-desc":
           return b.name.localeCompare(a.name)
+        case "newest":
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         default:
           return 0
       }
     })
 
     return slots
-  }, [searchQuery, sortBy])
+  }, [coupons, searchQuery, sortBy])
 
   const handleCheckPricing = (slotId: string) => {
-    const slotDetail = mockSlotDetails[slotId]
-    if (slotDetail) {
-      setSelectedSlot(slotDetail)
-      setIsModalOpen(true)
-    }
+    setSelectedSlotId(slotId)
+    setIsModalOpen(true)
   }
+
+  const isLoading = authLoading || couponsLoading
 
   if (isLoading || !isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading coupons...</p>
+        </div>
       </div>
     )
   }
 
-  const currentUser = user.is_admin ? user : mockUser
-
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader
-        walletBalance={currentUser.wallet_balance}
-        userName={currentUser.name}
-        userEmail={currentUser.email}
-      />
+      <DashboardHeader walletBalance={user.wallet_balance} userName={user.name} userEmail={user.email} />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Page Header */}
@@ -126,6 +137,7 @@ export default function CouponsPage() {
                 <SelectItem value="price-high">Price: High to Low</SelectItem>
                 <SelectItem value="name-asc">Name: A to Z</SelectItem>
                 <SelectItem value="name-desc">Name: Z to A</SelectItem>
+                <SelectItem value="newest">Newest First</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -153,7 +165,7 @@ export default function CouponsPage() {
         )}
       </main>
 
-      <PurchaseModal slot={selectedSlot} open={isModalOpen} onOpenChange={setIsModalOpen} />
+      <PurchaseModal slotId={selectedSlotId} open={isModalOpen} onOpenChange={setIsModalOpen} />
     </div>
   )
 }

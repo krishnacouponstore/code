@@ -1,5 +1,8 @@
-import { useQuery } from "@tanstack/react-query"
+"use client"
+
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useUserId } from "@nhost/nextjs"
+import { useEffect } from "react"
 import { GraphQLClient, gql } from "graphql-request"
 
 const GRAPHQL_ENDPOINT = "https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql"
@@ -24,6 +27,12 @@ const GET_USER_ROLES = gql`
 
 export function useUserRoles() {
   const userId = useUserId()
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    // When userId changes, invalidate all user-roles queries to force fresh fetch
+    queryClient.invalidateQueries({ queryKey: ["user-roles"] })
+  }, [userId, queryClient])
 
   return useQuery({
     queryKey: ["user-roles", userId],
@@ -43,5 +52,7 @@ export function useUserRoles() {
       }
     },
     enabled: !!userId,
+    staleTime: 0,
+    gcTime: 0,
   })
 }

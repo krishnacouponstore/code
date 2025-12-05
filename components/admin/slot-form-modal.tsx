@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import type React from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,15 +28,10 @@ import {
   CheckCircle,
   AlertTriangle,
   XCircle,
+  File,
 } from "lucide-react"
-import type { AdminSlot } from "@/lib/mock-data"
-
-type PricingTier = {
-  min_quantity: number
-  max_quantity: number | null
-  unit_price: number
-  label?: string
-}
+import { useCreateSlot, useUpdateSlot, type Slot, type PricingTier } from "@/hooks/use-slots"
+import { useToast } from "@/hooks/use-toast"
 
 type ValidationResult = {
   total_lines: number
@@ -58,18 +54,25 @@ type SlotFormData = {
 type SlotFormModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  slot?: AdminSlot | null
-  onSubmit: (data: SlotFormData) => void
+  slot?: Slot | null
+  onSuccess?: () => void
 }
 
-export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormModalProps) {
+export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormModalProps) {
   const isEditing = !!slot
-  const [isLoading, setIsLoading] = useState(false)
+  const { toast } = useToast()
+  const createSlotMutation = useCreateSlot()
+  const updateSlotMutation = useUpdateSlot()
+
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState("basic")
   const [skipUpload, setSkipUpload] = useState(true)
   const [pastedCodes, setPastedCodes] = useState("")
   const [codeValidation, setCodeValidation] = useState<ValidationResult | null>(null)
+  const [uploadMethod, setUploadMethod] = useState<"paste" | "file">("paste")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isValidating, setIsValidating] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState<SlotFormData>({
     name: "",
@@ -89,7 +92,12 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
         is_published: slot.is_published,
         pricing_tiers:
           slot.pricing_tiers.length > 0
-            ? slot.pricing_tiers
+            ? slot.pricing_tiers.map((t) => ({
+                min_quantity: t.min_quantity,
+                max_quantity: t.max_quantity,
+                unit_price: t.unit_price,
+                label: t.label,
+              }))
             : [{ min_quantity: 1, max_quantity: null, unit_price: 10 }],
         codes_to_upload: [],
       })
@@ -108,6 +116,9 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
     setSkipUpload(true)
     setPastedCodes("")
     setCodeValidation(null)
+    setUploadMethod("paste")
+    setSelectedFile(null)
+    setIsValidating(false)
   }, [slot, open])
 
   const validateCodes = (rawText: string): ValidationResult => {
@@ -115,7 +126,7 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
-    const validCodeRegex = /^[A-Za-z0-9-]{10,30}$/
+    const validCodeRegex = /^[A-Za-z0-9-]{5,50}$/
 
     const validCodes: string[] = []
     const seenCodes = new Set<string>()
@@ -150,12 +161,62 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
   const handlePasteChange = (value: string) => {
     setPastedCodes(value)
     if (value.trim()) {
-      const validation = validateCodes(value)
-      setCodeValidation(validation)
-      setFormData({ ...formData, codes_to_upload: validation.codes })
+      setIsValidating(true)
+      setTimeout(() => {
+        const validation = validateCodes(value)
+        setCodeValidation(validation)
+        setFormData({ ...formData, codes_to_upload: validation.codes })
+        setIsValidating(false)
+      }, 200)
     } else {
       setCodeValidation(null)
       setFormData({ ...formData, codes_to_upload: [] })
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+      setIsValidating(true)
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const text = event.target?.result as string
+        const validation = validateCodes(text)
+        setCodeValidation(validation)
+        setFormData({ ...formData, codes_to_upload: validation.codes })
+        setIsValidating(false)
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (file && (file.name.endsWith(".txt") || file.name.endsWith(".csv"))) {
+      setSelectedFile(file)
+      setIsValidating(true)
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const text = event.target?.result as string
+        const validation = validateCodes(text)
+        setCodeValidation(validation)
+        setFormData({ ...formData, codes_to_upload: validation.codes })
+        setIsValidating(false)
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  const clearFileSelection = () => {
+    setSelectedFile(null)
+    setCodeValidation(null)
+    setFormData({ ...formData, codes_to_upload: [] })
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
     }
   }
 
@@ -176,7 +237,6 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
       newErrors.description = "Description must be less than 200 characters"
     }
 
-    // Validate pricing tiers
     for (let i = 0; i < formData.pricing_tiers.length; i++) {
       const tier = formData.pricing_tiers[i]
       if (tier.unit_price <= 0) {
@@ -200,13 +260,64 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
       return
     }
 
-    setIsLoading(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    onSubmit(formData)
-    setIsLoading(false)
-    onOpenChange(false)
+    if (isEditing && slot) {
+      // Update existing slot
+      const result = await updateSlotMutation.mutateAsync({
+        id: slot.id,
+        name: formData.name,
+        description: formData.description,
+        image_url: formData.image_url || undefined,
+        is_published: formData.is_published,
+        pricing_tiers: formData.pricing_tiers,
+      })
+
+      if (result.success) {
+        toast({
+          title: "Coupon updated",
+          description: `"${formData.name}" has been updated successfully.`,
+        })
+        onOpenChange(false)
+        onSuccess?.()
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to update coupon",
+          variant: "destructive",
+        })
+      }
+    } else {
+      // Create new slot
+      const result = await createSlotMutation.mutateAsync({
+        name: formData.name,
+        description: formData.description,
+        image_url: formData.image_url || undefined,
+        is_published: formData.is_published,
+        pricing_tiers: formData.pricing_tiers,
+        codes_to_upload: skipUpload ? [] : formData.codes_to_upload,
+      })
+
+      if (result.success) {
+        const codesCount = result.codesUploaded || 0
+        toast({
+          title: "Coupon created",
+          description:
+            codesCount > 0
+              ? `"${formData.name}" created with ${codesCount} codes uploaded.`
+              : `"${formData.name}" has been created. You can upload codes later.`,
+        })
+        onOpenChange(false)
+        onSuccess?.()
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to create coupon",
+          variant: "destructive",
+        })
+      }
+    }
   }
+
+  const isLoading = createSlotMutation.isPending || updateSlotMutation.isPending
 
   const addPricingTier = () => {
     const lastTier = formData.pricing_tiers[formData.pricing_tiers.length - 1]
@@ -242,7 +353,7 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
       <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-foreground">
-            {isEditing ? `Edit Coupon - ${slot.name}` : "Create New Coupon"}
+            {isEditing ? `Edit Coupon - ${slot?.name}` : "Create New Coupon"}
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {isEditing ? "Update the coupon details below" : "Fill in the details to create a new coupon category"}
@@ -276,9 +387,7 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
             )}
           </TabsList>
 
-          {/* Tab 1: Basic Information */}
           <TabsContent value="basic" className="mt-4 space-y-6">
-            {/* Coupon Name */}
             <div className="space-y-2">
               <Label htmlFor="name" className="text-foreground">
                 Coupon Name <span className="text-destructive">*</span>
@@ -297,7 +406,6 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
               )}
             </div>
 
-            {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="description" className="text-foreground">
                 Description <span className="text-destructive">*</span>
@@ -322,7 +430,6 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
               </div>
             </div>
 
-            {/* Image URL */}
             <div className="space-y-2">
               <Label htmlFor="image_url" className="text-foreground">
                 Image URL <span className="text-muted-foreground text-xs">(optional)</span>
@@ -337,7 +444,6 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
               <p className="text-xs text-muted-foreground">Add a logo or icon URL for this coupon</p>
             </div>
 
-            {/* Status Toggle */}
             <div className="flex items-center justify-between p-4 bg-secondary rounded-lg border border-border">
               <div>
                 <Label htmlFor="is_published" className="text-foreground">
@@ -353,7 +459,6 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
             </div>
           </TabsContent>
 
-          {/* Tab 2: Pricing Tiers */}
           <TabsContent value="pricing" className="mt-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -455,7 +560,6 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
             </div>
           </TabsContent>
 
-          {/* Tab 3: Upload Codes (only for create mode) */}
           {!isEditing && (
             <TabsContent value="codes" className="mt-4 space-y-4">
               <div>
@@ -463,7 +567,6 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
                 <p className="text-xs text-muted-foreground mt-1">You can upload codes now or add them later</p>
               </div>
 
-              {/* Skip checkbox */}
               <div className="flex items-center space-x-2 p-4 bg-secondary rounded-lg border border-border">
                 <Checkbox
                   id="skip_upload"
@@ -473,6 +576,7 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
                     if (checked) {
                       setPastedCodes("")
                       setCodeValidation(null)
+                      setSelectedFile(null)
                       setFormData({ ...formData, codes_to_upload: [] })
                     }
                   }}
@@ -482,56 +586,127 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
                 </Label>
               </div>
 
-              {/* Upload section */}
               {!skipUpload && (
                 <div className="space-y-4">
-                  <Textarea
-                    placeholder="Paste codes here, one per line&#10;&#10;Example:&#10;FKG00000000000001&#10;FKG00000000000002&#10;FKG00000000000003"
-                    value={pastedCodes}
-                    onChange={(e) => handlePasteChange(e.target.value)}
-                    className="bg-secondary border-border text-foreground font-mono text-sm min-h-[150px]"
-                  />
+                  <Tabs
+                    value={uploadMethod}
+                    onValueChange={(v) => {
+                      setUploadMethod(v as "paste" | "file")
+                      setPastedCodes("")
+                      setSelectedFile(null)
+                      setCodeValidation(null)
+                      setFormData({ ...formData, codes_to_upload: [] })
+                    }}
+                  >
+                    <TabsList className="grid w-full grid-cols-2 bg-secondary">
+                      <TabsTrigger
+                        value="paste"
+                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      >
+                        Paste Codes
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="file"
+                        className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                      >
+                        Upload File
+                      </TabsTrigger>
+                    </TabsList>
 
-                  {/* Validation results */}
-                  {codeValidation && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-4 gap-2">
-                        <div className="bg-secondary rounded-lg p-2 text-center">
-                          <p className="text-lg font-bold text-foreground">{codeValidation.total_lines}</p>
-                          <p className="text-xs text-muted-foreground">Total</p>
+                    <TabsContent value="paste" className="mt-4 space-y-4">
+                      <Textarea
+                        placeholder={`Paste codes here, one per line\n\nExample:\nFKG00000000000001\nFKG00000000000002\nFKG00000000000003`}
+                        value={pastedCodes}
+                        onChange={(e) => handlePasteChange(e.target.value)}
+                        className="bg-secondary border-border text-foreground min-h-[200px] font-mono text-sm"
+                      />
+                    </TabsContent>
+
+                    <TabsContent value="file" className="mt-4 space-y-4">
+                      {!selectedFile ? (
+                        <div
+                          onDrop={handleDrop}
+                          onDragOver={(e) => e.preventDefault()}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+                        >
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".txt,.csv"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
+                          <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                          <p className="mt-4 font-medium text-foreground">Drop CSV/TXT file here</p>
+                          <p className="text-sm text-muted-foreground">or click to browse</p>
+                          <p className="text-xs text-muted-foreground mt-2">One code per line</p>
                         </div>
-                        <div className="bg-green-500/10 rounded-lg p-2 text-center">
-                          <p className="text-lg font-bold text-green-500">{codeValidation.valid_codes}</p>
-                          <p className="text-xs text-green-500">Valid</p>
+                      ) : (
+                        <div className="p-4 bg-secondary rounded-lg border border-border">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <File className="h-8 w-8 text-primary" />
+                              <div>
+                                <p className="font-medium text-foreground">{selectedFile.name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {(selectedFile.size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={clearFileSelection}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="bg-yellow-500/10 rounded-lg p-2 text-center">
-                          <p className="text-lg font-bold text-yellow-500">{codeValidation.duplicates}</p>
-                          <p className="text-xs text-yellow-500">Duplicates</p>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+
+                  {/* Validation Results */}
+                  {isValidating && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Validating codes...
+                    </div>
+                  )}
+
+                  {codeValidation && !isValidating && (
+                    <div className="p-4 bg-secondary rounded-lg border border-border space-y-3">
+                      <h4 className="font-medium text-foreground">Validation Results</h4>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">Total lines:</span>
+                          <span className="text-foreground">{codeValidation.total_lines}</span>
                         </div>
-                        <div className="bg-destructive/10 rounded-lg p-2 text-center">
-                          <p className="text-lg font-bold text-destructive">{codeValidation.invalid_format}</p>
-                          <p className="text-xs text-destructive">Invalid</p>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <span className="text-green-500">{codeValidation.valid_codes} valid</span>
                         </div>
+                        {codeValidation.duplicates > 0 && (
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                            <span className="text-yellow-500">{codeValidation.duplicates} duplicates</span>
+                          </div>
+                        )}
+                        {codeValidation.invalid_format > 0 && (
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4 text-destructive" />
+                            <span className="text-destructive">{codeValidation.invalid_format} invalid</span>
+                          </div>
+                        )}
                       </div>
-
-                      {codeValidation.valid_codes > 0 && (
-                        <div className="flex items-center gap-2 text-sm text-green-500">
-                          <CheckCircle className="h-4 w-4" />
-                          {codeValidation.valid_codes} codes ready to upload
-                        </div>
-                      )}
-                      {codeValidation.duplicates > 0 && (
-                        <div className="flex items-center gap-2 text-sm text-yellow-500">
-                          <AlertTriangle className="h-4 w-4" />
-                          {codeValidation.duplicates} duplicates will be skipped
-                        </div>
-                      )}
-                      {codeValidation.invalid_format > 0 && (
-                        <div className="flex items-center gap-2 text-sm text-destructive">
-                          <XCircle className="h-4 w-4" />
-                          {codeValidation.invalid_format} codes have invalid format
-                        </div>
-                      )}
+                      <div className="pt-2 border-t border-border">
+                        <p className="text-sm">
+                          <span className="text-muted-foreground">Ready to upload:</span>{" "}
+                          <span className="font-medium text-primary">{codeValidation.ready_to_upload} codes</span>
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -540,39 +715,24 @@ export function SlotFormModal({ open, onOpenChange, slot, onSubmit }: SlotFormMo
           )}
         </Tabs>
 
-        {/* Created date for editing */}
-        {isEditing && slot && (
-          <p className="text-xs text-muted-foreground mt-4">
-            Created on:{" "}
-            {new Date(slot.created_at).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </p>
-        )}
-
-        <DialogFooter className="gap-2 mt-4">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            className="border-border text-foreground"
-            disabled={isLoading}
-          >
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border" disabled={isLoading}>
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={isLoading}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEditing ? "Saving..." : "Creating..."}
+                {isEditing ? "Updating..." : "Creating..."}
               </>
+            ) : isEditing ? (
+              "Update Coupon"
             ) : (
-              <>{isEditing ? "Save Changes" : "Create Coupon"}</>
+              "Create Coupon"
             )}
           </Button>
         </DialogFooter>
