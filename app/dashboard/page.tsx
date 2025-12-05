@@ -13,8 +13,6 @@ import { Wallet, ShoppingBag, TrendingUp, Loader2, RefreshCw } from "lucide-reac
 import { Toaster } from "@/components/ui/toaster"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { ChangePasswordModal } from "@/components/auth/change-password-modal"
-import { MAGIC_LINK_PASSWORD_RESET_KEY } from "@/components/auth/forgot-password-form"
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading: authLoading, isLoggingOut } = useAuth()
@@ -23,16 +21,6 @@ export default function DashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
   const [retryCount, setRetryCount] = useState(0)
-  const [showPasswordModal, setShowPasswordModal] = useState(false)
-
-  useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      const pendingReset = localStorage.getItem(MAGIC_LINK_PASSWORD_RESET_KEY)
-      if (pendingReset === "true") {
-        setShowPasswordModal(true)
-      }
-    }
-  }, [isAuthenticated, authLoading])
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && !profileLoading && !profile && retryCount < 3) {
@@ -121,23 +109,8 @@ export default function DashboardPage() {
       date: p.created_at,
     })) || []
 
-  const handlePasswordModalClose = (open: boolean) => {
-    if (!open) {
-      localStorage.removeItem(MAGIC_LINK_PASSWORD_RESET_KEY)
-      setShowPasswordModal(false)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-background">
-      <ChangePasswordModal
-        open={showPasswordModal}
-        onOpenChange={handlePasswordModalClose}
-        onSuccess={() => {
-          setShowPasswordModal(false)
-        }}
-      />
-
       <DashboardHeader walletBalance={profile.wallet_balance} userName={user.name} userEmail={user.email} />
 
       <main className="max-w-7xl mx-auto px-6 py-8">

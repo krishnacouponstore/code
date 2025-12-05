@@ -7,17 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Mail, Loader2, CheckCircle2, Clock, Lock, AlertCircle } from "lucide-react"
+import { Mail, Loader2, CheckCircle2, Clock, Lock, AlertCircle, MessageCircle } from "lucide-react"
 import { nhost } from "@/lib/nhost"
-
-export const MAGIC_LINK_PASSWORD_RESET_KEY = "codecrate_password_reset_pending"
-
-const getRedirectUrl = () => {
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}/profile?passwordReset=true`
-  }
-  return "https://code-crate-india.vercel.app/profile?passwordReset=true"
-}
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
@@ -54,7 +45,6 @@ export function ForgotPasswordForm() {
     setIsLoading(true)
 
     try {
-      // Store email in localStorage so profile page knows this was a password reset request
       const { error: magicLinkError } = await nhost.auth.signIn({
         email,
       })
@@ -64,16 +54,12 @@ export function ForgotPasswordForm() {
           // Still show success for security (don't reveal if email exists)
           setIsSubmitted(true)
           setCountdown(60)
-          // Store email to detect password reset on profile page
-          localStorage.setItem("codecrate_password_reset_email", email)
         } else {
           setError(magicLinkError.message || "Failed to send magic link. Please try again.")
         }
       } else {
         setIsSubmitted(true)
         setCountdown(60)
-        // Store email to detect password reset on profile page
-        localStorage.setItem("codecrate_password_reset_email", email)
       }
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.")
@@ -96,7 +82,6 @@ export function ForgotPasswordForm() {
         setError("Failed to resend. Please try again.")
       } else {
         setCountdown(60)
-        localStorage.setItem("codecrate_password_reset_email", email)
       }
     } catch {
       setError("Failed to resend. Please try again.")
@@ -149,9 +134,30 @@ export function ForgotPasswordForm() {
           <p className="text-xs font-medium text-foreground mb-1">Next Steps:</p>
           <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
             <li>Check your email inbox (and spam folder)</li>
-            <li>Click the magic link in the email</li>
-            <li>{"You'll be logged in and can set a new password"}</li>
+            <li>Click the magic link to access your account</li>
           </ol>
+        </div>
+
+        {/* Simplified password reset message */}
+        <div className="text-left p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+          <div className="flex items-start gap-2">
+            <MessageCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Need to reset your password?</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Contact our support on Telegram{" "}
+                <a
+                  href="https://t.me/Krishna_Arora_New"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium"
+                >
+                  @Krishna_Arora_New
+                </a>{" "}
+                and we'll help you reset your password.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="pt-2">

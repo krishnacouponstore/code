@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
@@ -10,7 +10,6 @@ import { AccountStats } from "@/components/profile/account-stats"
 import { AccountActions } from "@/components/profile/account-actions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2 } from "lucide-react"
-import { ChangePasswordModal } from "@/components/auth/change-password-modal"
 
 export default function ProfilePage() {
   const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth()
@@ -19,9 +18,6 @@ export default function ProfilePage() {
   const searchParams = useSearchParams()
 
   const justVerified = searchParams.get("verified") === "true"
-  const isPasswordReset = searchParams.get("passwordReset") === "true"
-
-  const [showPasswordResetModal, setShowPasswordResetModal] = useState(false)
 
   useEffect(() => {
     if (isLoggingOut) return
@@ -33,32 +29,6 @@ export default function ProfilePage() {
       router.replace("/admin/dashboard")
     }
   }, [isLoading, isAuthenticated, router, pathname, isLoggingOut, user])
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && user && isPasswordReset) {
-      setShowPasswordResetModal(true)
-    }
-  }, [isLoading, isAuthenticated, user, isPasswordReset])
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && user?.email) {
-      const storedEmail = localStorage.getItem("codecrate_password_reset_email")
-
-      // If the logged in user's email matches the stored password reset email, show the modal
-      if (storedEmail && storedEmail.toLowerCase() === user.email.toLowerCase()) {
-        setShowPasswordResetModal(true)
-        // Clear the stored email immediately
-        localStorage.removeItem("codecrate_password_reset_email")
-      }
-    }
-  }, [isLoading, isAuthenticated, user?.email])
-
-  const handlePasswordModalClose = () => {
-    setShowPasswordResetModal(false)
-    const url = new URL(window.location.href)
-    url.searchParams.delete("passwordReset")
-    router.replace(url.pathname + url.search)
-  }
 
   if (isLoading) {
     return (
@@ -108,8 +78,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
-
-      <ChangePasswordModal open={showPasswordResetModal} onClose={handlePasswordModalClose} />
     </div>
   )
 }

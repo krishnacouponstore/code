@@ -1,9 +1,15 @@
 "use client"
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { getAdminGraphQLClient } from "@/lib/graphql-client"
-import { GET_ALL_SLOTS, GET_SLOT_SALES } from "@/lib/graphql/slots"
-import { createSlot, updateSlot, deleteSlot, toggleSlotPublish, uploadCodesToSlot } from "@/app/actions/slots"
+import {
+  createSlot,
+  updateSlot,
+  deleteSlot,
+  toggleSlotPublish,
+  uploadCodesToSlot,
+  getAllSlots,
+  getSlotSales,
+} from "@/app/actions/slots"
 
 export type PricingTier = {
   id?: string
@@ -36,8 +42,10 @@ export function useSlots() {
   return useQuery({
     queryKey: ["admin-slots"],
     queryFn: async () => {
-      const client = getAdminGraphQLClient()
-      const result: any = await client.request(GET_ALL_SLOTS)
+      const result = await getAllSlots()
+      if (!result.success) {
+        throw new Error(result.error)
+      }
       return result.slots as Slot[]
     },
   })
@@ -103,11 +111,13 @@ export function useSlotSales(slotId: string | null) {
     queryKey: ["slot-sales", slotId],
     queryFn: async () => {
       if (!slotId) return null
-      const client = getAdminGraphQLClient()
-      const result: any = await client.request(GET_SLOT_SALES, { slot_id: slotId })
+      const result = await getSlotSales(slotId)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
       return {
-        sales: result.coupons,
-        totalSold: result.coupons_aggregate.aggregate.count,
+        sales: result.sales,
+        totalSold: result.totalSold,
       }
     },
     enabled: !!slotId,

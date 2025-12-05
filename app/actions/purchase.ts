@@ -43,10 +43,11 @@ function generateOrderNumber(): string {
 }
 
 export async function processPurchase(input: PurchaseInput): Promise<PurchaseResult> {
-  const client = getAdminGraphQLClient()
   const { userId, slotId, quantity, unitPrice, totalPrice } = input
 
   try {
+    const client = getAdminGraphQLClient()
+
     // Step 1: Verify user wallet and not blocked
     const walletResult: any = await client.request(GET_USER_WALLET, { userId })
     const userProfile = walletResult.user_profiles_by_pk
@@ -75,6 +76,7 @@ export async function processPurchase(input: PurchaseInput): Promise<PurchaseRes
       return { success: false, error: `Only ${slot.available_stock} codes available` }
     }
 
+    // Step 3: Fetch available coupons
     const availableCouponsResult: any = await client.request(GET_AVAILABLE_COUPON_IDS, {
       slotId,
       limit: quantity,
@@ -99,6 +101,7 @@ export async function processPurchase(input: PurchaseInput): Promise<PurchaseRes
     })
     const purchaseId = purchaseResult.insert_purchases_one.id
 
+    // Step 5: Allocate codes
     const codesResult: any = await client.request(ALLOCATE_CODES_BY_IDS, {
       couponIds,
       userId,
@@ -117,6 +120,7 @@ export async function processPurchase(input: PurchaseInput): Promise<PurchaseRes
       quantity,
     })
 
+    // Step 7: Update slot stock
     await client.request(UPDATE_SLOT_AFTER_PURCHASE, {
       slotId,
       soldQuantity: quantity,
@@ -133,6 +137,7 @@ export async function processPurchase(input: PurchaseInput): Promise<PurchaseRes
       },
     }
   } catch (error: any) {
+    console.error("Purchase error:", error.message)
     return {
       success: false,
       error: error.message || "Purchase failed. Please try again.",

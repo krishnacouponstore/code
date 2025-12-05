@@ -10,6 +10,8 @@ import {
   DELETE_PRICING_TIERS,
   UPLOAD_CODES_BULK,
   UPDATE_SLOT_STOCK,
+  GET_ALL_SLOTS,
+  GET_SLOT_SALES,
 } from "@/lib/graphql/slots"
 
 type PricingTier = {
@@ -227,6 +229,46 @@ export async function uploadCodesToSlot(slotId: string, codes: string[]) {
     return {
       success: false,
       error: error.message || "Failed to upload codes",
+    }
+  }
+}
+
+export async function getAllSlots() {
+  const client = getAdminGraphQLClient()
+
+  try {
+    const result: any = await client.request(GET_ALL_SLOTS)
+    return {
+      success: true,
+      slots: result.slots,
+    }
+  } catch (error: any) {
+    console.error("Error fetching slots:", error)
+    return {
+      success: false,
+      error: error.message || "Failed to fetch slots",
+      slots: [],
+    }
+  }
+}
+
+export async function getSlotSales(slotId: string) {
+  const client = getAdminGraphQLClient()
+
+  try {
+    const result: any = await client.request(GET_SLOT_SALES, { slot_id: slotId })
+    return {
+      success: true,
+      sales: result.coupons,
+      totalSold: result.coupons_aggregate.aggregate.count,
+    }
+  } catch (error: any) {
+    console.error("Error fetching slot sales:", error)
+    return {
+      success: false,
+      error: error.message || "Failed to fetch slot sales",
+      sales: [],
+      totalSold: 0,
     }
   }
 }
