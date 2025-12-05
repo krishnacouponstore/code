@@ -12,6 +12,13 @@ import { nhost } from "@/lib/nhost"
 
 export const MAGIC_LINK_PASSWORD_RESET_KEY = "codecrate_password_reset_pending"
 
+const getRedirectUrl = () => {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/profile?passwordReset=true`
+  }
+  return "https://code-crate-india.vercel.app/profile?passwordReset=true"
+}
+
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -47,25 +54,26 @@ export function ForgotPasswordForm() {
     setIsLoading(true)
 
     try {
-      // Send Magic Link using Nhost passwordless sign-in
+      // Store email in localStorage so profile page knows this was a password reset request
       const { error: magicLinkError } = await nhost.auth.signIn({
         email,
       })
 
       if (magicLinkError) {
-        // Don't reveal if email exists for security
         if (magicLinkError.message?.includes("user-not-found") || magicLinkError.message?.includes("invalid")) {
           // Still show success for security (don't reveal if email exists)
           setIsSubmitted(true)
           setCountdown(60)
-          localStorage.setItem(MAGIC_LINK_PASSWORD_RESET_KEY, "true")
+          // Store email to detect password reset on profile page
+          localStorage.setItem("codecrate_password_reset_email", email)
         } else {
           setError(magicLinkError.message || "Failed to send magic link. Please try again.")
         }
       } else {
         setIsSubmitted(true)
         setCountdown(60)
-        localStorage.setItem(MAGIC_LINK_PASSWORD_RESET_KEY, "true")
+        // Store email to detect password reset on profile page
+        localStorage.setItem("codecrate_password_reset_email", email)
       }
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.")
@@ -88,7 +96,7 @@ export function ForgotPasswordForm() {
         setError("Failed to resend. Please try again.")
       } else {
         setCountdown(60)
-        localStorage.setItem(MAGIC_LINK_PASSWORD_RESET_KEY, "true")
+        localStorage.setItem("codecrate_password_reset_email", email)
       }
     } catch {
       setError("Failed to resend. Please try again.")

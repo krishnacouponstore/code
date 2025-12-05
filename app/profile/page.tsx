@@ -19,6 +19,7 @@ export default function ProfilePage() {
   const searchParams = useSearchParams()
 
   const justVerified = searchParams.get("verified") === "true"
+  const isPasswordReset = searchParams.get("passwordReset") === "true"
 
   const [showPasswordResetModal, setShowPasswordResetModal] = useState(false)
 
@@ -34,26 +35,29 @@ export default function ProfilePage() {
   }, [isLoading, isAuthenticated, router, pathname, isLoggingOut, user])
 
   useEffect(() => {
-    console.log("[v0] Profile page - checking password reset flag")
-    console.log("[v0] isLoading:", isLoading)
-    console.log("[v0] isAuthenticated:", isAuthenticated)
-    console.log("[v0] user:", user?.email)
+    if (!isLoading && isAuthenticated && user && isPasswordReset) {
+      setShowPasswordResetModal(true)
+    }
+  }, [isLoading, isAuthenticated, user, isPasswordReset])
 
-    const pendingReset = localStorage.getItem("codecrate_password_reset_pending")
-    console.log("[v0] localStorage codecrate_password_reset_pending:", pendingReset)
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user?.email) {
+      const storedEmail = localStorage.getItem("codecrate_password_reset_email")
 
-    if (!isLoading && isAuthenticated && user) {
-      console.log("[v0] Conditions met, pendingReset value:", pendingReset)
-      if (pendingReset === "true") {
-        console.log("[v0] Showing password reset modal!")
+      // If the logged in user's email matches the stored password reset email, show the modal
+      if (storedEmail && storedEmail.toLowerCase() === user.email.toLowerCase()) {
         setShowPasswordResetModal(true)
+        // Clear the stored email immediately
+        localStorage.removeItem("codecrate_password_reset_email")
       }
     }
-  }, [isLoading, isAuthenticated, user])
+  }, [isLoading, isAuthenticated, user?.email])
 
   const handlePasswordModalClose = () => {
-    localStorage.removeItem("codecrate_password_reset_pending")
     setShowPasswordResetModal(false)
+    const url = new URL(window.location.href)
+    url.searchParams.delete("passwordReset")
+    router.replace(url.pathname + url.search)
   }
 
   if (isLoading) {
