@@ -283,7 +283,10 @@ export async function sendPasswordResetEmail(email: string) {
   try {
     const NHOST_AUTH_URL = `https://${NHOST_SUBDOMAIN}.auth.${NHOST_REGION}.nhost.run/v1`
 
-    // The Client URL should be set in Nhost dashboard to point to the app
+    const redirectTo = process.env.NEXT_PUBLIC_SITE_URL
+      ? `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`
+      : "https://code-crate-india.vercel.app/reset-password"
+
     const response = await fetch(`${NHOST_AUTH_URL}/user/password/reset`, {
       method: "POST",
       headers: {
@@ -291,6 +294,9 @@ export async function sendPasswordResetEmail(email: string) {
       },
       body: JSON.stringify({
         email,
+        options: {
+          redirectTo,
+        },
       }),
     })
 
@@ -302,6 +308,12 @@ export async function sendPasswordResetEmail(email: string) {
       if (errorData.error === "user-not-found") {
         // For security, still return success (don't reveal if email exists)
         return { success: true }
+      }
+
+      if (errorData.error === "redirectTo-not-allowed") {
+        throw new Error(
+          "Redirect URL not configured. Please add the reset password URL to Nhost Allowed Redirect URLs.",
+        )
       }
 
       throw new Error(errorData.message || "Failed to send password reset email")
