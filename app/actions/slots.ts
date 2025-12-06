@@ -1,6 +1,6 @@
 "use server"
 
-import { getAdminGraphQLClient } from "@/lib/graphql-client"
+import { getAdminGraphQLClient } from "@/lib/graphql-client-server"
 import {
   CREATE_SLOT,
   UPDATE_SLOT,
