@@ -4,19 +4,37 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
-import type { AdminUser, PurchaseHistoryItem } from "@/lib/mock-data"
+import type { AdminUser } from "@/hooks/use-admin-users"
 import { Wallet, ShoppingBag, Receipt, Package, Download, Copy, Check, FileText } from "lucide-react"
+
+export interface PurchaseHistoryItem {
+  id: string
+  order_id: string
+  slot_name: string
+  quantity: number
+  amount: number
+  date: string
+  codes: string[]
+}
 
 interface UserPurchaseHistoryModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: AdminUser | null
   purchases?: PurchaseHistoryItem[]
+  isLoading?: boolean
 }
 
-export function UserPurchaseHistoryModal({ open, onOpenChange, user, purchases = [] }: UserPurchaseHistoryModalProps) {
+export function UserPurchaseHistoryModal({
+  open,
+  onOpenChange,
+  user,
+  purchases = [],
+  isLoading = false,
+}: UserPurchaseHistoryModalProps) {
   const { toast } = useToast()
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
@@ -94,7 +112,13 @@ export function UserPurchaseHistoryModal({ open, onOpenChange, user, purchases =
         {/* Orders Table */}
         <div className="mt-6">
           <h3 className="text-sm font-medium text-foreground mb-3">Orders</h3>
-          {purchases.length === 0 ? (
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : purchases.length === 0 ? (
             <div className="text-center py-8 bg-secondary/30 rounded-lg">
               <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
               <p className="text-muted-foreground">No purchases yet</p>

@@ -325,3 +325,49 @@ export async function sendPasswordResetEmail(email: string) {
     return { success: false, error: error.message }
   }
 }
+
+// Get user purchase history
+export async function getUserPurchaseHistory(userId: string) {
+  try {
+    const client = getAdminClient()
+
+    const query = gql`
+      query GetUserPurchaseHistory($userId: uuid!) {
+        purchases(
+          where: { user_id: { _eq: $userId } }
+          order_by: { created_at: desc }
+        ) {
+          id
+          order_number
+          quantity
+          unit_price
+          total_price
+          created_at
+          slot {
+            name
+          }
+          coupons {
+            code
+          }
+        }
+      }
+    `
+
+    const data: any = await client.request(query, { userId })
+
+    const purchases = data.purchases.map((purchase: any) => ({
+      id: purchase.id,
+      order_id: purchase.order_number,
+      slot_name: purchase.slot?.name || "Unknown",
+      quantity: purchase.quantity,
+      amount: Number.parseFloat(purchase.total_price) || 0,
+      date: purchase.created_at,
+      codes: purchase.coupons?.map((c: any) => c.code) || [],
+    }))
+
+    return { success: true, purchases }
+  } catch (error: any) {
+    console.error("Error fetching user purchase history:", error)
+    return { success: false, purchases: [], error: error.message }
+  }
+}

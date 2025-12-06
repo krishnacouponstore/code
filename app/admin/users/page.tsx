@@ -11,7 +11,7 @@ import { UnblockUserDialog } from "@/components/admin/unblock-user-dialog"
 import { DeleteUserDialog } from "@/components/admin/delete-user-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,16 +19,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useToast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   useAdminUsers,
-  useAdminUserStats,
+  useUserStats,
   useAdjustBalance,
   useBlockUser,
   useUnblockUser,
   useDeleteUser,
-  useSendPasswordReset,
+  useUserPurchaseHistory, // Import the new hook
   type AdminUser,
 } from "@/hooks/use-admin-users"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -38,31 +37,30 @@ import {
   UserX,
   UserPlus,
   Search,
-  MoreVertical,
-  History,
-  Wallet,
-  Ban,
-  Trash2,
+  MoreHorizontal,
   Shield,
+  ShieldOff,
+  Trash2,
+  DollarSign,
+  History,
+  ArrowUpDown,
+  ArrowUp,
   Trophy,
-  ArrowUpRight,
-  Loader2,
-  KeyRound,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
-export default function UsersManagementPage() {
+export default function AdminUsersPage() {
   const { user, isLoading: authLoading, isLoggingOut } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
   const { data: users = [], isLoading: usersLoading } = useAdminUsers()
-  const { data: statsData } = useAdminUserStats()
+  const { data: statsData } = useUserStats()
 
-  const adjustBalanceMutation = useAdjustBalance()
   const blockUserMutation = useBlockUser()
   const unblockUserMutation = useUnblockUser()
   const deleteUserMutation = useDeleteUser()
-  const sendPasswordResetMutation = useSendPasswordReset()
+  const adjustBalanceMutation = useAdjustBalance()
 
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "blocked">("all")
@@ -132,6 +130,10 @@ export default function UsersManagementPage() {
 
     return result
   }, [users, searchQuery, statusFilter, sortBy])
+
+  const { data: purchaseHistory = [], isLoading: isPurchaseHistoryLoading } = useUserPurchaseHistory(
+    isPurchaseHistoryOpen && selectedUser ? selectedUser.id : null,
+  )
 
   if (authLoading || !user?.is_admin || isLoggingOut) {
     return (
@@ -224,39 +226,14 @@ export default function UsersManagementPage() {
     }
   }
 
-  const confirmAdjustBalance = async (userId: string, amount: number, type: "add" | "deduct", reason: string) => {
-    try {
-      await adjustBalanceMutation.mutateAsync({ userId, amount, type, reason })
-      toast({
-        title: "Balance adjusted",
-        description: `${type === "add" ? "Added" : "Deducted"} ${formatCurrency(amount)} ${
-          type === "add" ? "to" : "from"
-        } ${selectedUser?.full_name}'s wallet.`,
-      })
-      setIsAdjustBalanceOpen(false)
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to adjust balance",
-        variant: "destructive",
-      })
-    }
+  const openAdjustBalanceModal = (u: AdminUser) => {
+    setSelectedUser(u)
+    setIsAdjustBalanceOpen(true)
   }
 
-  const handleSendPasswordReset = async (u: AdminUser) => {
-    try {
-      await sendPasswordResetMutation.mutateAsync(u.email)
-      toast({
-        title: "Password Reset Email Sent",
-        description: `A password reset link has been sent to ${u.email}`,
-      })
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send password reset email",
-        variant: "destructive",
-      })
-    }
+  const openPurchaseHistoryModal = (u: AdminUser) => {
+    setSelectedUser(u)
+    setIsPurchaseHistoryOpen(true)
   }
 
   return (
@@ -283,7 +260,7 @@ export default function UsersManagementPage() {
               </div>
             </div>
             <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
-              <ArrowUpRight className="h-3 w-3" />+{stats.newThisWeek} this week
+              <ArrowUp className="h-3 w-3" />+{stats.newThisWeek} this week
             </p>
           </div>
 
@@ -328,7 +305,7 @@ export default function UsersManagementPage() {
               </div>
             </div>
             <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
-              <ArrowUpRight className="h-3 w-3" />
+              <ArrowUp className="h-3 w-3" />
               This month
             </p>
           </div>
@@ -373,7 +350,7 @@ export default function UsersManagementPage() {
         {/* Users Table */}
         {usersLoading ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+            <ArrowUpDown className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
             <p className="text-muted-foreground">Loading users...</p>
           </div>
         ) : filteredUsers.length === 0 ? (
@@ -454,27 +431,19 @@ export default function UsersManagementPage() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="h-4 w-4" />
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-card border-border w-48">
-                            <DropdownMenuItem onClick={() => handleViewPurchaseHistory(u)} className="cursor-pointer">
+                            <DropdownMenuItem onClick={() => openPurchaseHistoryModal(u)} className="cursor-pointer">
                               <History className="mr-2 h-4 w-4" />
                               View Purchase History
                             </DropdownMenuItem>
                             {!u.is_admin && (
                               <>
-                                <DropdownMenuItem onClick={() => handleAdjustBalance(u)} className="cursor-pointer">
-                                  <Wallet className="mr-2 h-4 w-4" />
+                                <DropdownMenuItem onClick={() => openAdjustBalanceModal(u)} className="cursor-pointer">
+                                  <DollarSign className="mr-2 h-4 w-4" />
                                   Adjust Balance
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleSendPasswordReset(u)}
-                                  className="cursor-pointer"
-                                  disabled={sendPasswordResetMutation.isPending}
-                                >
-                                  <KeyRound className="mr-2 h-4 w-4" />
-                                  {sendPasswordResetMutation.isPending ? "Sending..." : "Reset Password"}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-border" />
                                 {u.is_blocked ? (
@@ -490,7 +459,7 @@ export default function UsersManagementPage() {
                                     onClick={() => handleBlockUser(u)}
                                     className="cursor-pointer text-destructive focus:text-destructive"
                                   >
-                                    <Ban className="mr-2 h-4 w-4" />
+                                    <ShieldOff className="mr-2 h-4 w-4" />
                                     Block User
                                   </DropdownMenuItem>
                                 )}
@@ -542,27 +511,19 @@ export default function UsersManagementPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-card border-border w-48">
-                          <DropdownMenuItem onClick={() => handleViewPurchaseHistory(u)} className="cursor-pointer">
+                          <DropdownMenuItem onClick={() => openPurchaseHistoryModal(u)} className="cursor-pointer">
                             <History className="mr-2 h-4 w-4" />
                             View Purchase History
                           </DropdownMenuItem>
                           {!u.is_admin && (
                             <>
-                              <DropdownMenuItem onClick={() => handleAdjustBalance(u)} className="cursor-pointer">
-                                <Wallet className="mr-2 h-4 w-4" />
+                              <DropdownMenuItem onClick={() => openAdjustBalanceModal(u)} className="cursor-pointer">
+                                <DollarSign className="mr-2 h-4 w-4" />
                                 Adjust Balance
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleSendPasswordReset(u)}
-                                className="cursor-pointer"
-                                disabled={sendPasswordResetMutation.isPending}
-                              >
-                                <KeyRound className="mr-2 h-4 w-4" />
-                                {sendPasswordResetMutation.isPending ? "Sending..." : "Reset Password"}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-border" />
                               {u.is_blocked ? (
@@ -578,7 +539,7 @@ export default function UsersManagementPage() {
                                   onClick={() => handleBlockUser(u)}
                                   className="cursor-pointer text-destructive focus:text-destructive"
                                 >
-                                  <Ban className="mr-2 h-4 w-4" />
+                                  <ShieldOff className="mr-2 h-4 w-4" />
                                   Block User
                                 </DropdownMenuItem>
                               )}
@@ -612,6 +573,7 @@ export default function UsersManagementPage() {
                         {u.id === topBuyerId && u.total_purchased > 0 && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-yellow-500/10 text-yellow-500">
                             <Trophy className="h-3 w-3" />
+                            Top Buyer
                           </span>
                         )}
                       </div>
@@ -633,14 +595,11 @@ export default function UsersManagementPage() {
         open={isPurchaseHistoryOpen}
         onOpenChange={setIsPurchaseHistoryOpen}
         user={selectedUser}
+        purchases={purchaseHistory}
+        isLoading={isPurchaseHistoryLoading}
       />
 
-      <AdjustBalanceModal
-        open={isAdjustBalanceOpen}
-        onOpenChange={setIsAdjustBalanceOpen}
-        user={selectedUser}
-        onConfirm={confirmAdjustBalance}
-      />
+      <AdjustBalanceModal open={isAdjustBalanceOpen} onOpenChange={setIsAdjustBalanceOpen} user={selectedUser} />
 
       <BlockUserDialog
         open={isBlockDialogOpen}

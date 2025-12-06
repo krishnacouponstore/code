@@ -8,7 +8,7 @@ import {
   blockUser,
   unblockUser,
   deleteUser,
-  sendPasswordResetEmail,
+  getUserPurchaseHistory,
 } from "@/app/actions/users"
 
 export interface AdminUser {
@@ -130,14 +130,21 @@ export function useDeleteUser() {
   })
 }
 
-export function useSendPasswordReset() {
-  return useMutation({
-    mutationFn: async (email: string) => {
-      const result = await sendPasswordResetEmail(email)
+export function useUserPurchaseHistory(userId: string | null) {
+  return useQuery({
+    queryKey: ["user-purchase-history", userId],
+    queryFn: async () => {
+      if (!userId) return []
+      const result = await getUserPurchaseHistory(userId)
       if (!result.success) {
-        throw new Error(result.error || "Failed to send password reset email")
+        throw new Error(result.error || "Failed to fetch purchase history")
       }
-      return result
+      return result.purchases
     },
+    enabled: !!userId,
+    staleTime: 30000,
   })
 }
+
+// Alias for backwards compatibility
+export { useAdminUserStats as useUserStats }
