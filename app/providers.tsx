@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { useState, type ReactNode } from "react"
 import { AuthProvider } from "@/lib/auth-context"
+import { PasswordResetHandler } from "@/components/auth/password-reset-handler"
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -24,7 +25,10 @@ export function Providers({ children }: { children: ReactNode }) {
     <NhostProvider nhost={nhost}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <PasswordResetHandler />
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </NhostProvider>
