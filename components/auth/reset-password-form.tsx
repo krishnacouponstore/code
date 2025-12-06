@@ -4,10 +4,11 @@ import type React from "react"
 
 import { useState, useMemo, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Eye, EyeOff, Lock, Loader2, CheckCircle2 } from "lucide-react"
+import { Eye, EyeOff, Lock, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 import { nhost } from "@/lib/nhost"
 
 // Password strength calculation
@@ -36,25 +37,54 @@ export function ResetPasswordForm() {
   const [redirectCount, setRedirectCount] = useState(3)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isInvalidLink, setIsInvalidLink] = useState(false)
 
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password])
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Wait a moment for Nhost to process any tokens in the URL hash
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
       try {
+        // Check if there's a session (Nhost auto-signs in user from reset link)
         const session = nhost.auth.getSession()
+
         if (session) {
           setIsAuthenticated(true)
         } else {
-          // User might not be authenticated - could be an invalid/expired link
-          setErrors({ general: "Invalid or expired password reset link. Please request a new one." })
+          // Subscribe to auth state changes in case session is still being established
+          const unsubscribe = nhost.auth.onAuthStateChanged((event, session) => {
+            if (session) {
+              setIsAuthenticated(true)
+              setIsCheckingAuth(false)
+            } else if (event === "SIGNED_OUT") {
+              setIsInvalidLink(true)
+              setIsCheckingAuth(false)
+            }
+          })
+
+          // Wait another moment and check again
+          await new Promise((resolve) => setTimeout(resolve, 1500))
+
+          const sessionRetry = nhost.auth.getSession()
+          if (sessionRetry) {
+            setIsAuthenticated(true)
+          } else {
+            // No session - invalid or expired link
+            setIsInvalidLink(true)
+          }
+
+          unsubscribe()
         }
       } catch (error) {
         console.error("Error checking auth:", error)
+        setIsInvalidLink(true)
       } finally {
         setIsCheckingAuth(false)
       }
     }
+
     checkAuth()
   }, [])
 
@@ -116,8 +146,35 @@ export function ResetPasswordForm() {
 
   if (isCheckingAuth) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div className="flex flex-col items-center justify-center py-8 space-y-3">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Verifying reset link...</p>
+      </div>
+    )
+  }
+
+  if (isInvalidLink) {
+    return (
+      <div className="text-center space-y-4">
+        <div className="w-16 h-16 bg-destructive/20 rounded-full flex items-center justify-center mx-auto">
+          <AlertCircle className="w-8 h-8 text-destructive" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">Invalid or Expired Link</h3>
+          <p className="text-sm text-muted-foreground mt-1">This password reset link is invalid or has expired.</p>
+        </div>
+        <div className="pt-2 space-y-2">
+          <Link href="/forgot-password">
+            <Button className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium">
+              Request New Reset Link
+            </Button>
+          </Link>
+          <Link href="/login">
+            <Button variant="outline" className="w-full h-11 rounded-full bg-transparent">
+              Back to Login
+            </Button>
+          </Link>
+        </div>
       </div>
     )
   }
@@ -145,12 +202,6 @@ export function ResetPasswordForm() {
         </div>
       )}
 
-      {!isAuthenticated && !errors.general && (
-        <div className="p-3 text-sm text-chart-4 bg-chart-4/10 border border-chart-4/20 rounded-lg">
-          Please use the password reset link sent to your email.
-        </div>
-      )}
-
       <div className="space-y-2">
         <Label htmlFor="password" className="text-sm font-medium text-foreground">
           New Password
@@ -168,7 +219,7 @@ export function ResetPasswordForm() {
             }}
             className={`pl-10 pr-10 ${inputClass} ${errors.password ? "border-destructive" : ""}`}
             required
-            disabled={isLoading || !isAuthenticated}
+            disabled={isLoading}
             minLength={8}
             autoComplete="off"
           />
@@ -228,7 +279,7 @@ export function ResetPasswordForm() {
             }}
             className={`pl-10 pr-10 ${inputClass} ${errors.confirmPassword ? "border-destructive" : ""}`}
             required
-            disabled={isLoading || !isAuthenticated}
+            disabled={isLoading}
             autoComplete="off"
           />
           <button
@@ -247,7 +298,7 @@ export function ResetPasswordForm() {
       <Button
         type="submit"
         className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium shadow-sm"
-        disabled={isLoading || !isAuthenticated}
+        disabled={isLoading}
       >
         {isLoading ? (
           <>

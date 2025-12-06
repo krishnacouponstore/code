@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Mail, Loader2, CheckCircle2, Clock, Lock, AlertCircle, MessageCircle } from "lucide-react"
-import { nhost } from "@/lib/nhost"
+import { Mail, Loader2, CheckCircle2, Clock, Lock, AlertCircle } from "lucide-react"
+
+import { sendPasswordResetEmail } from "@/app/actions/users"
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
@@ -45,17 +46,17 @@ export function ForgotPasswordForm() {
     setIsLoading(true)
 
     try {
-      const { error: magicLinkError } = await nhost.auth.signIn({
-        email,
-      })
+      const result = await sendPasswordResetEmail(email)
 
-      if (magicLinkError) {
-        if (magicLinkError.message?.includes("user-not-found") || magicLinkError.message?.includes("invalid")) {
-          // Still show success for security (don't reveal if email exists)
+      if (!result.success) {
+        // Still show success for security (don't reveal if email exists)
+        // Unless it's a specific error we want to show
+        if (result.error?.includes("rate") || result.error?.includes("limit")) {
+          setError("Too many requests. Please try again later.")
+        } else {
+          // Show success anyway for security
           setIsSubmitted(true)
           setCountdown(60)
-        } else {
-          setError(magicLinkError.message || "Failed to send magic link. Please try again.")
         }
       } else {
         setIsSubmitted(true)
@@ -74,12 +75,10 @@ export function ForgotPasswordForm() {
     setError("")
 
     try {
-      const { error: magicLinkError } = await nhost.auth.signIn({
-        email,
-      })
+      const result = await sendPasswordResetEmail(email)
 
-      if (magicLinkError && !magicLinkError.message?.includes("user-not-found")) {
-        setError("Failed to resend. Please try again.")
+      if (!result.success && (result.error?.includes("rate") || result.error?.includes("limit"))) {
+        setError("Too many requests. Please try again later.")
       } else {
         setCountdown(60)
       }
@@ -97,9 +96,9 @@ export function ForgotPasswordForm() {
           <CheckCircle2 className="w-8 h-8 text-primary" />
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Magic Link Sent!</h3>
+          <h3 className="text-lg font-semibold text-foreground">Reset Link Sent!</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            {"We've sent a secure login link to "}
+            {"We've sent a password reset link to "}
             <strong className="text-foreground">{email}</strong>
           </p>
         </div>
@@ -134,30 +133,9 @@ export function ForgotPasswordForm() {
           <p className="text-xs font-medium text-foreground mb-1">Next Steps:</p>
           <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
             <li>Check your email inbox (and spam folder)</li>
-            <li>Click the magic link to access your account</li>
+            <li>Click the reset link to create a new password</li>
+            <li>Log in with your new password</li>
           </ol>
-        </div>
-
-        {/* Simplified password reset message */}
-        <div className="text-left p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-          <div className="flex items-start gap-2">
-            <MessageCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Need to reset your password?</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Contact our support on Telegram{" "}
-                <a
-                  href="https://t.me/Krishna_Arora_New"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline font-medium"
-                >
-                  @Krishna_Arora_New
-                </a>{" "}
-                and we'll help you reset your password.
-              </p>
-            </div>
-          </div>
         </div>
 
         <div className="pt-2">
@@ -171,7 +149,7 @@ export function ForgotPasswordForm() {
                 disabled={isLoading}
                 className="text-primary font-medium hover:underline disabled:opacity-50"
               >
-                {isLoading ? "Sending..." : "Resend Magic Link"}
+                {isLoading ? "Sending..." : "Resend Reset Link"}
               </button>
             )}
           </p>
@@ -221,16 +199,16 @@ export function ForgotPasswordForm() {
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Sending Magic Link...
+            Sending Reset Link...
           </>
         ) : (
-          "Send Magic Link"
+          "Send Reset Link"
         )}
       </Button>
 
       {/* Info text */}
       <p className="text-xs text-center text-muted-foreground">
-        {"We'll send you a secure login link via email (valid for 1 hour)"}
+        {"We'll send you a password reset link via email (valid for 1 hour)"}
       </p>
     </form>
   )
