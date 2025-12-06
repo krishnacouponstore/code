@@ -13,6 +13,7 @@ import Link from "next/link"
 import { useSignUpEmailPassword } from "@nhost/nextjs"
 import { createUserProfile } from "@/app/actions/create-user-profile"
 import { useQueryClient } from "@tanstack/react-query"
+import { useAuth } from "@/lib/auth-context"
 
 // Password strength calculation
 const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
@@ -45,6 +46,7 @@ export function SignupForm() {
   const { signUpEmailPassword, isLoading, error: nhostError } = useSignUpEmailPassword()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { user, isAuthenticated } = useAuth()
 
   const passwordStrength = useMemo(() => getPasswordStrength(formData.password), [formData.password])
 
@@ -98,6 +100,11 @@ export function SignupForm() {
 
     if (!validateForm()) return
 
+    if (isAuthenticated && user) {
+      router.replace("/dashboard")
+      return
+    }
+
     try {
       const result = await signUpEmailPassword(formData.email, formData.password, {
         displayName: formData.fullName,
@@ -107,32 +114,58 @@ export function SignupForm() {
       })
 
       if (result.isSuccess && result.user) {
-        const profileResult = await createUserProfile(result.user.id)
+        try {
+          const profileResult = await createUserProfile(result.user.id)
 
-        if (!profileResult.success) {
-          setErrors({
-            general: `Account created but profile setup failed: ${profileResult.error}. Please contact support.`,
-          })
-          return
+          if (!profileResult.success) {
+            console.error("[v0] Profile creation failed:", profileResult.error)
+            setIsSuccess(true)
+            setTimeout(() => {
+              router.replace("/dashboard")
+            }, 1500)
+            return
+          }
+
+          queryClient.invalidateQueries({ queryKey: ["userProfile"] })
+          setIsSuccess(true)
+          setTimeout(() => {
+            router.replace("/dashboard")
+          }, 1500)
+        } catch (profileError) {
+          console.error("[v0] Profile creation error:", profileError)
+          setIsSuccess(true)
+          setTimeout(() => {
+            router.replace("/dashboard")
+          }, 1500)
         }
-
-        queryClient.invalidateQueries({ queryKey: ["userProfile"] })
-        setIsSuccess(true)
-        setTimeout(() => {
-          router.replace("/dashboard")
-        }, 1500)
       } else if (result.needsEmailVerification && result.user) {
-        await createUserProfile(result.user.id)
+        try {
+          await createUserProfile(result.user.id)
+        } catch (profileError) {
+          console.error("[v0] Profile creation error during email verification flow:", profileError)
+        }
 
         setIsSuccess(true)
         setTimeout(() => {
           router.replace("/login?message=Please check your email to verify your account")
         }, 1500)
+      } else if (result.isError) {
+        const errorMsg = result.error?.message || "Something went wrong. Please try again."
+        if (errorMsg.toLowerCase().includes("already") || errorMsg.toLowerCase().includes("exists")) {
+          setErrors({ general: "An account with this email already exists. Please sign in instead." })
+        } else {
+          setErrors({ general: errorMsg })
+        }
       } else {
         setErrors({ general: result.error?.message || "Something went wrong. Please try again." })
       }
     } catch (err) {
-      setErrors({ general: "Something went wrong. Please try again." })
+      console.error("[v0] Signup error:", err)
+      if (err instanceof Error && err.message.toLowerCase().includes("already signed in")) {
+        router.replace("/dashboard")
+        return
+      }
+      setErrors({ general: err instanceof Error ? err.message : "Something went wrong. Please try again." })
     }
   }
 

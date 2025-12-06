@@ -13,10 +13,10 @@ interface UserPurchaseHistoryModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: AdminUser | null
-  purchases: PurchaseHistoryItem[]
+  purchases?: PurchaseHistoryItem[]
 }
 
-export function UserPurchaseHistoryModal({ open, onOpenChange, user, purchases }: UserPurchaseHistoryModalProps) {
+export function UserPurchaseHistoryModal({ open, onOpenChange, user, purchases = [] }: UserPurchaseHistoryModalProps) {
   const { toast } = useToast()
   const [copiedId, setCopiedId] = useState<string | null>(null)
 

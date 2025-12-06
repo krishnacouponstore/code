@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff, Lock, Loader2, CheckCircle2 } from "lucide-react"
+import { nhost } from "@/lib/nhost"
 
 // Password strength calculation
 const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
@@ -33,8 +34,29 @@ export function ResetPasswordForm() {
   const [isSuccess, setIsSuccess] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [redirectCount, setRedirectCount] = useState(3)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password])
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const session = nhost.auth.getSession()
+        if (session) {
+          setIsAuthenticated(true)
+        } else {
+          // User might not be authenticated - could be an invalid/expired link
+          setErrors({ general: "Invalid or expired password reset link. Please request a new one." })
+        }
+      } catch (error) {
+        console.error("Error checking auth:", error)
+      } finally {
+        setIsCheckingAuth(false)
+      }
+    }
+    checkAuth()
+  }, [])
 
   useEffect(() => {
     if (isSuccess && redirectCount > 0) {
@@ -72,11 +94,18 @@ export function ResetPasswordForm() {
     setIsLoading(true)
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      console.log("Password reset with new password")
+      const { error } = await nhost.auth.changePassword({ newPassword: password })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      // Sign out after password change so user can log in with new password
+      await nhost.auth.signOut()
+
       setIsSuccess(true)
-    } catch {
-      setErrors({ general: "Something went wrong. Please try again." })
+    } catch (error: any) {
+      setErrors({ general: error.message || "Something went wrong. Please try again." })
     } finally {
       setIsLoading(false)
     }
@@ -84,6 +113,14 @@ export function ResetPasswordForm() {
 
   const inputClass =
     "h-11 bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
+
+  if (isCheckingAuth) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   if (isSuccess) {
     return (
@@ -108,6 +145,12 @@ export function ResetPasswordForm() {
         </div>
       )}
 
+      {!isAuthenticated && !errors.general && (
+        <div className="p-3 text-sm text-chart-4 bg-chart-4/10 border border-chart-4/20 rounded-lg">
+          Please use the password reset link sent to your email.
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="password" className="text-sm font-medium text-foreground">
           New Password
@@ -125,7 +168,7 @@ export function ResetPasswordForm() {
             }}
             className={`pl-10 pr-10 ${inputClass} ${errors.password ? "border-destructive" : ""}`}
             required
-            disabled={isLoading}
+            disabled={isLoading || !isAuthenticated}
             minLength={8}
             autoComplete="off"
           />
@@ -185,7 +228,7 @@ export function ResetPasswordForm() {
             }}
             className={`pl-10 pr-10 ${inputClass} ${errors.confirmPassword ? "border-destructive" : ""}`}
             required
-            disabled={isLoading}
+            disabled={isLoading || !isAuthenticated}
             autoComplete="off"
           />
           <button
@@ -204,7 +247,7 @@ export function ResetPasswordForm() {
       <Button
         type="submit"
         className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium shadow-sm"
-        disabled={isLoading}
+        disabled={isLoading || !isAuthenticated}
       >
         {isLoading ? (
           <>

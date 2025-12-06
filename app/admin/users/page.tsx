@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AdminHeader } from "@/components/admin/admin-header"
@@ -21,7 +21,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { mockAdminUsers, mockUserStats, getMockUserPurchases, type AdminUser } from "@/lib/mock-data"
+import {
+  useAdminUsers,
+  useAdminUserStats,
+  useAdjustBalance,
+  useBlockUser,
+  useUnblockUser,
+  useDeleteUser,
+  useSendPasswordReset,
+  type AdminUser,
+} from "@/hooks/use-admin-users"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import {
   Users,
@@ -37,6 +46,8 @@ import {
   Shield,
   Trophy,
   ArrowUpRight,
+  Loader2,
+  KeyRound,
 } from "lucide-react"
 
 export default function UsersManagementPage() {
@@ -44,7 +55,15 @@ export default function UsersManagementPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const [users, setUsers] = useState<AdminUser[]>(mockAdminUsers)
+  const { data: users = [], isLoading: usersLoading } = useAdminUsers()
+  const { data: statsData } = useAdminUserStats()
+
+  const adjustBalanceMutation = useAdjustBalance()
+  const blockUserMutation = useBlockUser()
+  const unblockUserMutation = useUnblockUser()
+  const deleteUserMutation = useDeleteUser()
+  const sendPasswordResetMutation = useSendPasswordReset()
+
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "blocked">("all")
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "spent" | "purchases">("newest")
@@ -57,25 +76,15 @@ export default function UsersManagementPage() {
   const [isUnblockDialogOpen, setIsUnblockDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
-  useEffect(() => {
-    if (isLoggingOut) return
-    if (!authLoading && (!user || !user.is_admin)) {
-      router.replace("/login")
-    }
-  }, [user, authLoading, router, isLoggingOut])
-
-  // Calculate stats from actual users
   const stats = useMemo(() => {
-    const activeUsers = users.filter((u) => !u.is_blocked).length
-    const blockedUsers = users.filter((u) => u.is_blocked).length
     return {
-      total: mockUserStats.total_users,
-      active: mockUserStats.active_users,
-      blocked: mockUserStats.blocked_users,
-      newThisMonth: mockUserStats.new_this_month,
-      newThisWeek: mockUserStats.new_this_week,
+      total: statsData?.total_users || 0,
+      active: statsData?.active_users || 0,
+      blocked: statsData?.blocked_users || 0,
+      newThisMonth: statsData?.new_this_month || 0,
+      newThisWeek: statsData?.new_this_week || 0,
     }
-  }, [users])
+  }, [statsData])
 
   // Find top buyer
   const topBuyerId = useMemo(() => {
@@ -124,7 +133,7 @@ export default function UsersManagementPage() {
     return result
   }, [users, searchQuery, statusFilter, sortBy])
 
-  if (authLoading || !user?.is_admin) {
+  if (authLoading || !user?.is_admin || isLoggingOut) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -157,56 +166,97 @@ export default function UsersManagementPage() {
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmBlock = () => {
+  const confirmBlock = async () => {
     if (selectedUser) {
-      setUsers(users.map((u) => (u.id === selectedUser.id ? { ...u, is_blocked: true } : u)))
-      toast({
-        title: "User blocked",
-        description: `${selectedUser.full_name} has been blocked.`,
-      })
-      setIsBlockDialogOpen(false)
+      try {
+        await blockUserMutation.mutateAsync(selectedUser.id)
+        toast({
+          title: "User blocked",
+          description: `${selectedUser.full_name} has been blocked.`,
+        })
+        setIsBlockDialogOpen(false)
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to block user",
+          variant: "destructive",
+        })
+      }
     }
   }
 
-  const confirmUnblock = () => {
+  const confirmUnblock = async () => {
     if (selectedUser) {
-      setUsers(users.map((u) => (u.id === selectedUser.id ? { ...u, is_blocked: false } : u)))
-      toast({
-        title: "User unblocked",
-        description: `${selectedUser.full_name} can now login and make purchases.`,
-      })
-      setIsUnblockDialogOpen(false)
+      try {
+        await unblockUserMutation.mutateAsync(selectedUser.id)
+        toast({
+          title: "User unblocked",
+          description: `${selectedUser.full_name} can now login and make purchases.`,
+        })
+        setIsUnblockDialogOpen(false)
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to unblock user",
+          variant: "destructive",
+        })
+      }
     }
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedUser) {
-      setUsers(users.filter((u) => u.id !== selectedUser.id))
+      try {
+        await deleteUserMutation.mutateAsync(selectedUser.id)
+        toast({
+          title: "User deleted",
+          description: `${selectedUser.full_name} has been permanently deleted.`,
+          variant: "destructive",
+        })
+        setIsDeleteDialogOpen(false)
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to delete user",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
+  const confirmAdjustBalance = async (userId: string, amount: number, type: "add" | "deduct", reason: string) => {
+    try {
+      await adjustBalanceMutation.mutateAsync({ userId, amount, type, reason })
       toast({
-        title: "User deleted",
-        description: `${selectedUser.full_name} has been permanently deleted.`,
+        title: "Balance adjusted",
+        description: `${type === "add" ? "Added" : "Deducted"} ${formatCurrency(amount)} ${
+          type === "add" ? "to" : "from"
+        } ${selectedUser?.full_name}'s wallet.`,
+      })
+      setIsAdjustBalanceOpen(false)
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to adjust balance",
         variant: "destructive",
       })
     }
   }
 
-  const confirmAdjustBalance = (userId: string, amount: number, type: "add" | "deduct", reason: string) => {
-    setUsers(
-      users.map((u) =>
-        u.id === userId
-          ? {
-              ...u,
-              wallet_balance: type === "add" ? u.wallet_balance + amount : Math.max(0, u.wallet_balance - amount),
-            }
-          : u,
-      ),
-    )
-    toast({
-      title: "Balance adjusted",
-      description: `${type === "add" ? "Added" : "Deducted"} ${formatCurrency(amount)} ${
-        type === "add" ? "to" : "from"
-      } ${selectedUser?.full_name}'s wallet.`,
-    })
+  const handleSendPasswordReset = async (u: AdminUser) => {
+    try {
+      await sendPasswordResetMutation.mutateAsync(u.email)
+      toast({
+        title: "Password Reset Email Sent",
+        description: `A password reset link has been sent to ${u.email}`,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send password reset email",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -248,7 +298,7 @@ export default function UsersManagementPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {Math.round((stats.active / stats.total) * 100)}% of total
+              {stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total
             </p>
           </div>
 
@@ -263,7 +313,7 @@ export default function UsersManagementPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {Math.round((stats.blocked / stats.total) * 100)}% of total
+              {stats.total > 0 ? Math.round((stats.blocked / stats.total) * 100) : 0}% of total
             </p>
           </div>
 
@@ -279,7 +329,7 @@ export default function UsersManagementPage() {
             </div>
             <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
               <ArrowUpRight className="h-3 w-3" />
-              +15% from last month
+              This month
             </p>
           </div>
         </div>
@@ -321,7 +371,12 @@ export default function UsersManagementPage() {
         </div>
 
         {/* Users Table */}
-        {filteredUsers.length === 0 ? (
+        {usersLoading ? (
+          <div className="bg-card border border-border rounded-xl p-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading users...</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">No Users Found</h3>
@@ -413,6 +468,14 @@ export default function UsersManagementPage() {
                                   <Wallet className="mr-2 h-4 w-4" />
                                   Adjust Balance
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleSendPasswordReset(u)}
+                                  className="cursor-pointer"
+                                  disabled={sendPasswordResetMutation.isPending}
+                                >
+                                  <KeyRound className="mr-2 h-4 w-4" />
+                                  {sendPasswordResetMutation.isPending ? "Sending..." : "Reset Password"}
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-border" />
                                 {u.is_blocked ? (
                                   <DropdownMenuItem
@@ -460,11 +523,7 @@ export default function UsersManagementPage() {
                         {u.is_admin && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-yellow-500/10 text-yellow-500">
                             <Shield className="h-3 w-3" />
-                          </span>
-                        )}
-                        {u.id === topBuyerId && u.total_purchased > 0 && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-yellow-500/10 text-yellow-500">
-                            <Trophy className="h-3 w-3" />
+                            Admin
                           </span>
                         )}
                       </p>
@@ -472,11 +531,11 @@ export default function UsersManagementPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       {u.is_blocked ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
                           Blocked
                         </span>
                       ) : (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
                           Active
                         </span>
                       )}
@@ -489,7 +548,7 @@ export default function UsersManagementPage() {
                         <DropdownMenuContent align="end" className="bg-card border-border w-48">
                           <DropdownMenuItem onClick={() => handleViewPurchaseHistory(u)} className="cursor-pointer">
                             <History className="mr-2 h-4 w-4" />
-                            View History
+                            View Purchase History
                           </DropdownMenuItem>
                           {!u.is_admin && (
                             <>
@@ -497,30 +556,38 @@ export default function UsersManagementPage() {
                                 <Wallet className="mr-2 h-4 w-4" />
                                 Adjust Balance
                               </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleSendPasswordReset(u)}
+                                className="cursor-pointer"
+                                disabled={sendPasswordResetMutation.isPending}
+                              >
+                                <KeyRound className="mr-2 h-4 w-4" />
+                                {sendPasswordResetMutation.isPending ? "Sending..." : "Reset Password"}
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-border" />
                               {u.is_blocked ? (
                                 <DropdownMenuItem
                                   onClick={() => handleUnblockUser(u)}
-                                  className="cursor-pointer text-green-500"
+                                  className="cursor-pointer text-green-500 focus:text-green-500"
                                 >
                                   <UserCheck className="mr-2 h-4 w-4" />
-                                  Unblock
+                                  Unblock User
                                 </DropdownMenuItem>
                               ) : (
                                 <DropdownMenuItem
                                   onClick={() => handleBlockUser(u)}
-                                  className="cursor-pointer text-destructive"
+                                  className="cursor-pointer text-destructive focus:text-destructive"
                                 >
                                   <Ban className="mr-2 h-4 w-4" />
-                                  Block
+                                  Block User
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
                                 onClick={() => handleDeleteUser(u)}
-                                className="cursor-pointer text-destructive"
+                                className="cursor-pointer text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
+                                Delete User
                               </DropdownMenuItem>
                             </>
                           )}
@@ -529,31 +596,33 @@ export default function UsersManagementPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">Wallet</p>
-                      <p className="text-foreground font-medium">{formatCurrency(u.wallet_balance)}</p>
+                      <p className="font-medium text-foreground">{formatCurrency(u.wallet_balance)}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Total Spent</p>
-                      <p className="text-foreground">{formatCurrency(u.total_spent)}</p>
+                      <p className="font-medium text-foreground">{formatCurrency(u.total_spent)}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Purchases</p>
-                      <p className="text-foreground">{u.total_purchased} coupons</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-foreground">{u.total_purchased}</span>
+                        {u.id === topBuyerId && u.total_purchased > 0 && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-yellow-500/10 text-yellow-500">
+                            <Trophy className="h-3 w-3" />
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Joined</p>
-                      <p className="text-foreground">{formatDate(u.created_at)}</p>
+                      <p className="font-medium text-foreground">{formatDate(u.created_at)}</p>
                     </div>
                   </div>
                 </div>
               ))}
-            </div>
-
-            {/* Pagination Info */}
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              Showing {filteredUsers.length} of {users.length} users
             </div>
           </>
         )}
@@ -564,7 +633,6 @@ export default function UsersManagementPage() {
         open={isPurchaseHistoryOpen}
         onOpenChange={setIsPurchaseHistoryOpen}
         user={selectedUser}
-        purchases={selectedUser ? getMockUserPurchases(selectedUser.id) : []}
       />
 
       <AdjustBalanceModal

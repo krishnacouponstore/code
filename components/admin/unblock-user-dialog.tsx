@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,18 +11,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import type { AdminUser } from "@/lib/mock-data"
-import { UserCheck } from "lucide-react"
+import type { AdminUser } from "@/hooks/use-admin-users"
+import { UserCheck, Loader2 } from "lucide-react"
 
 interface UnblockUserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: AdminUser | null
-  onConfirm: () => void
+  onConfirm: () => Promise<void>
 }
 
 export function UnblockUserDialog({ open, onOpenChange, user, onConfirm }: UnblockUserDialogProps) {
+  const [isLoading, setIsLoading] = useState(false)
+
   if (!user) return null
+
+  const handleConfirm = async () => {
+    setIsLoading(true)
+    try {
+      await onConfirm()
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -40,9 +52,25 @@ export function UnblockUserDialog({ open, onOpenChange, user, onConfirm }: Unblo
         </AlertDialogHeader>
 
         <AlertDialogFooter>
-          <AlertDialogCancel className="rounded-full border-border">Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="rounded-full bg-green-600 text-white hover:bg-green-600/90">
-            Unblock User
+          <AlertDialogCancel className="rounded-full border-border" disabled={isLoading}>
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault()
+              handleConfirm()
+            }}
+            disabled={isLoading}
+            className="rounded-full bg-green-600 text-white hover:bg-green-600/90"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Unblocking...
+              </>
+            ) : (
+              "Unblock User"
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

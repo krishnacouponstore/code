@@ -13,14 +13,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { formatCurrency } from "@/lib/utils"
-import type { AdminUser } from "@/lib/mock-data"
+import type { AdminUser } from "@/hooks/use-admin-users"
 import { AlertOctagon, Loader2 } from "lucide-react"
 
 interface DeleteUserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: AdminUser | null
-  onConfirm: () => void
+  onConfirm: () => Promise<void>
 }
 
 export function DeleteUserDialog({ open, onOpenChange, user, onConfirm }: DeleteUserDialogProps) {
@@ -42,10 +42,11 @@ export function DeleteUserDialog({ open, onOpenChange, user, onConfirm }: Delete
   const handleDelete = async () => {
     if (!canDelete) return
     setIsDeleting(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    onConfirm()
-    setIsDeleting(false)
-    onOpenChange(false)
+    try {
+      await onConfirm()
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (

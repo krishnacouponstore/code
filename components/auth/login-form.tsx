@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Mail, Lock, Loader2, Check } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, Loader2, Check, ShieldX } from "lucide-react"
 import Link from "next/link"
-import { useSignInEmailPassword } from "@nhost/nextjs"
+import { useSignInEmailPassword, useSignOut } from "@nhost/nextjs"
 import { GraphQLClient, gql } from "graphql-request"
 
 const GRAPHQL_ENDPOINT = "https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql"
@@ -30,6 +30,14 @@ const CHECK_ADMIN_ROLE = gql`
   }
 `
 
+const CHECK_USER_BLOCKED = gql`
+  query CheckUserBlocked($userId: uuid!) {
+    user_profiles_by_pk(id: $userId) {
+      is_blocked
+    }
+  }
+`
+
 interface LoginFormProps {
   redirectTo?: string
 }
@@ -40,9 +48,11 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [isBlocked, setIsBlocked] = useState(false)
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({})
 
   const { signInEmailPassword, isLoading, error: nhostError } = useSignInEmailPassword()
+  const { signOut } = useSignOut()
   const router = useRouter()
 
   const validateForm = () => {
@@ -70,11 +80,25 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
     if (!validateForm()) return
 
     setErrors({})
+    setIsBlocked(false)
 
     try {
       const result = await signInEmailPassword(email, password)
 
       if (result.isSuccess && result.user) {
+        try {
+          const blockData: { user_profiles_by_pk: { is_blocked: boolean } | null } = await adminClient.request(
+            CHECK_USER_BLOCKED,
+            { userId: result.user.id },
+          )
+
+          if (blockData.user_profiles_by_pk?.is_blocked) {
+            setIsBlocked(true)
+            await signOut()
+            return
+          }
+        } catch {}
+
         setIsSuccess(true)
 
         let isAdmin = false
@@ -84,7 +108,6 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
           })
           isAdmin = data.authUserRoles && data.authUserRoles.length > 0
         } catch {
-          // If role check fails, default to non-admin
           isAdmin = false
         }
 
@@ -104,7 +127,6 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       } else if (result.error) {
         const errorMessage = result.error.message || "Invalid email or password. Please try again."
 
-        // Check for specific Nhost error messages
         if (errorMessage.toLowerCase().includes("unverified")) {
           setErrors({
             general: "Please verify your email address before logging in. Check your inbox for a verification link.",
@@ -122,11 +144,27 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
     }
   }
 
-  const displayError = errors.general || (nhostError?.message && !isSuccess ? nhostError.message : null)
+  const displayError = errors.general || (nhostError?.message && !isSuccess && !isBlocked ? nhostError.message : null)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {displayError && (
+      {isBlocked && (
+        <div className="p-4 text-sm bg-destructive/10 border border-destructive/30 rounded-lg">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-destructive/20 flex items-center justify-center">
+              <ShieldX className="w-5 h-5 text-destructive" />
+            </div>
+            <div>
+              <p className="font-semibold text-destructive">Account Blocked</p>
+              <p className="text-muted-foreground text-xs mt-0.5">
+                Your account has been suspended. Please contact support for assistance.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {displayError && !isBlocked && (
         <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
           {displayError}
         </div>

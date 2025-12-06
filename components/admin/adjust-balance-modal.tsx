@@ -8,14 +8,14 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { formatCurrency } from "@/lib/utils"
-import type { AdminUser } from "@/lib/mock-data"
+import type { AdminUser } from "@/hooks/use-admin-users"
 import { Plus, Minus, ArrowRight, Loader2 } from "lucide-react"
 
 interface AdjustBalanceModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: AdminUser | null
-  onConfirm: (userId: string, amount: number, type: "add" | "deduct", reason: string) => void
+  onConfirm: (userId: string, amount: number, type: "add" | "deduct", reason: string) => Promise<void>
 }
 
 export function AdjustBalanceModal({ open, onOpenChange, user, onConfirm }: AdjustBalanceModalProps) {
@@ -43,11 +43,11 @@ export function AdjustBalanceModal({ open, onOpenChange, user, onConfirm }: Adju
   const handleSubmit = async () => {
     if (!canSubmit) return
     setIsSubmitting(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    onConfirm(user.id, amountNum, actionType, reason)
-    setIsSubmitting(false)
-    onOpenChange(false)
+    try {
+      await onConfirm(user.id, amountNum, actionType, reason)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
