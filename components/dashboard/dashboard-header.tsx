@@ -14,6 +14,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { PublicHeader } from "@/components/shared/public-header"
+import { AdminHeader } from "@/components/admin/admin-header"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useState } from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
@@ -30,13 +31,17 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
   const [isOpen, setIsOpen] = useState(false)
   const [moreExpanded, setMoreExpanded] = useState(false)
 
+  const handleLogout = () => {
+    logout()
+    router.push("/")
+  }
+
   if (!isAuthenticated || !user) {
     return <PublicHeader />
   }
 
-  const handleLogout = () => {
-    logout()
-    router.push("/home")
+  if (user.is_admin) {
+    return <AdminHeader />
   }
 
   const navItems = [

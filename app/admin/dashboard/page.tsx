@@ -7,7 +7,6 @@ import { AdminHeader } from "@/components/admin/admin-header"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Loader2,
@@ -17,12 +16,12 @@ import {
   IndianRupee,
   ShoppingCart,
   Ticket,
-  Calculator,
   AlertTriangle,
   Plus,
   Upload,
   BarChart3,
   ExternalLink,
+  Calendar,
 } from "lucide-react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
@@ -37,11 +36,15 @@ import { SlotFormModal } from "@/components/admin/slot-form-modal"
 import { UploadCodesModal } from "@/components/admin/upload-codes-modal"
 import { useSlots, type Slot } from "@/hooks/use-slots"
 import { useQueryClient } from "@tanstack/react-query"
+import { Card, CardContent } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+
+import type { DateRange } from "@/app/actions/dashboard"
 
 export default function AdminDashboardPage() {
   const { user, isAuthenticated, isLoading: authLoading, isLoggingOut } = useAuth()
   const router = useRouter()
-  const [dateRange, setDateRange] = useState("today")
+  const [dateRange, setDateRange] = useState<DateRange>("today")
   const queryClient = useQueryClient()
 
   const [selectedSlotForEdit, setSelectedSlotForEdit] = useState<Slot | null>(null)
@@ -49,10 +52,10 @@ export default function AdminDashboardPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
 
-  const { data: topStats, isLoading: topStatsLoading } = useDashboardTopStats()
-  const { data: middleStats, isLoading: middleStatsLoading } = useDashboardMiddleStats()
+  const { data: topStats, isLoading: topStatsLoading } = useDashboardTopStats(dateRange)
+  const { data: middleStats, isLoading: middleStatsLoading } = useDashboardMiddleStats(dateRange)
   const { data: recentOrders, isLoading: recentOrdersLoading } = useRecentOrders()
-  const { data: slotPerformance, isLoading: slotPerformanceLoading } = useSlotPerformance()
+  const { data: slotPerformance, isLoading: slotPerformanceLoading } = useSlotPerformance(dateRange)
   const { data: lowStockAlerts, isLoading: lowStockLoading } = useLowStockAlerts()
 
   const { data: allSlots } = useSlots()
@@ -103,6 +106,21 @@ export default function AdminDashboardPage() {
     queryClient.invalidateQueries({ queryKey: ["admin-slots"] })
   }
 
+  const getDateRangeLabel = () => {
+    switch (dateRange) {
+      case "today":
+        return "Today"
+      case "7days":
+        return "Last 7 days"
+      case "30days":
+        return "Last 30 days"
+      case "all":
+        return "All time"
+      default:
+        return "Today"
+    }
+  }
+
   if (authLoading || !user || isLoggingOut) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -137,154 +155,200 @@ export default function AdminDashboardPage() {
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Today's Revenue */}
-          <div className="bg-card border border-border rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <IndianRupee className="h-5 w-5 text-primary" />
-              </div>
+          {/* Revenue Card */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
               {topStatsLoading ? (
-                <Skeleton className="h-6 w-16" />
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
               ) : (
-                <span
-                  className={`text-xs font-medium px-2 py-1 rounded-full ${
-                    (topStats?.revenueChange || 0) >= 0
-                      ? "text-green-500 bg-green-500/10"
-                      : "text-red-500 bg-red-500/10"
-                  }`}
-                >
-                  {(topStats?.revenueChange || 0) >= 0 ? "+" : ""}
-                  {topStats?.revenueChange || 0}%
-                </span>
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <IndianRupee className="h-6 w-6 text-primary" />
+                    </div>
+                    {topStats?.revenueChange !== 0 && (
+                      <span
+                        className={`text-sm font-medium ${topStats?.revenueChange && topStats.revenueChange > 0 ? "text-green-500" : "text-red-500"}`}
+                      >
+                        {topStats?.revenueChange && topStats.revenueChange > 0 ? "+" : ""}
+                        {topStats?.revenueChange}%
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl font-bold text-foreground">
+                    ₹{(topStats?.revenue || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Revenue {getDateRangeLabel()}</p>
+                  <p className="text-xs text-primary mt-1">{topStats?.orders || 0} orders</p>
+                </>
               )}
-            </div>
-            {topStatsLoading ? (
-              <Skeleton className="h-8 w-32 mb-2" />
-            ) : (
-              <p className="text-2xl font-bold text-foreground">{formatCurrency(topStats?.revenueToday || 0)}</p>
-            )}
-            <p className="text-sm text-muted-foreground">Revenue Today</p>
-            {topStatsLoading ? (
-              <Skeleton className="h-4 w-20 mt-1" />
-            ) : (
-              <p className="text-xs text-muted-foreground mt-1">{topStats?.ordersToday || 0} orders</p>
-            )}
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Total Revenue */}
-          <div className="bg-card border border-border rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-            </div>
-            {topStatsLoading ? (
-              <Skeleton className="h-8 w-32 mb-2" />
-            ) : (
-              <p className="text-2xl font-bold text-foreground">{formatCurrency(topStats?.totalRevenue || 0)}</p>
-            )}
-            <p className="text-sm text-muted-foreground">Total Revenue</p>
-            <p className="text-xs text-muted-foreground mt-1">All time</p>
-          </div>
-
-          {/* Active Users */}
-          <div className="bg-card border border-border rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Users className="h-5 w-5 text-primary" />
-              </div>
+          {/* Total Revenue Card - Always All Time */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
               {topStatsLoading ? (
-                <Skeleton className="h-6 w-24" />
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
               ) : (
-                <span className="text-xs font-medium text-green-500 bg-green-500/10 px-2 py-1 rounded-full">
-                  +{topStats?.newUsersThisWeek || 0} this week
-                </span>
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <TrendingUp className="h-6 w-6 text-primary" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-bold text-foreground">
+                    ₹{(topStats?.totalRevenue || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Total Revenue</p>
+                  <p className="text-xs text-primary mt-1">All time</p>
+                </>
               )}
-            </div>
-            {topStatsLoading ? (
-              <Skeleton className="h-8 w-20 mb-2" />
-            ) : (
-              <p className="text-2xl font-bold text-foreground">{topStats?.totalUsers || 0}</p>
-            )}
-            <p className="text-sm text-muted-foreground">Total Users</p>
-            {topStatsLoading ? (
-              <Skeleton className="h-4 w-20 mt-1" />
-            ) : (
-              <p className="text-xs text-muted-foreground mt-1">{topStats?.blockedUsers || 0} blocked</p>
-            )}
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Available Stock */}
-          <div className="bg-card border border-border rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Package className="h-5 w-5 text-primary" />
-              </div>
-              {!topStatsLoading && (topStats?.totalStock || 0) < 1000 && (
-                <Badge variant="destructive" className="text-xs">
-                  Low Stock
-                </Badge>
+          {/* Total Users Card */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
+              {topStatsLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Users className="h-6 w-6 text-primary" />
+                    </div>
+                    {topStats?.newUsersInRange ? (
+                      <span className="text-sm font-medium text-green-500">
+                        +{topStats.newUsersInRange} {getDateRangeLabel().toLowerCase()}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="text-2xl font-bold text-foreground">{topStats?.totalUsers || 0}</div>
+                  <p className="text-sm text-muted-foreground">Total Users</p>
+                  <p className="text-xs text-primary mt-1">{topStats?.blockedUsers || 0} blocked</p>
+                </>
               )}
-            </div>
-            {topStatsLoading ? (
-              <Skeleton className="h-8 w-24 mb-2" />
-            ) : (
-              <p className="text-2xl font-bold text-foreground">{(topStats?.totalStock || 0).toLocaleString()}</p>
-            )}
-            <p className="text-sm text-muted-foreground">Total Stock</p>
-            {topStatsLoading ? (
-              <Skeleton className="h-4 w-24 mt-1" />
-            ) : (
-              <p className="text-xs text-muted-foreground mt-1">Across {topStats?.totalSlots || 0} slots</p>
-            )}
-          </div>
+            </CardContent>
+          </Card>
+
+          {/* Total Stock Card */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
+              {topStatsLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Package className="h-6 w-6 text-primary" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-bold text-foreground">
+                    {(topStats?.totalStock || 0).toLocaleString()}
+                  </div>
+                  <p className="text-sm text-muted-foreground">Total Stock</p>
+                  <p className="text-xs text-primary mt-1">Across {topStats?.totalSlots || 0} slots</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Quick Stats Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-          <div className="bg-card border border-border rounded-xl p-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <ShoppingCart className="h-6 w-6 text-primary" />
-            </div>
-            <div>
+        {/* Secondary Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Orders Card */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
               {middleStatsLoading ? (
-                <Skeleton className="h-8 w-16 mb-1" />
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-lg" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
               ) : (
-                <p className="text-2xl font-bold text-foreground">{middleStats?.ordersToday || 0}</p>
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <ShoppingCart className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground">{middleStats?.orders || 0}</div>
+                    <p className="text-sm text-muted-foreground">Orders {getDateRangeLabel()}</p>
+                  </div>
+                </div>
               )}
-              <p className="text-sm text-muted-foreground">Orders Today</p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-card border border-border rounded-xl p-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Ticket className="h-6 w-6 text-primary" />
-            </div>
-            <div>
+          {/* Coupons Sold Card */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
               {middleStatsLoading ? (
-                <Skeleton className="h-8 w-20 mb-1" />
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-lg" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
               ) : (
-                <p className="text-2xl font-bold text-foreground">
-                  {(middleStats?.couponsSoldToday || 0).toLocaleString()}
-                </p>
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <Ticket className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground">{middleStats?.couponsSold || 0}</div>
+                    <p className="text-sm text-muted-foreground">Coupons Sold {getDateRangeLabel()}</p>
+                  </div>
+                </div>
               )}
-              <p className="text-sm text-muted-foreground">Coupons Sold Today</p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-card border border-border rounded-xl p-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Calculator className="h-6 w-6 text-primary" />
-            </div>
-            <div>
+          {/* Avg Order Value Card */}
+          <Card className="bg-card border-border">
+            <CardContent className="p-6">
               {middleStatsLoading ? (
-                <Skeleton className="h-8 w-24 mb-1" />
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded-lg" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                </div>
               ) : (
-                <p className="text-2xl font-bold text-foreground">{formatCurrency(middleStats?.avgOrderValue || 0)}</p>
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <Calendar className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground">
+                      ₹{(middleStats?.avgOrderValue || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Avg Order Value</p>
+                  </div>
+                </div>
               )}
-              <p className="text-sm text-muted-foreground">Avg Order Value</p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Recent Orders & Low Stock Alerts */}
@@ -384,73 +448,67 @@ export default function AdminDashboardPage() {
 
         {/* Slot Performance */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Slot Performance</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {slotPerformanceLoading ? (
-              [1, 2, 3, 4].map((i) => (
-                <div key={i} className="bg-card border border-border rounded-xl p-6">
-                  <Skeleton className="h-6 w-32 mb-3" />
-                  <div className="space-y-2">
-                    <Skeleton className="h-4 w-full" />
+          <h2 className="text-xl font-semibold text-foreground mb-4">Slot Performance</h2>
+          {slotPerformanceLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="bg-card border-border">
+                  <CardContent className="p-4 space-y-3">
+                    <Skeleton className="h-5 w-32" />
                     <Skeleton className="h-2 w-full" />
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-28" />
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <Skeleton className="h-8 flex-1" />
-                    <Skeleton className="h-8 flex-1" />
-                  </div>
-                </div>
-              ))
-            ) : (slotPerformance?.length || 0) === 0 ? (
-              <p className="text-muted-foreground col-span-4 text-center py-8">No slots available</p>
-            ) : (
-              slotPerformance?.map((slot) => (
-                <div key={slot.id} className="bg-card border border-border rounded-xl p-6">
-                  <h3 className="font-semibold text-foreground mb-3 truncate">{slot.name}</h3>
-                  <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Available</span>
-                      <span className="text-foreground">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {slotPerformance?.map((slot) => (
+                <Card key={slot.id} className="bg-card border-border">
+                  <CardContent className="p-4">
+                    <h3 className="font-medium text-foreground mb-2">{slot.name}</h3>
+                    <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                      <span>Available</span>
+                      <span>
                         {slot.available} / {slot.total}
                       </span>
                     </div>
-                    <div className="w-full bg-secondary rounded-full h-2">
-                      <div
-                        className="bg-primary h-2 rounded-full"
-                        style={{ width: `${slot.total > 0 ? (slot.available / slot.total) * 100 : 0}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Sold Today</span>
+                    <Progress value={(slot.available / (slot.total || 1)) * 100} className="h-2 mb-3" />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Sold {getDateRangeLabel()}</span>
                       <span className="text-foreground">{slot.soldToday}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Revenue</span>
-                      <span className="text-primary font-medium">{formatCurrency(slot.revenueToday)}</span>
+                      <span className="text-primary">
+                        ₹{slot.revenueToday.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex gap-2 mt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 rounded-full border-border bg-transparent text-sm"
-                      onClick={() => handleManageSlot(slot.id)}
-                    >
-                      Manage
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="flex-1 rounded-full bg-primary text-primary-foreground text-sm"
-                      onClick={() => handleUploadSlot(slot.id)}
-                    >
-                      Upload
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 bg-transparent"
+                        onClick={() => handleManageSlot(slot.id)}
+                      >
+                        Manage
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                        onClick={() => handleUploadSlot(slot.id)}
+                      >
+                        Upload
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Quick Actions - No changes needed, just links */}

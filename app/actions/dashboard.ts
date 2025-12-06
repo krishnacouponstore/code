@@ -3,21 +3,23 @@
 import { getServerGraphQLClient } from "@/lib/graphql-client-server"
 import { gql } from "graphql-request"
 
+export type DateRange = "today" | "7days" | "30days" | "all"
+
 export interface DashboardTopStats {
-  revenueToday: number
-  ordersToday: number
+  revenue: number
+  orders: number
   revenueChange: number
   totalRevenue: number
   totalUsers: number
   blockedUsers: number
-  newUsersThisWeek: number
+  newUsersInRange: number
   totalStock: number
   totalSlots: number
 }
 
 export interface DashboardMiddleStats {
-  ordersToday: number
-  couponsSoldToday: number
+  orders: number
+  couponsSold: number
   avgOrderValue: number
 }
 
@@ -46,27 +48,63 @@ export interface LowStockAlert {
   stock: number
 }
 
-export async function getDashboardTopStats(): Promise<DashboardTopStats> {
+function getDateRangeBoundaries(dateRange: DateRange) {
+  const now = new Date()
+  const todayStart = new Date(now)
+  todayStart.setHours(0, 0, 0, 0)
+
+  let rangeStart: Date
+  let previousRangeStart: Date
+
+  switch (dateRange) {
+    case "today":
+      rangeStart = todayStart
+      previousRangeStart = new Date(todayStart)
+      previousRangeStart.setDate(previousRangeStart.getDate() - 1)
+      break
+    case "7days":
+      rangeStart = new Date(todayStart)
+      rangeStart.setDate(rangeStart.getDate() - 7)
+      previousRangeStart = new Date(rangeStart)
+      previousRangeStart.setDate(previousRangeStart.getDate() - 7)
+      break
+    case "30days":
+      rangeStart = new Date(todayStart)
+      rangeStart.setDate(rangeStart.getDate() - 30)
+      previousRangeStart = new Date(rangeStart)
+      previousRangeStart.setDate(previousRangeStart.getDate() - 30)
+      break
+    case "all":
+    default:
+      // For all time, use a very old date
+      rangeStart = new Date("2000-01-01")
+      previousRangeStart = new Date("2000-01-01")
+      break
+  }
+
+  return {
+    rangeStart: rangeStart.toISOString(),
+    rangeEnd: now.toISOString(),
+    previousRangeStart: previousRangeStart.toISOString(),
+    previousRangeEnd: rangeStart.toISOString(),
+    todayStart: todayStart.toISOString(),
+  }
+}
+
+export async function getDashboardTopStats(dateRange: DateRange = "today"): Promise<DashboardTopStats> {
   try {
     const client = getServerGraphQLClient()
-
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    const todayStartISO = todayStart.toISOString()
-
-    const yesterdayStart = new Date(todayStart)
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1)
-    const yesterdayStartISO = yesterdayStart.toISOString()
-
-    const weekAgo = new Date()
-    weekAgo.setDate(weekAgo.getDate() - 7)
-    const weekAgoISO = weekAgo.toISOString()
+    const { rangeStart, previousRangeStart, previousRangeEnd, todayStart } = getDateRangeBoundaries(dateRange)
 
     const query = gql`
-      query GetDashboardTopStats($todayStart: timestamptz!, $yesterdayStart: timestamptz!, $weekAgo: timestamptz!) {
-        # Revenue Today
-        revenue_today: purchases_aggregate(
-          where: { created_at: { _gte: $todayStart } }
+      query GetDashboardTopStats(
+        $rangeStart: timestamptz!, 
+        $previousRangeStart: timestamptz!, 
+        $previousRangeEnd: timestamptz!
+      ) {
+        # Revenue in selected range
+        revenue_range: purchases_aggregate(
+          where: { created_at: { _gte: $rangeStart } }
         ) {
           aggregate {
             sum { total_price }
@@ -74,10 +112,10 @@ export async function getDashboardTopStats(): Promise<DashboardTopStats> {
           }
         }
         
-        # Revenue Yesterday (for comparison)
-        revenue_yesterday: purchases_aggregate(
+        # Revenue in previous range (for comparison)
+        revenue_previous: purchases_aggregate(
           where: { 
-            created_at: { _gte: $yesterdayStart, _lt: $todayStart }
+            created_at: { _gte: $previousRangeStart, _lt: $previousRangeEnd }
           }
         ) {
           aggregate {
@@ -106,9 +144,9 @@ export async function getDashboardTopStats(): Promise<DashboardTopStats> {
           aggregate { count }
         }
         
-        # New Users This Week
-        new_users_week: user_profiles_aggregate(
-          where: { created_at: { _gte: $weekAgo } }
+        # New Users in selected range
+        new_users_range: user_profiles_aggregate(
+          where: { created_at: { _gte: $rangeStart } }
         ) {
           aggregate { count }
         }
@@ -130,77 +168,76 @@ export async function getDashboardTopStats(): Promise<DashboardTopStats> {
     `
 
     const data: any = await client.request(query, {
-      todayStart: todayStartISO,
-      yesterdayStart: yesterdayStartISO,
-      weekAgo: weekAgoISO,
+      rangeStart,
+      previousRangeStart,
+      previousRangeEnd,
     })
 
-    const revenueToday = data?.revenue_today?.aggregate?.sum?.total_price || 0
-    const revenueYesterday = data?.revenue_yesterday?.aggregate?.sum?.total_price || 0
+    const revenueRange = data?.revenue_range?.aggregate?.sum?.total_price || 0
+    const revenuePrevious = data?.revenue_previous?.aggregate?.sum?.total_price || 0
 
     // Calculate percentage change
     let revenueChange = 0
-    if (revenueYesterday > 0) {
-      revenueChange = Math.round(((revenueToday - revenueYesterday) / revenueYesterday) * 100)
-    } else if (revenueToday > 0) {
+    if (revenuePrevious > 0) {
+      revenueChange = Math.round(((revenueRange - revenuePrevious) / revenuePrevious) * 100)
+    } else if (revenueRange > 0) {
       revenueChange = 100
     }
 
     return {
-      revenueToday,
-      ordersToday: data?.revenue_today?.aggregate?.count || 0,
+      revenue: revenueRange,
+      orders: data?.revenue_range?.aggregate?.count || 0,
       revenueChange,
       totalRevenue: data?.total_revenue?.aggregate?.sum?.total_price || 0,
       totalUsers: data?.total_users?.aggregate?.count || 0,
       blockedUsers: data?.blocked_users?.aggregate?.count || 0,
-      newUsersThisWeek: data?.new_users_week?.aggregate?.count || 0,
+      newUsersInRange: data?.new_users_range?.aggregate?.count || 0,
       totalStock: data?.total_stock?.aggregate?.count || 0,
       totalSlots: data?.total_slots?.aggregate?.count || 0,
     }
   } catch (error) {
     console.error("Error fetching dashboard top stats:", error)
     return {
-      revenueToday: 0,
-      ordersToday: 0,
+      revenue: 0,
+      orders: 0,
       revenueChange: 0,
       totalRevenue: 0,
       totalUsers: 0,
       blockedUsers: 0,
-      newUsersThisWeek: 0,
+      newUsersInRange: 0,
       totalStock: 0,
       totalSlots: 0,
     }
   }
 }
 
-export async function getDashboardMiddleStats(): Promise<DashboardMiddleStats> {
+export async function getDashboardMiddleStats(dateRange: DateRange = "today"): Promise<DashboardMiddleStats> {
   try {
     const client = getServerGraphQLClient()
-
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    const todayStartISO = todayStart.toISOString()
+    const { rangeStart } = getDateRangeBoundaries(dateRange)
 
     const query = gql`
-      query GetDashboardMiddleStats($todayStart: timestamptz!) {
-        # Orders Today
-        orders_today: purchases_aggregate(
-          where: { created_at: { _gte: $todayStart } }
+      query GetDashboardMiddleStats($rangeStart: timestamptz!) {
+        # Orders in range
+        orders_range: purchases_aggregate(
+          where: { created_at: { _gte: $rangeStart } }
         ) {
           aggregate { count }
         }
         
-        # Coupons Sold Today (sum of quantities)
-        coupons_sold_today: purchases_aggregate(
-          where: { created_at: { _gte: $todayStart } }
+        # Coupons Sold in range (sum of quantities)
+        coupons_sold_range: purchases_aggregate(
+          where: { created_at: { _gte: $rangeStart } }
         ) {
           aggregate {
             sum { quantity }
           }
         }
         
-        # Average Order Value
-        avg_order_value: purchases_aggregate {
+        # Average Order Value in range
+        avg_order_value_range: purchases_aggregate(
+          where: { created_at: { _gte: $rangeStart } }
+        ) {
           aggregate {
             avg { total_price }
           }
@@ -208,18 +245,18 @@ export async function getDashboardMiddleStats(): Promise<DashboardMiddleStats> {
       }
     `
 
-    const data: any = await client.request(query, { todayStart: todayStartISO })
+    const data: any = await client.request(query, { rangeStart })
 
     return {
-      ordersToday: data?.orders_today?.aggregate?.count || 0,
-      couponsSoldToday: data?.coupons_sold_today?.aggregate?.sum?.quantity || 0,
-      avgOrderValue: data?.avg_order_value?.aggregate?.avg?.total_price || 0,
+      orders: data?.orders_range?.aggregate?.count || 0,
+      couponsSold: data?.coupons_sold_range?.aggregate?.sum?.quantity || 0,
+      avgOrderValue: data?.avg_order_value_range?.aggregate?.avg?.total_price || 0,
     }
   } catch (error) {
     console.error("Error fetching dashboard middle stats:", error)
     return {
-      ordersToday: 0,
-      couponsSoldToday: 0,
+      orders: 0,
+      couponsSold: 0,
       avgOrderValue: 0,
     }
   }
@@ -269,16 +306,13 @@ export async function getRecentOrders(): Promise<RecentOrder[]> {
   }
 }
 
-export async function getSlotPerformance(): Promise<SlotPerformance[]> {
+export async function getSlotPerformance(dateRange: DateRange = "today"): Promise<SlotPerformance[]> {
   try {
     const client = getServerGraphQLClient()
-
-    const todayStart = new Date()
-    todayStart.setHours(0, 0, 0, 0)
-    const todayStartISO = todayStart.toISOString()
+    const { rangeStart } = getDateRangeBoundaries(dateRange)
 
     const query = gql`
-      query GetSlotPerformance($todayStart: timestamptz!) {
+      query GetSlotPerformance($rangeStart: timestamptz!) {
         slots(
           where: { is_published: { _eq: true } }
           order_by: { total_sold: desc_nulls_last }
@@ -289,9 +323,9 @@ export async function getSlotPerformance(): Promise<SlotPerformance[]> {
           available_stock
           total_uploaded
           
-          # Revenue today
+          # Revenue in selected range
           purchases_aggregate(
-            where: { created_at: { _gte: $todayStart } }
+            where: { created_at: { _gte: $rangeStart } }
           ) {
             aggregate {
               sum { total_price }
@@ -302,7 +336,7 @@ export async function getSlotPerformance(): Promise<SlotPerformance[]> {
       }
     `
 
-    const data: any = await client.request(query, { todayStart: todayStartISO })
+    const data: any = await client.request(query, { rangeStart })
 
     return (data?.slots || []).map((slot: any) => ({
       id: slot.id,
