@@ -20,3 +20,5 @@ export function getAdminGraphQLClient() {
     },
   })
 }
+
+export const getServerGraphQLClient = getAdminGraphQLClient

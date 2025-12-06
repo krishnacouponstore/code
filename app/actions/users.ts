@@ -126,8 +126,45 @@ export async function getUserStats() {
   }
 }
 
+async function getNextAdminTransactionId(client: GraphQLClient): Promise<string> {
+  try {
+    const query = gql`
+      query GetLastAdminTransaction {
+        topups(
+          where: { transaction_id: { _like: "#ADMIN%" } }
+          order_by: { created_at: desc }
+          limit: 1
+        ) {
+          transaction_id
+        }
+      }
+    `
+
+    const result: any = await client.request(query)
+
+    if (!result.topups || result.topups.length === 0) {
+      return "#ADMIN0001"
+    }
+
+    const lastId = result.topups[0].transaction_id
+    const match = lastId.match(/#ADMIN(\d+)/)
+
+    if (!match) {
+      return "#ADMIN0001"
+    }
+
+    const lastNumber = Number.parseInt(match[1], 10)
+    const nextNumber = lastNumber + 1
+
+    return `#ADMIN${nextNumber.toString().padStart(4, "0")}`
+  } catch (error) {
+    console.error("Error generating admin transaction ID:", error)
+    return `#ADMIN${Date.now()}`
+  }
+}
+
 // Adjust user balance
-export async function adjustUserBalance(userId: string, amount: number, type: "add" | "deduct", reason: string) {
+export async function adjustUserBalance(userId: string, amount: number, type: "add" | "deduct") {
   try {
     const client = getAdminClient()
 
@@ -144,7 +181,8 @@ export async function adjustUserBalance(userId: string, amount: number, type: "a
     const currentBalance = Number.parseFloat(balanceData.user_profiles_by_pk?.wallet_balance) || 0
 
     const newBalance = type === "add" ? currentBalance + amount : Math.max(0, currentBalance - amount)
-    const adjustmentAmount = type === "add" ? amount : -amount
+
+    const signedAmount = type === "add" ? amount : -amount
 
     // Update balance
     const updateQuery = gql`
@@ -161,25 +199,45 @@ export async function adjustUserBalance(userId: string, amount: number, type: "a
 
     await client.request(updateQuery, { userId, newBalance })
 
-    // Deductions violate the topups_amount_check constraint which requires positive amounts
-    if (type === "add") {
-      const logQuery = gql`
-        mutation LogBalanceAdjustment($userId: uuid!, $amount: numeric!, $reason: String) {
-          insert_topups_one(object: {
-            user_id: $userId
-            amount: $amount
-            status: "success"
-            razorpay_order_id: $reason
-            verified_at: "now()"
-          }) {
-            id
-          }
-        }
-      `
-      await client.request(logQuery, { userId, amount, reason: reason || "Admin adjustment" })
-    }
+    // Generate sequential admin transaction ID
+    const transactionId = await getNextAdminTransactionId(client)
 
-    return { success: true, newBalance }
+    const logQuery = gql`
+      mutation LogAdminAdjustment(
+        $userId: uuid!
+        $amount: numeric!
+        $transactionId: String!
+        $paymentMethod: String!
+      ) {
+        insert_topups_one(object: {
+          user_id: $userId
+          amount: $amount
+          transaction_id: $transactionId
+          payment_method: $paymentMethod
+          razorpay_order_id: null
+          razorpay_payment_id: null
+          status: "success"
+          verified_at: "now()"
+        }) {
+          id
+          transaction_id
+        }
+      }
+    `
+
+    await client.request(logQuery, {
+      userId,
+      amount: signedAmount,
+      transactionId,
+      paymentMethod: type === "add" ? "admin_credit" : "admin_debit",
+    })
+
+    return {
+      success: true,
+      newBalance,
+      transactionId,
+      signedAmount,
+    }
   } catch (error: any) {
     console.error("Error adjusting balance:", error)
     return { success: false, error: error.message }

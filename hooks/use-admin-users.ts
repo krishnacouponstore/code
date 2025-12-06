@@ -57,13 +57,8 @@ export function useAdjustBalance() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({
-      userId,
-      amount,
-      type,
-      reason,
-    }: { userId: string; amount: number; type: "add" | "deduct"; reason: string }) => {
-      const result = await adjustUserBalance(userId, amount, type, reason)
+    mutationFn: async ({ userId, amount, type }: { userId: string; amount: number; type: "add" | "deduct" }) => {
+      const result = await adjustUserBalance(userId, amount, type)
       if (!result.success) {
         throw new Error(result.error || "Failed to adjust balance")
       }

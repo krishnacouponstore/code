@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Check, Copy, Download, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import type { AdminOrder } from "@/lib/mock-data"
+import type { AdminOrder } from "@/hooks/use-admin-orders"
 
 type OrderDetailsModalProps = {
   order: AdminOrder | null

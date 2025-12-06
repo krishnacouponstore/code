@@ -226,14 +226,13 @@ export default function AdminUsersPage() {
     }
   }
 
-  const openAdjustBalanceModal = (u: AdminUser) => {
-    setSelectedUser(u)
-    setIsAdjustBalanceOpen(true)
-  }
-
-  const openPurchaseHistoryModal = (u: AdminUser) => {
-    setSelectedUser(u)
-    setIsPurchaseHistoryOpen(true)
+  const handleConfirmAdjustBalance = async (userId: string, amount: number, type: "add" | "deduct") => {
+    await adjustBalanceMutation.mutateAsync({ userId, amount, type })
+    setIsAdjustBalanceOpen(false)
+    toast({
+      title: "Balance adjusted",
+      description: `Successfully ${type === "add" ? "added" : "deducted"} ${formatCurrency(amount)}`,
+    })
   }
 
   return (
@@ -435,13 +434,13 @@ export default function AdminUsersPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-card border-border w-48">
-                            <DropdownMenuItem onClick={() => openPurchaseHistoryModal(u)} className="cursor-pointer">
+                            <DropdownMenuItem onClick={() => handleViewPurchaseHistory(u)} className="cursor-pointer">
                               <History className="mr-2 h-4 w-4" />
                               View Purchase History
                             </DropdownMenuItem>
                             {!u.is_admin && (
                               <>
-                                <DropdownMenuItem onClick={() => openAdjustBalanceModal(u)} className="cursor-pointer">
+                                <DropdownMenuItem onClick={() => handleAdjustBalance(u)} className="cursor-pointer">
                                   <DollarSign className="mr-2 h-4 w-4" />
                                   Adjust Balance
                                 </DropdownMenuItem>
@@ -515,13 +514,13 @@ export default function AdminUsersPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-card border-border w-48">
-                          <DropdownMenuItem onClick={() => openPurchaseHistoryModal(u)} className="cursor-pointer">
+                          <DropdownMenuItem onClick={() => handleViewPurchaseHistory(u)} className="cursor-pointer">
                             <History className="mr-2 h-4 w-4" />
                             View Purchase History
                           </DropdownMenuItem>
                           {!u.is_admin && (
                             <>
-                              <DropdownMenuItem onClick={() => openAdjustBalanceModal(u)} className="cursor-pointer">
+                              <DropdownMenuItem onClick={() => handleAdjustBalance(u)} className="cursor-pointer">
                                 <DollarSign className="mr-2 h-4 w-4" />
                                 Adjust Balance
                               </DropdownMenuItem>
@@ -599,7 +598,12 @@ export default function AdminUsersPage() {
         isLoading={isPurchaseHistoryLoading}
       />
 
-      <AdjustBalanceModal open={isAdjustBalanceOpen} onOpenChange={setIsAdjustBalanceOpen} user={selectedUser} />
+      <AdjustBalanceModal
+        open={isAdjustBalanceOpen}
+        onOpenChange={setIsAdjustBalanceOpen}
+        user={selectedUser}
+        onConfirm={handleConfirmAdjustBalance}
+      />
 
       <BlockUserDialog
         open={isBlockDialogOpen}

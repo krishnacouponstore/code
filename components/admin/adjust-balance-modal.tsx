@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { formatCurrency } from "@/lib/utils"
 import type { AdminUser } from "@/hooks/use-admin-users"
@@ -15,20 +14,18 @@ interface AdjustBalanceModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: AdminUser | null
-  onConfirm: (userId: string, amount: number, type: "add" | "deduct", reason: string) => Promise<void>
+  onConfirm: (userId: string, amount: number, type: "add" | "deduct") => Promise<void>
 }
 
 export function AdjustBalanceModal({ open, onOpenChange, user, onConfirm }: AdjustBalanceModalProps) {
   const [actionType, setActionType] = useState<"add" | "deduct">("add")
   const [amount, setAmount] = useState("")
-  const [reason, setReason] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (open) {
       setActionType("add")
       setAmount("")
-      setReason("")
     }
   }, [open])
 
@@ -44,7 +41,7 @@ export function AdjustBalanceModal({ open, onOpenChange, user, onConfirm }: Adju
     if (!canSubmit) return
     setIsSubmitting(true)
     try {
-      await onConfirm(user.id, amountNum, actionType, reason)
+      await onConfirm(user.id, amountNum, actionType)
     } finally {
       setIsSubmitting(false)
     }
@@ -115,23 +112,6 @@ export function AdjustBalanceModal({ open, onOpenChange, user, onConfirm }: Adju
           {actionType === "deduct" && amountNum > user.wallet_balance && (
             <p className="text-sm text-destructive mt-1">Cannot deduct more than current balance</p>
           )}
-        </div>
-
-        {/* Reason */}
-        <div className="mt-4">
-          <Label htmlFor="reason" className="text-foreground">
-            Reason <span className="text-muted-foreground">(optional)</span>
-          </Label>
-          <Textarea
-            id="reason"
-            placeholder="Reason for adjustment (for records)"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            maxLength={200}
-            className="mt-1.5 bg-secondary border-border text-foreground resize-none"
-            rows={2}
-          />
-          <p className="text-xs text-muted-foreground mt-1 text-right">{reason.length}/200</p>
         </div>
 
         {/* Preview */}
