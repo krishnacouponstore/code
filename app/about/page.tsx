@@ -128,7 +128,7 @@ export default function AboutPage() {
       <main className="max-w-6xl mx-auto px-6 py-12">
         {/* Hero Section */}
         <section className="text-center mb-20">
-          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">About CodeCrate</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">About CoupX</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Your Trusted Marketplace for Genuine Coupon Codes
           </p>
@@ -138,7 +138,7 @@ export default function AboutPage() {
         <section className="mb-20">
           <h2 className="text-3xl font-bold text-foreground text-center mb-6">What We Do</h2>
           <p className="text-muted-foreground text-center max-w-3xl mx-auto mb-12 leading-relaxed">
-            CodeCrate is a reliable platform where you can purchase genuine coupon codes for popular e-commerce and food
+            CoupX is a reliable platform where you can purchase genuine coupon codes for popular e-commerce and food
             delivery platforms. We source authentic discount codes in bulk and offer them at competitive prices, making
             online shopping more affordable for everyone.
           </p>
@@ -192,7 +192,7 @@ export default function AboutPage() {
 
         {/* Why Choose Us Section */}
         <section className="mb-20">
-          <h2 className="text-3xl font-bold text-foreground text-center mb-12">Why Choose CodeCrate</h2>
+          <h2 className="text-3xl font-bold text-foreground text-center mb-12">Why Choose CoupX</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {whyChooseUs.map((feature, index) => (

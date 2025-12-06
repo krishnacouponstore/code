@@ -5,9 +5,8 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Mail, Loader2, CheckCircle2, Clock, Lock, AlertCircle } from "lucide-react"
+import { Mail, Loader2, CheckCircle2, Clock, Lock, AlertCircle, Sparkles, Send, ArrowRight } from "lucide-react"
 
 import { sendPasswordResetEmail } from "@/app/actions/users"
 
@@ -15,6 +14,7 @@ export function ForgotPasswordForm() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState("")
   const [countdown, setCountdown] = useState(0)
 
@@ -49,18 +49,21 @@ export function ForgotPasswordForm() {
       const result = await sendPasswordResetEmail(email)
 
       if (!result.success) {
-        // Still show success for security (don't reveal if email exists)
-        // Unless it's a specific error we want to show
         if (result.error?.includes("rate") || result.error?.includes("limit")) {
           setError("Too many requests. Please try again later.")
         } else {
-          // Show success anyway for security
-          setIsSubmitted(true)
-          setCountdown(60)
+          setIsSuccess(true)
+          setTimeout(() => {
+            setIsSubmitted(true)
+            setCountdown(60)
+          }, 1200)
         }
       } else {
-        setIsSubmitted(true)
-        setCountdown(60)
+        setIsSuccess(true)
+        setTimeout(() => {
+          setIsSubmitted(true)
+          setCountdown(60)
+        }, 1200)
       }
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.")
@@ -92,8 +95,9 @@ export function ForgotPasswordForm() {
   if (isSubmitted) {
     return (
       <div className="text-center space-y-4">
-        <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
-          <CheckCircle2 className="w-8 h-8 text-primary" />
+        <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto relative">
+          <div className="absolute inset-0 bg-primary/20 rounded-full animate-ping" />
+          <CheckCircle2 className="w-8 h-8 text-primary relative" />
         </div>
         <div>
           <h3 className="text-lg font-semibold text-foreground">Reset Link Sent!</h3>
@@ -103,7 +107,6 @@ export function ForgotPasswordForm() {
           </p>
         </div>
 
-        {/* Status Card */}
         <div className="p-4 border border-border rounded-lg bg-secondary/50 text-left">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-foreground">Link Status</span>
@@ -128,7 +131,6 @@ export function ForgotPasswordForm() {
           </div>
         </div>
 
-        {/* Instructions */}
         <div className="text-left p-3 bg-primary/5 border border-primary/20 rounded-lg">
           <p className="text-xs font-medium text-foreground mb-1">Next Steps:</p>
           <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
@@ -168,15 +170,12 @@ export function ForgotPasswordForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-sm font-medium text-foreground">
-          Email address
-        </Label>
         <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             id="email"
             type="email"
-            placeholder="you@example.com"
+            placeholder="Enter your email"
             value={email}
             onChange={(e) => {
               setEmail(e.target.value)
@@ -186,30 +185,62 @@ export function ForgotPasswordForm() {
               error ? "border-destructive" : ""
             }`}
             required
-            disabled={isLoading}
+            disabled={isLoading || isSuccess}
           />
         </div>
       </div>
 
       <Button
         type="submit"
-        className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium shadow-sm"
-        disabled={isLoading}
+        className={`w-full h-11 rounded-full font-medium transition-all duration-500 ease-out overflow-hidden relative ${
+          isSuccess
+            ? "bg-primary text-primary-foreground shadow-[0_0_30px_rgba(52,211,153,0.4)] scale-[1.02]"
+            : isLoading
+              ? "bg-primary/80 text-primary-foreground"
+              : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+        }`}
+        disabled={isLoading || isSuccess}
       >
         {isLoading ? (
           <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Sending Reset Link...
+            <span className="absolute inset-0 bg-gradient-to-r from-primary via-primary/60 to-primary bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite]" />
+            <span className="absolute inset-0 bg-primary/20 animate-pulse" />
+            <span className="relative flex items-center justify-center gap-3">
+              <span className="relative flex h-5 w-5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/40 opacity-75" />
+                <Loader2 className="relative w-5 h-5 animate-spin text-white" />
+              </span>
+              <span className="font-medium tracking-wide">Sending...</span>
+              <span className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-[bounce_1s_ease-in-out_infinite]" />
+                <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-[bounce_1s_ease-in-out_0.2s_infinite]" />
+                <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-[bounce_1s_ease-in-out_0.4s_infinite]" />
+              </span>
+            </span>
+          </>
+        ) : isSuccess ? (
+          <>
+            <span className="absolute inset-0 bg-gradient-to-r from-primary via-emerald-400 to-primary bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
+            <span className="absolute top-2 left-8 w-1 h-1 bg-white rounded-full animate-[ping_1s_ease-in-out_infinite]" />
+            <span className="absolute bottom-2 right-10 w-1.5 h-1.5 bg-white rounded-full animate-[ping_1.2s_ease-in-out_0.3s_infinite]" />
+            <span className="relative flex items-center justify-center gap-2">
+              <Send className="w-4 h-4 animate-in zoom-in-50 slide-in-from-left-2 duration-500 text-white" />
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 backdrop-blur-sm animate-in zoom-in-50 duration-500">
+                <CheckCircle2 className="w-4 h-4 text-white" strokeWidth={2.5} />
+              </span>
+              <span className="animate-in fade-in slide-in-from-bottom-2 duration-500 font-semibold">Email Sent!</span>
+              <Sparkles className="w-4 h-4 animate-in spin-in-180 duration-700 text-white/80" />
+            </span>
           </>
         ) : (
-          "Send Reset Link"
+          <span className="relative flex items-center justify-center gap-2 group">
+            <span>Send Reset Link</span>
+            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+          </span>
         )}
       </Button>
 
-      {/* Info text */}
-      <p className="text-xs text-center text-muted-foreground">
-        {"We'll send you a password reset link via email (valid for 1 hour)"}
-      </p>
+      <p className="text-xs text-center text-muted-foreground">{"We'll send you a password reset link via email"}</p>
     </form>
   )
 }

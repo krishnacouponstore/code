@@ -30,8 +30,10 @@ export interface RevenueStats {
 }
 
 const GET_REVENUE_STATS = gql`
-  query GetRevenueStats {
-    total_revenue: purchases_aggregate {
+  query GetRevenueStats($startDate: timestamptz) {
+    total_revenue: purchases_aggregate(
+      where: { created_at: { _gte: $startDate } }
+    ) {
       aggregate {
         sum {
           total_price
@@ -39,7 +41,10 @@ const GET_REVENUE_STATS = gql`
       }
     }
     pending_transactions: topups_aggregate(
-      where: { status: { _eq: "pending" } }
+      where: { 
+        status: { _eq: "pending" }
+        created_at: { _gte: $startDate }
+      }
     ) {
       aggregate {
         sum {
@@ -49,7 +54,10 @@ const GET_REVENUE_STATS = gql`
       }
     }
     successful_transactions: topups_aggregate(
-      where: { status: { _eq: "success" } }
+      where: { 
+        status: { _eq: "success" }
+        created_at: { _gte: $startDate }
+      }
     ) {
       aggregate {
         count
@@ -58,6 +66,7 @@ const GET_REVENUE_STATS = gql`
     failed_refunded: topups_aggregate(
       where: { 
         status: { _in: ["failed", "refunded"] }
+        created_at: { _gte: $startDate }
       }
     ) {
       aggregate {
@@ -137,10 +146,33 @@ const REFUND_TRANSACTION = gql`
   }
 `
 
-export async function getRevenueStats(): Promise<RevenueStats> {
+export async function getRevenueStats(dateRange?: string): Promise<RevenueStats> {
   try {
     const client = getServerGraphQLClient()
-    const data = await client.request<any>(GET_REVENUE_STATS)
+
+    // Calculate start date based on dateRange
+    const now = new Date()
+    let startDate: string
+
+    switch (dateRange) {
+      case "today":
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+        break
+      case "7days":
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        break
+      case "30days":
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+        break
+      case "all":
+      default:
+        // Use a very old date to get all records
+        startDate = new Date("2000-01-01").toISOString()
+    }
+
+    const data = await client.request<any>(GET_REVENUE_STATS, {
+      startDate: startDate,
+    })
 
     return {
       totalRevenue: data.total_revenue?.aggregate?.sum?.total_price || 0,

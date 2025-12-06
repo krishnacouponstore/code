@@ -1,12 +1,13 @@
+"use client"
+
 import { ResetPasswordForm } from "@/components/auth/reset-password-form"
 import Link from "next/link"
-
-export const metadata = {
-  title: "Reset Password | CodeCrate",
-  description: "Create a new password for your CodeCrate account",
-}
+import Image from "next/image"
+import { useTheme } from "next-themes"
 
 export default function ResetPasswordPage() {
+  const { resolvedTheme } = useTheme()
+
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
       {/* Subtle gradient overlay */}
@@ -18,10 +19,15 @@ export default function ResetPasswordPage() {
           <div className="bg-card border border-border/50 rounded-2xl shadow-xl p-8">
             {/* Logo and Branding */}
             <div className="text-center mb-8">
-              <Link href="/" className="inline-flex items-center gap-2 mb-4">
-                <span className="text-foreground text-2xl font-semibold">CodeCrate</span>
+              <Link href="/home" className="inline-flex items-center justify-center">
+                <Image
+                  src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+                  alt="CoupX"
+                  width={200}
+                  height={60}
+                  className="h-12 w-auto"
+                />
               </Link>
-              <p className="text-sm text-muted-foreground mt-1">Your Trusted Coupon Marketplace</p>
             </div>
 
             <div className="mb-6">

@@ -61,7 +61,7 @@ export default function AddBalancePage() {
   }
 
   const openTelegram = () => {
-    const message = encodeURIComponent(`Hi, I want to add balance to my CodeCrate account.\nEmail: ${user.email}`)
+    const message = encodeURIComponent(`Hi, I want to add balance to my CoupX account.\nEmail: ${user.email}`)
     window.open(`${contactInfo.telegram_url}?text=${message}`, "_blank")
   }
 

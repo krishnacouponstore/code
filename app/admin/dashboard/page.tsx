@@ -22,6 +22,7 @@ import {
   BarChart3,
   ExternalLink,
   Calendar,
+  ChevronRight,
 } from "lucide-react"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
@@ -448,7 +449,16 @@ export default function AdminDashboardPage() {
 
         {/* Slot Performance */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Slot Performance</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-foreground">Slot Performance</h2>
+            <Link
+              href="/admin/coupons"
+              className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1"
+            >
+              View All
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
           {slotPerformanceLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map((i) => (
@@ -466,47 +476,50 @@ export default function AdminDashboardPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {slotPerformance?.map((slot) => (
-                <Card key={slot.id} className="bg-card border-border">
-                  <CardContent className="p-4">
-                    <h3 className="font-medium text-foreground mb-2">{slot.name}</h3>
-                    <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                      <span>Available</span>
-                      <span>
-                        {slot.available} / {slot.total}
-                      </span>
-                    </div>
-                    <Progress value={(slot.available / (slot.total || 1)) * 100} className="h-2 mb-3" />
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Sold {getDateRangeLabel()}</span>
-                      <span className="text-foreground">{slot.soldToday}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Revenue</span>
-                      <span className="text-primary">
-                        ₹{slot.revenueToday.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 bg-transparent"
-                        onClick={() => handleManageSlot(slot.id)}
-                      >
-                        Manage
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                        onClick={() => handleUploadSlot(slot.id)}
-                      >
-                        Upload
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {slotPerformance
+                ?.sort((a, b) => b.soldToday - a.soldToday)
+                .slice(0, 4)
+                .map((slot) => (
+                  <Card key={slot.id} className="bg-card border-border">
+                    <CardContent className="p-4">
+                      <h3 className="font-medium text-foreground mb-2">{slot.name}</h3>
+                      <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                        <span>Available</span>
+                        <span>
+                          {slot.available} / {slot.total}
+                        </span>
+                      </div>
+                      <Progress value={(slot.available / (slot.total || 1)) * 100} className="h-2 mb-3" />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Sold {getDateRangeLabel()}</span>
+                        <span className="text-foreground">{slot.soldToday}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Revenue</span>
+                        <span className="text-primary">
+                          ₹{slot.revenueToday.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 bg-transparent"
+                          onClick={() => handleManageSlot(slot.id)}
+                        >
+                          Manage
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                          onClick={() => handleUploadSlot(slot.id)}
+                        >
+                          Upload
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
             </div>
           )}
         </div>

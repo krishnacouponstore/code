@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Mail, Lock, Loader2, Check, ShieldX } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, Loader2, Check, ShieldX, Sparkles, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { useSignInEmailPassword, useSignOut } from "@nhost/nextjs"
 import { GraphQLClient, gql } from "graphql-request"
@@ -171,15 +171,12 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-sm font-medium text-foreground">
-          Email address
-        </Label>
         <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             id="email"
             type="email"
-            placeholder="you@example.com"
+            placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className={`pl-10 h-11 bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary ${
@@ -198,10 +195,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="password" className="text-sm font-medium text-foreground">
-            Password
-          </Label>
+        <div className="flex items-center justify-end">
           <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-primary">
             Forgot password?
           </Link>
@@ -253,25 +247,58 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
 
       <Button
         type="submit"
-        className={`w-full h-11 rounded-full font-medium shadow-sm transition-all duration-300 ${
+        className={`w-full h-11 rounded-full font-medium transition-all duration-500 ease-out overflow-hidden relative ${
           isSuccess
-            ? "bg-green-500 hover:bg-green-500 text-white scale-105"
-            : "bg-primary text-primary-foreground hover:bg-primary/90"
+            ? "bg-primary text-primary-foreground shadow-[0_0_30px_rgba(52,211,153,0.4)] scale-[1.02]"
+            : isLoading
+              ? "bg-primary/80 text-primary-foreground"
+              : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
         }`}
         disabled={isLoading || isSuccess}
       >
         {isLoading ? (
           <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Signing in...
+            <span className="absolute inset-0 bg-gradient-to-r from-primary via-primary/60 to-primary bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite]" />
+            <span className="absolute inset-0 bg-primary/20 animate-pulse" />
+            <span className="relative flex items-center justify-center gap-3">
+              <span className="relative flex h-5 w-5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/40 opacity-75" />
+                <Loader2 className="relative w-5 h-5 animate-spin text-white" />
+              </span>
+              <span className="font-medium tracking-wide">Signing in...</span>
+              <span className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-[bounce_1s_ease-in-out_infinite]" />
+                <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-[bounce_1s_ease-in-out_0.2s_infinite]" />
+                <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-[bounce_1s_ease-in-out_0.4s_infinite]" />
+              </span>
+            </span>
           </>
         ) : isSuccess ? (
-          <span className="flex items-center justify-center gap-2 animate-in zoom-in-50 duration-300">
-            <Check className="w-5 h-5" />
-            Success!
-          </span>
+          <>
+            {/* Animated background gradient */}
+            <span className="absolute inset-0 bg-gradient-to-r from-primary via-emerald-400 to-primary bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
+
+            {/* Sparkle particles */}
+            <span className="absolute top-1 left-4 w-1.5 h-1.5 bg-white rounded-full animate-[ping_1s_ease-in-out_infinite]" />
+            <span className="absolute top-2 right-6 w-1 h-1 bg-white rounded-full animate-[ping_1.2s_ease-in-out_0.3s_infinite]" />
+            <span className="absolute bottom-2 left-8 w-1 h-1 bg-white rounded-full animate-[ping_1.4s_ease-in-out_0.6s_infinite]" />
+
+            {/* Content */}
+            <span className="relative flex items-center justify-center gap-2">
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 backdrop-blur-sm animate-in zoom-in-50 duration-500">
+                <Check className="w-4 h-4 text-white" strokeWidth={3} />
+              </span>
+              <span className="animate-in fade-in slide-in-from-bottom-2 duration-500 font-semibold">
+                Welcome Back!
+              </span>
+              <Sparkles className="w-4 h-4 animate-in spin-in-180 duration-700 text-white/80" />
+            </span>
+          </>
         ) : (
-          "Login"
+          <span className="relative flex items-center justify-center gap-2 group">
+            <span>Login</span>
+            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+          </span>
         )}
       </Button>
     </form>

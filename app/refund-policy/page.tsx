@@ -4,8 +4,8 @@ import Link from "next/link"
 import { AlertTriangle, CheckCircle, XCircle } from "lucide-react"
 
 export const metadata = {
-  title: "Refund Policy | CodeCrate",
-  description: "Refund Policy for CodeCrate - Your Trusted Coupon Marketplace",
+  title: "Refund Policy | CoupX",
+  description: "Refund Policy for CoupX - Your Trusted Coupon Marketplace",
 }
 
 export default function RefundPolicyPage() {
@@ -42,7 +42,7 @@ export default function RefundPolicyPage() {
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">1. General Policy</h2>
               <p className="text-muted-foreground">
-                All purchases on CodeCrate are final. Once coupon codes are delivered to your account, they cannot be
+                All purchases on CoupX are final. Once coupon codes are delivered to your account, they cannot be
                 returned or exchanged. This is due to the digital nature of our products and the inability to verify if
                 codes have been used after delivery.
               </p>
@@ -141,7 +141,7 @@ export default function RefundPolicyPage() {
               <h2 className="text-2xl font-semibold text-foreground mb-4">3. Refund Processing</h2>
               <div className="space-y-4 text-muted-foreground">
                 <ul className="list-disc pl-6 space-y-2">
-                  <li>Approved refunds will be credited to your CodeCrate wallet within 24-48 hours</li>
+                  <li>Approved refunds will be credited to your CoupX wallet within 24-48 hours</li>
                   <li>
                     In exceptional cases, refunds may be processed to the original payment method (processing time: 5-7
                     business days)

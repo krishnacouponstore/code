@@ -91,7 +91,7 @@ export function CTASection() {
           Start Saving Today
         </h2>
         <p className="text-muted-foreground text-base md:text-lg leading-relaxed max-w-xl">
-          Join thousands of smart shoppers who save money every day with CodeCrate's premium coupon codes.
+          Join thousands of smart shoppers who save money every day with CoupX's premium coupon codes.
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
           {user ? (

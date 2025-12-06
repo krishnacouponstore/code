@@ -12,10 +12,10 @@ import {
 
 export type { Transaction, RevenueStats }
 
-export function useRevenueStats() {
+export function useRevenueStats(dateRange?: string) {
   return useQuery<RevenueStats>({
-    queryKey: ["revenue-stats"],
-    queryFn: () => getRevenueStats(),
+    queryKey: ["revenue-stats", dateRange],
+    queryFn: () => getRevenueStats(dateRange),
     refetchInterval: 30000,
   })
 }

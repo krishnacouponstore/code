@@ -16,11 +16,11 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Code Crate",
+  title: "CoupX",
   description: "Your trusted platform for buying premium coupon codes at the best prices",
   generator: "@rohanphogatt",
   icons: {
-    icon: "/icon.svg",
+    icon: "/images/coupx-icon-dark.png",
   },
 }
 

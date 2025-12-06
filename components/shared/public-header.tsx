@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Menu } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth-context"
+import { useTheme } from "next-themes"
 
 export function PublicHeader() {
   const { isAuthenticated } = useAuth()
+  const { resolvedTheme } = useTheme()
 
   const navItems = [
     { name: "About Us", href: "/about" },
@@ -23,11 +26,14 @@ export function PublicHeader() {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo and Nav */}
         <div className="flex items-center gap-6">
-          <Link href="/home" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">C</span>
-            </div>
-            <span className="text-foreground text-xl font-semibold">CodeCrate</span>
+          <Link href="/home" className="flex items-center">
+            <Image
+              src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+              alt="CoupX"
+              width={280}
+              height={80}
+              className="h-14 md:h-16 w-auto"
+            />
           </Link>
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (

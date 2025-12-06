@@ -175,7 +175,7 @@ export function HeroSection() {
             Premium Coupons at Unbeatable Prices
           </h1>
           <p className="text-muted-foreground text-base md:text-base lg:text-lg font-medium leading-relaxed max-w-lg mx-auto">
-            Get instant access to verified coupon codes for your favorite brands. Save more, spend less with CodeCrate.
+            Get instant access to verified coupon codes for your favorite brands. Save more, spend less with CoupX.
           </p>
         </div>
 

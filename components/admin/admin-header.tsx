@@ -12,10 +12,12 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Menu, LogOut, ChevronDown, Shield } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useState } from "react"
+import { useTheme } from "next-themes"
 
 export function AdminHeader() {
   const { logout, user, isLoggingOut } = useAuth()
@@ -23,6 +25,7 @@ export function AdminHeader() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [moreExpanded, setMoreExpanded] = useState(false)
+  const { resolvedTheme } = useTheme()
 
   const handleLogout = () => {
     logout()
@@ -52,10 +55,13 @@ export function AdminHeader() {
         {/* Logo and Nav */}
         <div className="flex items-center gap-6">
           <Link href="/home" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">C</span>
-            </div>
-            <span className="text-foreground text-xl font-semibold">CodeCrate</span>
+            <Image
+              src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+              alt="CoupX"
+              width={280}
+              height={80}
+              className="h-14 md:h-16 w-auto"
+            />
             <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-medium">
               Admin
             </span>
@@ -158,12 +164,16 @@ export function AdminHeader() {
               {/* Header */}
               <div className="p-6 border-b border-border/50">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                    <span className="text-primary-foreground font-bold text-xl">C</span>
-                  </div>
+                  <Image
+                    src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+                    alt="CoupX"
+                    width={40}
+                    height={40}
+                    className="rounded-xl shadow-lg"
+                  />
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-semibold text-foreground">CodeCrate</h2>
+                      <h2 className="text-lg font-semibold text-foreground">CoupX</h2>
                       <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-medium">
                         Admin
                       </span>

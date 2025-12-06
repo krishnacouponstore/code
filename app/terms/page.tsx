@@ -3,8 +3,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 
 export const metadata = {
-  title: "Terms & Conditions | CodeCrate",
-  description: "Terms and Conditions for CodeCrate - Your Trusted Coupon Marketplace",
+  title: "Terms & Conditions | CoupX",
+  description: "Terms and Conditions for CoupX - Your Trusted Coupon Marketplace",
 }
 
 export default function TermsPage() {
@@ -25,16 +25,16 @@ export default function TermsPage() {
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">1. Acceptance of Terms</h2>
               <p className="text-muted-foreground">
-                By accessing or using CodeCrate, you agree to be bound by these Terms and Conditions. If you do not
-                agree to these terms, please do not use our services.
+                By accessing or using CoupX, you agree to be bound by these Terms and Conditions. If you do not agree to
+                these terms, please do not use our services.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">2. Description of Service</h2>
               <p className="text-muted-foreground">
-                CodeCrate is a platform that allows users to purchase genuine coupon codes for various e-commerce and
-                food delivery platforms. We act as an intermediary between coupon code suppliers and end users.
+                CoupX is a platform that allows users to purchase genuine coupon codes for various e-commerce and food
+                delivery platforms. We act as an intermediary between coupon code suppliers and end users.
               </p>
             </section>
 
@@ -96,15 +96,15 @@ export default function TermsPage() {
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">7. Intellectual Property</h2>
               <p className="text-muted-foreground">
-                All content on CodeCrate, including logos, designs, and text, is our property and protected by
-                intellectual property laws. You may not use our content without express written permission.
+                All content on CoupX, including logos, designs, and text, is our property and protected by intellectual
+                property laws. You may not use our content without express written permission.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">8. Limitation of Liability</h2>
               <p className="text-muted-foreground">
-                CodeCrate is provided "as is" without warranties of any kind. We are not liable for any indirect,
+                CoupX is provided "as is" without warranties of any kind. We are not liable for any indirect,
                 incidental, or consequential damages arising from your use of our services. Our total liability shall
                 not exceed the amount you paid for the specific service in question.
               </p>

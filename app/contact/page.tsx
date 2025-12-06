@@ -22,7 +22,7 @@ const contactInfo = {
     hours: "Monday - Saturday, 9 AM - 9 PM IST",
   },
   business: {
-    name: "CodeCrate",
+    name: "CoupX",
     min_topup: 100,
   },
 }
@@ -74,14 +74,14 @@ export default function ContactPage() {
 
   const openTelegram = () => {
     const message = user
-      ? `Hi, I need help with CodeCrate. My registered email: ${user.email}`
-      : "Hi, I need help with CodeCrate."
+      ? `Hi, I need help with CoupX. My registered email: ${user.email}`
+      : "Hi, I need help with CoupX."
     const encodedMessage = encodeURIComponent(message)
     window.open(`${contactInfo.telegram.url}?text=${encodedMessage}`, "_blank")
   }
 
   const openEmail = () => {
-    const subject = encodeURIComponent("CodeCrate Support Request")
+    const subject = encodeURIComponent("CoupX Support Request")
     window.open(`mailto:${contactInfo.email.address}?subject=${subject}`, "_blank")
   }
 

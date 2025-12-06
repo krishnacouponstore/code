@@ -3,8 +3,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 
 export const metadata = {
-  title: "Privacy Policy | CodeCrate",
-  description: "Privacy Policy for CodeCrate - Your Trusted Coupon Marketplace",
+  title: "Privacy Policy | CoupX",
+  description: "Privacy Policy for CoupX - Your Trusted Coupon Marketplace",
 }
 
 export default function PrivacyPage() {

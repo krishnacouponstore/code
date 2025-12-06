@@ -4,24 +4,30 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Menu, Shield, Sparkles } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth-context"
 import { useState } from "react"
+import { useTheme } from "next-themes"
 
 export function LandingHeader() {
   const { user, isAuthenticated } = useAuth()
   const isAdmin = user?.is_admin ?? false
   const [isOpen, setIsOpen] = useState(false)
+  const { resolvedTheme } = useTheme()
 
   return (
     <header className="w-full py-4 px-6">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/home" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">C</span>
-            </div>
-            <span className="text-foreground text-xl font-semibold">CodeCrate</span>
+          <Link href="/home" className="flex items-center">
+            <Image
+              src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+              alt="CoupX"
+              width={280}
+              height={80}
+              className="h-14 md:h-20 w-auto"
+            />
           </Link>
         </div>
         <div className="flex items-center gap-3">
@@ -67,14 +73,18 @@ export function LandingHeader() {
               side="right"
               className="w-[300px] sm:w-[350px] bg-gradient-to-b from-background via-background to-muted/30 border-l border-border/50 p-0"
             >
-              {/* Header */}
+              {/* Header - keep icon for mobile menu */}
               <div className="p-6 border-b border-border/50">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                    <span className="text-primary-foreground font-bold text-xl">C</span>
-                  </div>
+                  <Image
+                    src={resolvedTheme === "dark" ? "/images/coupx-icon-light.png" : "/images/coupx-icon-dark.png"}
+                    alt="CoupX"
+                    width={40}
+                    height={40}
+                    className="rounded-xl shadow-lg"
+                  />
                   <div>
-                    <h2 className="text-lg font-semibold text-foreground">CodeCrate</h2>
+                    <h2 className="text-lg font-semibold text-foreground">CoupX</h2>
                     <p className="text-xs text-muted-foreground">Premium Coupons</p>
                   </div>
                 </div>

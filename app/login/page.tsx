@@ -2,6 +2,7 @@
 
 import { LoginForm } from "@/components/auth/login-form"
 import Link from "next/link"
+import Image from "next/image"
 import { useSearchParams } from "next/navigation"
 import { AlertTriangle, ArrowLeft, Sun, Moon } from "lucide-react"
 import { Suspense } from "react"
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button"
 function LoginContent() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect")
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, resolvedTheme } = useTheme()
 
   return (
     <div className="w-full max-w-md">
@@ -37,11 +38,14 @@ function LoginContent() {
       <div className="bg-card border border-border/50 rounded-2xl shadow-xl p-8">
         {/* Logo and Branding */}
         <div className="text-center mb-8">
-          <Link href="/home" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">C</span>
-            </div>
-            <span className="text-foreground text-2xl font-semibold">CodeCrate</span>
+          <Link href="/home" className="inline-flex items-center justify-center mb-4">
+            <Image
+              src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+              alt="CoupX"
+              width={200}
+              height={60}
+              className="h-12 w-auto"
+            />
           </Link>
         </div>
 

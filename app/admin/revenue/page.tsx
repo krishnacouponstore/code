@@ -42,10 +42,9 @@ import {
   Smartphone,
   Building,
   User,
-  ArrowUpRight,
-  ArrowDownRight,
   Settings,
 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
 
 export default function RevenuePage() {
   const { user, isLoading: authLoading, isLoggingOut } = useAuth()
@@ -65,7 +64,7 @@ export default function RevenuePage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const { data: stats, isLoading: statsLoading } = useRevenueStats()
+  const { data: stats, isLoading: statsLoading } = useRevenueStats(dateRange)
   const { data: transactionsData, isLoading: transactionsLoading } = useTransactions({
     page,
     pageSize,
@@ -284,78 +283,104 @@ export default function RevenuePage() {
         </div>
 
         {/* Stats Cards */}
-        {statsLoading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-card border border-border rounded-xl p-4">
-                <Skeleton className="h-16 w-full" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-green-500">{formatCurrency(stats?.totalRevenue || 0)}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {statsLoading ? (
+            <>
+              {[...Array(4)].map((_, i) => (
+                <Card key={i} className="bg-card border-border">
+                  <CardContent className="p-6">
+                    <Skeleton className="h-10 w-10 rounded-xl mb-4" />
+                    <Skeleton className="h-8 w-24 mb-2" />
+                    <Skeleton className="h-4 w-20" />
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          ) : (
+            <>
+              <Card className="bg-card border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-emerald-400" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-400">
+                    ₹{(stats?.totalRevenue || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </p>
                   <p className="text-sm text-muted-foreground">Total Revenue</p>
-                </div>
-              </div>
-              <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
-                <ArrowUpRight className="h-3 w-3" />
-                All time earnings
-              </p>
-            </div>
-
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-orange-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-orange-500">{formatCurrency(stats?.pendingAmount || 0)}</p>
+                  <p className="text-xs text-emerald-400 mt-1">
+                    ↗{" "}
+                    {dateRange === "today"
+                      ? "Today"
+                      : dateRange === "7days"
+                        ? "Last 7 days"
+                        : dateRange === "30days"
+                          ? "Last 30 days"
+                          : "All time"}{" "}
+                    earnings
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-orange-400" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-400">
+                    ₹{(stats?.pendingAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  </p>
                   <p className="text-sm text-muted-foreground">Pending</p>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">Awaiting verification</p>
-            </div>
-
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <CheckCircle className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{(stats?.successfulCount || 0).toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Awaiting verification</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-emerald-400" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{stats?.successfulCount || 0}</p>
                   <p className="text-sm text-muted-foreground">Successful</p>
-                </div>
-              </div>
-              <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
-                <CheckCircle className="h-3 w-3" />
-                Completed transactions
-              </p>
-            </div>
-
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-                  <XCircle className="h-5 w-5 text-red-500" />
-                </div>
-                <div>
+                  <p className="text-xs text-emerald-400 mt-1">
+                    ✓{" "}
+                    {dateRange === "today"
+                      ? "Today"
+                      : dateRange === "7days"
+                        ? "Last 7 days"
+                        : dateRange === "30days"
+                          ? "Last 30 days"
+                          : "All time"}{" "}
+                    completed
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="bg-card border-border">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
+                      <XCircle className="h-5 w-5 text-red-400" />
+                    </div>
+                  </div>
                   <p className="text-2xl font-bold text-foreground">{stats?.refundedFailedCount || 0}</p>
-                  <p className="text-sm text-muted-foreground">Refunded/Failed</p>
-                </div>
-              </div>
-              <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                <ArrowDownRight className="h-3 w-3" />
-                Requires attention
-              </p>
-            </div>
-          </div>
-        )}
+                  <p className="text-sm text-muted-foreground">Failed/Refunded</p>
+                  <p className="text-xs text-red-400 mt-1">
+                    {dateRange === "today"
+                      ? "Today"
+                      : dateRange === "7days"
+                        ? "Last 7 days"
+                        : dateRange === "30days"
+                          ? "Last 30 days"
+                          : "All time"}
+                  </p>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
 
         {/* Filters */}
         <div className="flex flex-col lg:flex-row gap-4 mb-6">

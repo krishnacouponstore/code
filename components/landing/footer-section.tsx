@@ -2,11 +2,14 @@
 
 import { Mail, Send } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useAuth } from "@/lib/auth-context"
+import { useTheme } from "next-themes"
 
 export function FooterSection() {
   const { user, isAuthenticated } = useAuth()
   const isAdmin = isAuthenticated && user?.is_admin
+  const { resolvedTheme } = useTheme()
 
   const getProductLink = (path: string) => {
     if (!isAuthenticated) {
@@ -19,11 +22,14 @@ export function FooterSection() {
     <footer className="w-full max-w-[1320px] mx-auto px-5 flex flex-col md:flex-row justify-between items-start gap-8 md:gap-0 py-10 md:py-16 border-t border-border">
       {/* Left Section */}
       <div className="flex flex-col justify-start items-start gap-6 p-4 md:p-8">
-        <Link href="/home" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">C</span>
-          </div>
-          <span className="text-foreground text-xl font-semibold">CodeCrate</span>
+        <Link href="/home" className="flex items-center">
+          <Image
+            src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+            alt="CoupX"
+            width={240}
+            height={70}
+            className="h-12 md:h-14 w-auto"
+          />
         </Link>
         <p className="text-muted-foreground text-sm max-w-xs">
           Your trusted destination for premium coupon codes. Save more, spend less.

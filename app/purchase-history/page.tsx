@@ -15,13 +15,13 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { usePurchaseStats, usePurchases } from "@/hooks/use-purchases"
+import { useSystemSettings } from "@/hooks/use-system-settings"
 import { getGraphQLClient } from "@/lib/graphql-client"
 import { GET_PURCHASE_CODES } from "@/lib/graphql/purchases"
 import {
   Search,
   ShoppingBag,
   Ticket,
-  IndianRupee,
   Eye,
   Download,
   ChevronDown,
@@ -31,7 +31,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import Link from "next/link"
-import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
+import { formatDate, formatTime } from "@/lib/utils"
 
 const ITEMS_PER_PAGE = 10
 
@@ -40,6 +40,7 @@ export default function PurchaseHistoryPage() {
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
+  const { formatPrice, CurrencyIcon } = useSystemSettings()
 
   const [searchQuery, setSearchQuery] = useState("")
   const [dateFilter, setDateFilter] = useState("all")
@@ -215,14 +216,14 @@ export default function PurchaseHistoryPage() {
           <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="p-3 rounded-xl bg-primary/10">
-                <IndianRupee className="h-5 w-5 text-primary" />
+                <CurrencyIcon className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Spent</p>
                 {statsLoading ? (
                   <Skeleton className="h-8 w-20" />
                 ) : (
-                  <p className="text-2xl font-bold text-foreground">{formatCurrency(stats?.totalSpent || 0)}</p>
+                  <p className="text-2xl font-bold text-foreground">{formatPrice(stats?.totalSpent || 0)}</p>
                 )}
               </div>
             </CardContent>
@@ -358,7 +359,7 @@ export default function PurchaseHistoryPage() {
                         <TableCell className="text-foreground">{purchase.slot.name}</TableCell>
                         <TableCell className="text-center text-foreground">{purchase.quantity} codes</TableCell>
                         <TableCell className="text-right font-medium text-foreground">
-                          {formatCurrency(purchase.total_price)}
+                          {formatPrice(purchase.total_price)}
                         </TableCell>
                         <TableCell className="text-center">{getStatusBadge(purchase.status)}</TableCell>
                         <TableCell className="text-right">
@@ -420,7 +421,7 @@ export default function PurchaseHistoryPage() {
                     </div>
                     <p className="text-foreground font-medium mb-1">{purchase.slot.name}</p>
                     <p className="text-sm text-muted-foreground mb-3">
-                      {purchase.quantity} codes &bull; {formatCurrency(purchase.total_price)}
+                      {purchase.quantity} codes &bull; {formatPrice(purchase.total_price)}
                     </p>
                     <p className="text-xs text-muted-foreground mb-4">
                       {formatDate(purchase.created_at)} at {formatTime(purchase.created_at)}

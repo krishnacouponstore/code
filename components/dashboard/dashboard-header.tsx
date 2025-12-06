@@ -11,6 +11,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Menu, Plus, User, LogOut, Wallet, ChevronDown } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { PublicHeader } from "@/components/shared/public-header"
@@ -18,6 +19,7 @@ import { AdminHeader } from "@/components/admin/admin-header"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useState } from "react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { useTheme } from "next-themes"
 
 interface DashboardHeaderProps {
   walletBalance?: number
@@ -30,6 +32,7 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [moreExpanded, setMoreExpanded] = useState(false)
+  const { resolvedTheme } = useTheme()
 
   const handleLogout = () => {
     logout()
@@ -74,11 +77,14 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo and Nav */}
         <div className="flex items-center gap-6">
-          <Link href="/home" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">C</span>
-            </div>
-            <span className="text-foreground text-xl font-semibold">CodeCrate</span>
+          <Link href="/home" className="flex items-center">
+            <Image
+              src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+              alt="CoupX"
+              width={280}
+              height={80}
+              className="h-14 md:h-16 w-auto"
+            />
           </Link>
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
@@ -202,11 +208,15 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
             >
               <div className="p-6 border-b border-border/50">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-                    <span className="text-primary-foreground font-bold text-xl">C</span>
-                  </div>
+                  <Image
+                    src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+                    alt="CoupX"
+                    width={40}
+                    height={40}
+                    className="rounded-xl shadow-lg"
+                  />
                   <div>
-                    <h2 className="text-lg font-semibold text-foreground">CodeCrate</h2>
+                    <h2 className="text-lg font-semibold text-foreground">CoupX</h2>
                     <p className="text-xs text-muted-foreground">{displayName}</p>
                   </div>
                 </div>

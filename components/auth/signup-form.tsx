@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Eye, EyeOff, Mail, Lock, User, Phone, Loader2, Check } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, Phone, Loader2, Check, Sparkles, PartyPopper, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { useSignUpEmailPassword } from "@nhost/nextjs"
 import { createUserProfile } from "@/app/actions/create-user-profile"
@@ -183,16 +183,13 @@ export function SignupForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="fullName" className="text-sm font-medium text-foreground">
-          Full Name
-        </Label>
         <div className="relative">
           <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             id="fullName"
             name="fullName"
             type="text"
-            placeholder="John Doe"
+            placeholder="Enter your full name"
             value={formData.fullName}
             onChange={handleChange}
             className={`pl-10 ${inputClass} ${errors.fullName ? "border-destructive" : ""}`}
@@ -204,16 +201,13 @@ export function SignupForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-sm font-medium text-foreground">
-          Email address
-        </Label>
         <div className="relative">
           <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             id="email"
             name="email"
             type="email"
-            placeholder="you@example.com"
+            placeholder="Enter your email"
             value={formData.email}
             onChange={handleChange}
             className={`pl-10 ${inputClass} ${errors.email ? "border-destructive" : ""}`}
@@ -225,16 +219,13 @@ export function SignupForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="phone" className="text-sm font-medium text-foreground">
-          Phone Number <span className="text-muted-foreground">(optional)</span>
-        </Label>
         <div className="relative">
           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             id="phone"
             name="phone"
             type="tel"
-            placeholder="+91 98765 43210"
+            placeholder="Enter phone number (optional)"
             value={formData.phone}
             onChange={handleChange}
             className={`pl-10 ${inputClass} ${errors.phone ? "border-destructive" : ""}`}
@@ -245,16 +236,13 @@ export function SignupForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password" className="text-sm font-medium text-foreground">
-          Password
-        </Label>
         <div className="relative">
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             id="password"
             name="password"
             type={showPassword ? "text" : "password"}
-            placeholder="Create a strong password"
+            placeholder="Create a password"
             value={formData.password}
             onChange={handleChange}
             className={`pl-10 pr-10 ${inputClass} ${errors.password ? "border-destructive" : ""}`}
@@ -302,9 +290,6 @@ export function SignupForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
-          Confirm Password
-        </Label>
         <div className="relative">
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -360,25 +345,60 @@ export function SignupForm() {
 
       <Button
         type="submit"
-        className={`w-full h-11 rounded-full font-medium shadow-sm transition-all duration-300 ${
+        className={`w-full h-11 rounded-full font-medium transition-all duration-500 ease-out overflow-hidden relative ${
           isSuccess
-            ? "bg-green-500 hover:bg-green-500 text-white scale-105"
-            : "bg-primary text-primary-foreground hover:bg-primary/90"
+            ? "bg-primary text-primary-foreground shadow-[0_0_30px_rgba(52,211,153,0.4)] scale-[1.02]"
+            : isLoading
+              ? "bg-primary/80 text-primary-foreground"
+              : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
         }`}
         disabled={isLoading || isSuccess}
       >
         {isLoading ? (
           <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Creating account...
+            <span className="absolute inset-0 bg-gradient-to-r from-primary via-primary/60 to-primary bg-[length:200%_100%] animate-[shimmer_2s_linear_infinite]" />
+            <span className="absolute inset-0 bg-primary/20 animate-pulse" />
+            <span className="relative flex items-center justify-center gap-3">
+              <span className="relative flex h-5 w-5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/40 opacity-75" />
+                <Loader2 className="relative w-5 h-5 animate-spin text-white" />
+              </span>
+              <span className="font-medium tracking-wide">Creating account...</span>
+              <span className="flex gap-1">
+                <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-[bounce_1s_ease-in-out_infinite]" />
+                <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-[bounce_1s_ease-in-out_0.2s_infinite]" />
+                <span className="w-1.5 h-1.5 bg-white/80 rounded-full animate-[bounce_1s_ease-in-out_0.4s_infinite]" />
+              </span>
+            </span>
           </>
         ) : isSuccess ? (
-          <span className="flex items-center justify-center gap-2 animate-in zoom-in-50 duration-300">
-            <Check className="w-5 h-5" />
-            Account Created!
-          </span>
+          <>
+            {/* Animated background gradient */}
+            <span className="absolute inset-0 bg-gradient-to-r from-primary via-emerald-400 to-primary bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite]" />
+
+            {/* Confetti-like particles */}
+            <span className="absolute top-1 left-6 w-1.5 h-1.5 bg-yellow-300 rounded-full animate-[ping_1s_ease-in-out_infinite]" />
+            <span className="absolute top-3 right-8 w-1 h-1 bg-white rounded-full animate-[ping_1.2s_ease-in-out_0.2s_infinite]" />
+            <span className="absolute bottom-2 left-10 w-1 h-1 bg-cyan-300 rounded-full animate-[ping_1.3s_ease-in-out_0.4s_infinite]" />
+            <span className="absolute bottom-1 right-12 w-1.5 h-1.5 bg-white rounded-full animate-[ping_1.1s_ease-in-out_0.5s_infinite]" />
+
+            {/* Content */}
+            <span className="relative flex items-center justify-center gap-2">
+              <PartyPopper className="w-4 h-4 animate-in zoom-in-50 spin-in-12 duration-500 text-yellow-200" />
+              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/20 backdrop-blur-sm animate-in zoom-in-50 duration-500">
+                <Check className="w-4 h-4 text-white" strokeWidth={3} />
+              </span>
+              <span className="animate-in fade-in slide-in-from-bottom-2 duration-500 font-semibold">
+                Account Created!
+              </span>
+              <Sparkles className="w-4 h-4 animate-in spin-in-180 duration-700 text-white/80" />
+            </span>
+          </>
         ) : (
-          "Create Account"
+          <span className="relative flex items-center justify-center gap-2 group">
+            <span>Create Account</span>
+            <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+          </span>
         )}
       </Button>
     </form>

@@ -3,7 +3,7 @@ import { Star } from "lucide-react"
 const testimonials = [
   {
     quote:
-      "CodeCrate has saved me thousands of rupees! The coupons are always valid and the delivery is instant. Best coupon platform I've used.",
+      "CoupX has saved me thousands of rupees! The coupons are always valid and the delivery is instant. Best coupon platform I've used.",
     name: "Rahul Sharma",
     role: "Regular Buyer",
     rating: 5,
@@ -28,7 +28,7 @@ const testimonials = [
     rating: 5,
   },
   {
-    quote: "I've been using CodeCrate for 6 months now. Never had a single invalid coupon. Truly reliable!",
+    quote: "I've been using CoupX for 6 months now. Never had a single invalid coupon. Truly reliable!",
     name: "Vikram Singh",
     role: "Tech Enthusiast",
     rating: 5,
@@ -48,7 +48,7 @@ export function TestimonialsSection() {
         <div className="text-center mb-12">
           <h2 className="text-foreground text-3xl md:text-5xl font-semibold mb-4">Loved by Thousands</h2>
           <p className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto">
-            See what our customers have to say about their experience with CodeCrate.
+            See what our customers have to say about their experience with CoupX.
           </p>
         </div>
 
