@@ -242,6 +242,16 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
                       <span className="font-medium">{item.name}</span>
                     </Link>
                   ))}
+                  <Link
+                    href="/profile"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-between p-3 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <User className="h-4 w-4" />
+                      <span className="font-medium">Profile</span>
+                    </div>
+                  </Link>
                 </nav>
 
                 <Collapsible open={moreExpanded} onOpenChange={setMoreExpanded}>

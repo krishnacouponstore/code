@@ -6,6 +6,7 @@ import { useAuthenticated, useUserData, useSignOut } from "@nhost/nextjs"
 import { useUserProfile, type UserProfile } from "@/hooks/use-user-profile"
 import { useUserRoles } from "@/hooks/use-user-roles"
 import { useQueryClient } from "@tanstack/react-query"
+import { mutate } from "swr"
 
 export type User = {
   id: string
@@ -89,21 +90,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setIsLoggingOut(true)
 
+    // Clear React Query cache
     queryClient.clear()
+
+    // Clear SWR cache
+    await mutate(() => true, undefined, { revalidate: false })
+
+    // Clear any localStorage items related to auth/user
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("codecrate_password_reset_email")
+    }
 
     // Sign out from Nhost
     await signOut()
 
-    // Small delay to ensure cleanup completes
-    await new Promise((resolve) => setTimeout(resolve, 100))
+    await new Promise((resolve) => setTimeout(resolve, 300))
 
-    // Redirect after cleanup
-    router.replace("/home")
-
-    // Reset logging out state after redirect
-    setTimeout(() => {
-      setIsLoggingOut(false)
-    }, 500)
+    window.location.href = "/home"
   }
 
   const isLoading =
