@@ -15,13 +15,27 @@ export function PasswordResetHandler() {
     if (typeof window === "undefined") return
 
     const hash = window.location.hash
-    if (hash && hash.includes("type=passwordReset")) {
-      console.log("[v0] Password reset detected in URL hash")
-      setIsRedirecting(true)
+    const fullUrl = window.location.href
+    console.log("[v0] PasswordResetHandler - fullUrl:", fullUrl)
+    console.log("[v0] PasswordResetHandler - hash:", hash)
 
-      // Keep the hash parameters when redirecting so Nhost can process the token
-      // The hash will be preserved and Nhost SDK will auto-authenticate the user
+    // Check for both type=passwordReset and signinPasswordless (Nhost uses both)
+    if (hash && (hash.includes("type=passwordReset") || hash.includes("type=signinPasswordless"))) {
+      console.log("[v0] Password reset detected in URL hash - redirecting to /reset-password")
+      setIsRedirecting(true)
       router.replace(`/reset-password${hash}`)
+      return
+    }
+
+    // Also check URL search params in case Nhost sends them there
+    const searchParams = new URLSearchParams(window.location.search)
+    const type = searchParams.get("type")
+    console.log("[v0] PasswordResetHandler - search param type:", type)
+
+    if (type === "passwordReset" || type === "signinPasswordless") {
+      console.log("[v0] Password reset detected in search params - redirecting")
+      setIsRedirecting(true)
+      router.replace(`/reset-password${window.location.search}${hash}`)
     }
   }, [router])
 
