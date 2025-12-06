@@ -71,7 +71,7 @@ export function ViewCodesModal({ purchaseId, open, onOpenChange }: ViewCodesModa
     const link = document.createElement("a")
     const date = new Date(purchase.created_at).toISOString().split("T")[0].replace(/-/g, "")
     link.href = url
-    link.download = `codecrate_${purchase.order_number.replace("#", "")}_${date}.csv`
+    link.download = `coupx_${purchase.order_number.replace("#", "")}_${date}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -93,7 +93,7 @@ export function ViewCodesModal({ purchaseId, open, onOpenChange }: ViewCodesModa
     const link = document.createElement("a")
     const date = new Date(purchase.created_at).toISOString().split("T")[0].replace(/-/g, "")
     link.href = url
-    link.download = `codecrate_${purchase.order_number.replace("#", "")}_${date}.txt`
+    link.download = `coupx_${purchase.order_number.replace("#", "")}_${date}.txt`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

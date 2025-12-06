@@ -102,7 +102,7 @@ export default function PurchaseHistoryPage() {
       }
 
       const date = new Date(purchaseData.created_at).toISOString().split("T")[0].replace(/-/g, "")
-      const filename = `codecrate_${orderNumber.replace("#", "")}_${date}`
+      const filename = `coupx_${orderNumber.replace("#", "")}_${date}`
 
       if (format === "csv") {
         const csvContent = [

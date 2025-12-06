@@ -98,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Clear any localStorage items related to auth/user
     if (typeof window !== "undefined") {
-      localStorage.removeItem("codecrate_password_reset_email")
+      localStorage.removeItem("coupx_password_reset_email")
     }
 
     // Sign out from Nhost

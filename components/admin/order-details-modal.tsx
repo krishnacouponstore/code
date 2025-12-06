@@ -53,11 +53,11 @@ export function OrderDetailsModal({ order, open, onOpenChange }: OrderDetailsMod
 
     if (format === "csv") {
       content = "Serial,Code\n" + order.codes.map((code, i) => `${i + 1},${code}`).join("\n")
-      filename = `codecrate_${order.order_id.replace("#", "")}_codes.csv`
+      filename = `coupx_${order.order_id.replace("#", "")}_codes.csv`
       mimeType = "text/csv"
     } else {
       content = order.codes.join("\n")
-      filename = `codecrate_${order.order_id.replace("#", "")}_codes.txt`
+      filename = `coupx_${order.order_id.replace("#", "")}_codes.txt`
       mimeType = "text/plain"
     }
 

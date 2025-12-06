@@ -696,7 +696,7 @@ export const mockAdminUsers: AdminUser[] = [
   {
     id: "admin-1",
     full_name: "Admin User",
-    email: "admin@codecrate.com",
+    email: "admin@coupx.in",
     phone: "+91 77777 66666",
     wallet_balance: 0.0,
     total_spent: 0.0,

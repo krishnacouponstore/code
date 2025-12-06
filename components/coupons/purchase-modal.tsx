@@ -221,7 +221,7 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
     const link = document.createElement("a")
     const date = new Date().toISOString().split("T")[0].replace(/-/g, "")
     link.href = url
-    link.download = `codecrate_coupons_${purchaseResult.orderNumber}_${date}.csv`
+    link.download = `coupx_${purchaseResult.orderNumber}_${date}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -240,7 +240,7 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
     const link = document.createElement("a")
     const date = new Date().toISOString().split("T")[0].replace(/-/g, "")
     link.href = url
-    link.download = `codecrate_coupons_${purchaseResult.orderNumber}_${date}.txt`
+    link.download = `coupx_${purchaseResult.orderNumber}_${date}.txt`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
