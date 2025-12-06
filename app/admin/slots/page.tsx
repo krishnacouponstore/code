@@ -42,7 +42,8 @@ export default function ManageCouponsPage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const { data: slots = [], isLoading: slotsLoading, refetch } = useSlots()
+  const { data: slots = [], isLoading: slotsLoading, error: slotsError, refetch } = useSlots()
+
   const deleteSlotMutation = useDeleteSlot()
   const togglePublishMutation = useToggleSlotPublish()
   const uploadCodesMutation = useUploadCodes()

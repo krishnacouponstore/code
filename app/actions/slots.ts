@@ -185,7 +185,40 @@ export async function uploadCodesToSlot(slotId: string, codes: string[]) {
   const client = getAdminGraphQLClient()
 
   try {
-    const codesData = codes.map((code) => ({
+    const checkExistingQuery = `
+      query CheckExistingCodes($codes: [String!]!) {
+        coupons(where: { code: { _in: $codes } }) {
+          code
+          slot_id
+          slot {
+            name
+          }
+        }
+      }
+    `
+    const existingResult: any = await client.request(checkExistingQuery, { codes })
+
+    const existingCodesDetails = existingResult.coupons.map((c: any) => ({
+      code: c.code,
+      slotId: c.slot_id,
+      slotName: c.slot?.name || "Unknown Slot",
+    }))
+    const existingCodesList = existingCodesDetails.map((c: any) => c.code)
+    const newCodes = codes.filter((code) => !existingCodesList.includes(code))
+
+    // All codes are duplicates - return details
+    if (newCodes.length === 0) {
+      return {
+        success: true,
+        uploadedCount: 0,
+        duplicateCount: existingCodesList.length,
+        existingCodesDetails,
+        newCodes: [],
+      }
+    }
+
+    // Upload only new codes
+    const codesData = newCodes.map((code) => ({
       slot_id: slotId,
       code: code,
     }))
@@ -206,25 +239,24 @@ export async function uploadCodesToSlot(slotId: string, codes: string[]) {
     const currentSlot = slotData.slots_by_pk
 
     // Update slot stock
+    const newAvailableStock = currentSlot.available_stock + uploadedCount
+    const newTotalUploaded = currentSlot.total_uploaded + uploadedCount
+
     await client.request(UPDATE_SLOT_STOCK, {
       id: slotId,
-      available_stock: currentSlot.available_stock + uploadedCount,
-      total_uploaded: currentSlot.total_uploaded + uploadedCount,
+      available_stock: newAvailableStock,
+      total_uploaded: newTotalUploaded,
     })
 
     return {
       success: true,
       uploadedCount,
+      duplicateCount: existingCodesList.length,
+      existingCodesDetails,
+      newCodes,
     }
   } catch (error: any) {
-    console.error("Error uploading codes:", error)
-
-    if (error.message?.includes("unique")) {
-      return {
-        success: false,
-        error: "Some codes already exist in the database",
-      }
-    }
+    console.error("uploadCodesToSlot error:", error)
 
     return {
       success: false,
@@ -233,17 +265,58 @@ export async function uploadCodesToSlot(slotId: string, codes: string[]) {
   }
 }
 
-export async function getAllSlots() {
+export async function checkCodesExistence(codes: string[]) {
   const client = getAdminGraphQLClient()
 
   try {
+    const checkExistingQuery = `
+      query CheckExistingCodes($codes: [String!]!) {
+        coupons(where: { code: { _in: $codes } }) {
+          code
+          slot_id
+          slot {
+            name
+          }
+        }
+      }
+    `
+    const existingResult: any = await client.request(checkExistingQuery, { codes })
+
+    const existingCodesDetails = existingResult.coupons.map((c: any) => ({
+      code: c.code,
+      slotId: c.slot_id,
+      slotName: c.slot?.name || "Unknown Slot",
+    }))
+    const existingCodesList = existingCodesDetails.map((c: any) => c.code)
+    const newCodes = codes.filter((code) => !existingCodesList.includes(code))
+
+    return {
+      success: true,
+      existingCodesDetails,
+      newCodes,
+    }
+  } catch (error: any) {
+    console.error("checkCodesExistence error:", error)
+    return {
+      success: false,
+      error: error.message || "Failed to check codes",
+      existingCodesDetails: [],
+      newCodes: codes,
+    }
+  }
+}
+
+export async function getAllSlots() {
+  try {
+    const client = getAdminGraphQLClient()
     const result: any = await client.request(GET_ALL_SLOTS)
+
     return {
       success: true,
       slots: result.slots,
     }
   } catch (error: any) {
-    console.error("Error fetching slots:", error)
+    console.error("getAllSlots error:", error)
     return {
       success: false,
       error: error.message || "Failed to fetch slots",

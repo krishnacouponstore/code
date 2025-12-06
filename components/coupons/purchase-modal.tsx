@@ -309,48 +309,50 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
-          className="sm:max-w-[700px] bg-card border-border p-0 gap-0 max-h-[90vh] overflow-hidden"
+          className="w-[95vw] max-w-[700px] bg-card border-border p-0 gap-0 max-h-[85vh] flex flex-col overflow-hidden"
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
           {/* Success Header */}
-          <div className="p-6 pb-4 border-b border-border text-center">
-            <div className="flex justify-center mb-4">
+          <div className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-border text-center shrink-0">
+            <div className="flex justify-center mb-3 sm:mb-4">
               <div className="relative">
-                <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center animate-bounce">
-                  <CheckCircle2 className="h-8 w-8 text-primary" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-primary/20 flex items-center justify-center animate-bounce">
+                  <CheckCircle2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                 </div>
-                <PartyPopper className="h-6 w-6 text-yellow-500 absolute -top-1 -right-1 animate-pulse" />
+                <PartyPopper className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 absolute -top-1 -right-1 animate-pulse" />
               </div>
             </div>
-            <DialogTitle className="text-2xl font-bold text-foreground mb-2">Purchase Successful!</DialogTitle>
-            <p className="text-muted-foreground">
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-foreground mb-1 sm:mb-2">
+              Purchase Successful!
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
               {purchaseResult.quantity} codes purchased for {formatCurrency(purchaseResult.totalAmount)}
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               New Balance: {formatCurrency(purchaseResult.newWalletBalance)}
             </p>
           </div>
 
           {/* Coupon Codes Section */}
-          <div className="p-6 space-y-4">
+          <div className="p-4 sm:p-6 space-y-3 sm:space-y-4 flex-1 overflow-y-auto min-h-0">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium text-foreground">Your Coupon Codes</h3>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-foreground mt-1 hidden sm:block">
                   Save these codes securely. You can re-download anytime from Purchase History.
                 </p>
               </div>
             </div>
 
             {/* Scrollable Table */}
-            <ScrollArea className="h-[300px] rounded-lg border border-border">
+            <ScrollArea className="h-[35vh] sm:h-[250px] rounded-lg border border-border">
               <Table>
                 <TableHeader className="sticky top-0 bg-secondary">
                   <TableRow className="hover:bg-secondary">
-                    <TableHead className="w-16 text-foreground">#</TableHead>
-                    <TableHead className="text-foreground">Coupon Code</TableHead>
-                    <TableHead className="w-20 text-right text-foreground">Copy</TableHead>
+                    <TableHead className="w-12 sm:w-16 text-foreground text-xs sm:text-sm">#</TableHead>
+                    <TableHead className="text-foreground text-xs sm:text-sm">Coupon Code</TableHead>
+                    <TableHead className="w-14 sm:w-20 text-right text-foreground text-xs sm:text-sm">Copy</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -359,13 +361,17 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
                       key={codeObj.id}
                       className={`${index % 2 === 0 ? "bg-card" : "bg-secondary/30"} hover:bg-secondary/50 transition-colors`}
                     >
-                      <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
-                      <TableCell className="font-mono text-sm text-foreground">{codeObj.code}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="font-medium text-muted-foreground text-xs sm:text-sm py-2 sm:py-4">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs sm:text-sm text-foreground py-2 sm:py-4 break-all">
+                        {codeObj.code}
+                      </TableCell>
+                      <TableCell className="text-right py-2 sm:py-4">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={`h-8 w-8 transition-colors ${
+                          className={`h-7 w-7 sm:h-8 sm:w-8 transition-colors ${
                             copiedIndex === index
                               ? "text-primary bg-primary/10"
                               : "text-muted-foreground hover:text-foreground"
@@ -373,7 +379,11 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
                           onClick={() => handleCopyCode(codeObj.code, index)}
                           aria-label={`Copy code ${codeObj.code}`}
                         >
-                          {copiedIndex === index ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          {copiedIndex === index ? (
+                            <Check className="h-3 w-3 sm:h-4 sm:w-4" />
+                          ) : (
+                            <Copy className="h-3 w-3 sm:h-4 sm:w-4" />
+                          )}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -383,30 +393,34 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
             </ScrollArea>
 
             {/* Download Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
               <Button
-                className="flex-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-11"
+                className="flex-1 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 sm:h-11 text-sm"
                 onClick={handleDownloadCSV}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Download as CSV
+                Download CSV
               </Button>
               <Button
                 variant="outline"
-                className="flex-1 rounded-full border-border h-11 bg-transparent"
+                className="flex-1 rounded-full border-border h-10 sm:h-11 bg-transparent text-sm"
                 onClick={handleDownloadTXT}
               >
                 <FileText className="h-4 w-4 mr-2" />
-                Download as TXT
+                Download TXT
               </Button>
             </div>
 
             {/* Footer Actions */}
-            <div className="flex flex-col items-center gap-3 pt-2">
-              <Button variant="link" className="text-primary hover:text-primary/80" onClick={handleViewHistory}>
+            <div className="flex flex-col items-center gap-2 sm:gap-3 pt-1 sm:pt-2">
+              <Button
+                variant="link"
+                className="text-primary hover:text-primary/80 text-sm h-8"
+                onClick={handleViewHistory}
+              >
                 View Purchase History
               </Button>
-              <Button variant="secondary" className="w-full rounded-full h-11" onClick={handleCloseSuccess}>
+              <Button variant="secondary" className="w-full rounded-full h-10 sm:h-11" onClick={handleCloseSuccess}>
                 Close
               </Button>
             </div>

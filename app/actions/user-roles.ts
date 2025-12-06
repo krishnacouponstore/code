@@ -40,7 +40,10 @@ export async function getUserRoles(userId: string): Promise<{ roles: string[]; i
       isAdmin: roles.includes("admin"),
     }
   } catch (error) {
-    console.error("Error fetching user roles:", error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    if (!errorMessage.includes("Failed to fetch") && !errorMessage.includes("aborted")) {
+      console.error("Error fetching user roles:", error)
+    }
     return { roles: [], isAdmin: false }
   }
 }

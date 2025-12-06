@@ -14,9 +14,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Upload, FileText, CheckCircle, AlertTriangle, XCircle, Loader2, Copy, File } from "lucide-react"
+import { Upload, FileText, CheckCircle, AlertTriangle, XCircle, Loader2, Copy, File, Database } from "lucide-react"
 import { useUploadCodes, type Slot } from "@/hooks/use-slots"
 import { useToast } from "@/hooks/use-toast"
+import { checkCodesExistence } from "@/app/actions/slots"
+
+type ExistingCodeDetail = {
+  code: string
+  slotId: string
+  slotName: string
+}
 
 type ValidationResult = {
   total_lines: number
@@ -25,6 +32,12 @@ type ValidationResult = {
   invalid_format: number
   ready_to_upload: number
   codes: string[]
+}
+
+type DbCheckResult = {
+  existingCodesDetails: ExistingCodeDetail[]
+  newCodes: string[]
+  checked: boolean
 }
 
 type UploadCodesModalProps = {
@@ -42,13 +55,16 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
   const [pastedCodes, setPastedCodes] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isValidating, setIsValidating] = useState(false)
+  const [isCheckingDb, setIsCheckingDb] = useState(false)
   const [validation, setValidation] = useState<ValidationResult | null>(null)
+  const [dbCheck, setDbCheck] = useState<DbCheckResult | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const resetState = useCallback(() => {
     setPastedCodes("")
     setSelectedFile(null)
     setValidation(null)
+    setDbCheck(null)
     setActiveTab("paste")
   }, [])
 
@@ -98,6 +114,7 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
 
   const handlePasteChange = (value: string) => {
     setPastedCodes(value)
+    setDbCheck(null) // Reset DB check when codes change
     if (value.trim()) {
       setIsValidating(true)
       setTimeout(() => {
@@ -114,6 +131,7 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
     if (file) {
       setSelectedFile(file)
       setIsValidating(true)
+      setDbCheck(null)
 
       const reader = new FileReader()
       reader.onload = (event) => {
@@ -131,6 +149,7 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
     if (file && (file.name.endsWith(".txt") || file.name.endsWith(".csv"))) {
       setSelectedFile(file)
       setIsValidating(true)
+      setDbCheck(null)
 
       const reader = new FileReader()
       reader.onload = (event) => {
@@ -142,21 +161,63 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
     }
   }
 
-  const handleUpload = async () => {
-    if (!slot || !validation || validation.ready_to_upload === 0) return
+  const handleCheckDatabase = async () => {
+    if (!validation || validation.codes.length === 0) return
 
-    const result = await uploadCodesMutation.mutateAsync({
-      slotId: slot.id,
-      codes: validation.codes,
-    })
+    setIsCheckingDb(true)
+    try {
+      const result = await checkCodesExistence(validation.codes)
+      if (result.success) {
+        setDbCheck({
+          existingCodesDetails: result.existingCodesDetails || [],
+          newCodes: result.newCodes || [],
+          checked: true,
+        })
+      } else {
+        toast({
+          title: "Check Failed",
+          description: result.error || "Failed to check codes in database",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      toast({
+        title: "Check Failed",
+        description: error.message || "Failed to check codes in database",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCheckingDb(false)
+    }
+  }
 
-    if (result.success) {
-      onSuccess(slot.id, result.uploadedCount || 0)
-      handleOpenChange(false)
-    } else {
+  const handleUploadNewCodes = async () => {
+    if (!slot || !dbCheck || dbCheck.newCodes.length === 0) return
+
+    try {
+      const result = await uploadCodesMutation.mutateAsync({
+        slotId: slot.id,
+        codes: dbCheck.newCodes,
+      })
+
+      if (result.success && result.uploadedCount && result.uploadedCount > 0) {
+        toast({
+          title: "Codes Uploaded Successfully",
+          description: `${result.uploadedCount} new codes uploaded successfully.`,
+        })
+        onSuccess(slot.id, result.uploadedCount)
+        handleOpenChange(false)
+      } else {
+        toast({
+          title: "Upload Failed",
+          description: result.error || "Failed to upload codes",
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
       toast({
         title: "Upload Failed",
-        description: result.error || "Failed to upload codes",
+        description: error.message || "Failed to upload codes",
         variant: "destructive",
       })
     }
@@ -235,6 +296,7 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
                       e.stopPropagation()
                       setSelectedFile(null)
                       setValidation(null)
+                      setDbCheck(null)
                     }}
                     className="mt-2 border-border text-foreground"
                   >
@@ -255,7 +317,6 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
           </TabsContent>
         </Tabs>
 
-        {/* Validation Results */}
         {isValidating && (
           <div className="flex items-center justify-center py-4">
             <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
@@ -276,7 +337,7 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
               </div>
               <div className="bg-yellow-500/10 rounded-lg p-3 text-center">
                 <p className="text-2xl font-bold text-yellow-500">{validation.duplicates}</p>
-                <p className="text-xs text-yellow-500">Duplicates</p>
+                <p className="text-xs text-yellow-500">Duplicates (in paste)</p>
               </div>
               <div className="bg-destructive/10 rounded-lg p-3 text-center">
                 <p className="text-2xl font-bold text-destructive">{validation.invalid_format}</p>
@@ -284,28 +345,129 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
               </div>
             </div>
 
-            <div className="space-y-2">
-              {validation.valid_codes > 0 && (
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <span className="text-foreground">{validation.valid_codes} valid codes</span>
+            {!dbCheck?.checked && validation.valid_codes > 0 && (
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Database className="h-5 w-5 text-blue-500" />
+                    <div>
+                      <p className="text-blue-500 font-medium">Check Database</p>
+                      <p className="text-sm text-muted-foreground">
+                        Check which codes already exist in the database before uploading
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleCheckDatabase}
+                    disabled={isCheckingDb}
+                    className="bg-blue-500 text-white hover:bg-blue-600"
+                  >
+                    {isCheckingDb ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Checking...
+                      </>
+                    ) : (
+                      "Check Now"
+                    )}
+                  </Button>
                 </div>
-              )}
-              {validation.duplicates > 0 && (
-                <div className="flex items-center gap-2 text-sm">
-                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                  <span className="text-muted-foreground">{validation.duplicates} duplicates (will skip)</span>
-                </div>
-              )}
-              {validation.invalid_format > 0 && (
-                <div className="flex items-center gap-2 text-sm">
-                  <XCircle className="h-4 w-4 text-destructive" />
-                  <span className="text-muted-foreground">{validation.invalid_format} invalid format (rejected)</span>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {validation.codes.length > 0 && (
+            {dbCheck?.checked && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <p className="text-green-500 font-medium">New Codes</p>
+                    </div>
+                    <p className="text-3xl font-bold text-green-500">{dbCheck.newCodes.length}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Ready to upload</p>
+                  </div>
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                      <p className="text-yellow-500 font-medium">Already in DB</p>
+                    </div>
+                    <p className="text-3xl font-bold text-yellow-500">{dbCheck.existingCodesDetails.length}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Will be skipped</p>
+                  </div>
+                </div>
+
+                {/* Show existing codes with their slot names */}
+                {dbCheck.existingCodesDetails.length > 0 && (
+                  <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-lg p-4">
+                    <p className="text-sm font-medium text-yellow-500 mb-3">
+                      Codes already in database ({dbCheck.existingCodesDetails.length}):
+                    </p>
+                    <div className="max-h-[150px] overflow-y-auto space-y-1">
+                      {dbCheck.existingCodesDetails.slice(0, 20).map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-xs font-mono">
+                          <span className="text-muted-foreground">{item.code}</span>
+                          <span className="text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded">{item.slotName}</span>
+                        </div>
+                      ))}
+                      {dbCheck.existingCodesDetails.length > 20 && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          + {dbCheck.existingCodesDetails.length - 20} more existing codes...
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Show new codes preview */}
+                {dbCheck.newCodes.length > 0 && (
+                  <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-green-500">
+                        New codes to upload ({dbCheck.newCodes.length}):
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => navigator.clipboard.writeText(dbCheck.newCodes.join("\n"))}
+                        className="text-muted-foreground hover:text-foreground h-8"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy
+                      </Button>
+                    </div>
+                    <div className="max-h-[150px] overflow-y-auto space-y-1 font-mono text-xs">
+                      {dbCheck.newCodes.slice(0, 10).map((code, idx) => (
+                        <div key={idx} className="text-green-500">
+                          {idx + 1}. {code}
+                        </div>
+                      ))}
+                      {dbCheck.newCodes.length > 10 && (
+                        <p className="text-primary mt-2">+ {dbCheck.newCodes.length - 10} more new codes</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* No new codes message */}
+                {dbCheck.newCodes.length === 0 && (
+                  <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-5 w-5 text-destructive" />
+                      <div>
+                        <p className="text-destructive font-medium">All codes already exist</p>
+                        <p className="text-sm text-muted-foreground">
+                          All {dbCheck.existingCodesDetails.length} codes are already in the database. Please paste
+                          different codes.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Preview section - only show if DB check not done yet */}
+            {!dbCheck?.checked && validation.codes.length > 0 && (
               <div className="bg-secondary rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-medium text-foreground">Preview (first 10 codes)</p>
@@ -336,10 +498,13 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
 
         <DialogFooter className="gap-2 mt-6">
           <div className="flex-1 text-sm text-muted-foreground">
-            {validation && validation.ready_to_upload > 0 && (
+            {dbCheck?.checked && dbCheck.newCodes.length > 0 && (
               <span>
-                Ready to upload <span className="text-primary font-medium">{validation.ready_to_upload}</span> codes
+                Ready to upload <span className="text-primary font-medium">{dbCheck.newCodes.length}</span> new codes
               </span>
+            )}
+            {!dbCheck?.checked && validation && validation.ready_to_upload > 0 && (
+              <span className="text-yellow-500">Check database first to see which codes are new</span>
             )}
           </div>
           <Button
@@ -351,9 +516,9 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
             Cancel
           </Button>
           <Button
-            onClick={handleUpload}
+            onClick={handleUploadNewCodes}
             className="bg-primary text-primary-foreground hover:bg-primary/90"
-            disabled={isUploading || !validation || validation.ready_to_upload === 0}
+            disabled={isUploading || !dbCheck?.checked || dbCheck.newCodes.length === 0}
           >
             {isUploading ? (
               <>
@@ -363,7 +528,7 @@ export function UploadCodesModal({ open, onOpenChange, slot, onSuccess }: Upload
             ) : (
               <>
                 <Upload className="mr-2 h-4 w-4" />
-                Upload Codes
+                Upload {dbCheck?.newCodes.length || 0} New Codes
               </>
             )}
           </Button>

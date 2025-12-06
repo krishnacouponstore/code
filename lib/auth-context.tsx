@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const nhostUser = useUserData()
   const { signOut } = useSignOut()
   const { data: profile, isLoading: isProfileLoading, refetch } = useUserProfile()
-  const { data: rolesData, isLoading: isRolesLoading, isFetching: isRolesFetching } = useUserRoles()
+  const { data: rolesData, isLoading: isRolesLoading } = useUserRoles()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [profileChecked, setProfileChecked] = useState(false)
   const queryClient = useQueryClient()
@@ -109,8 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/home"
   }
 
-  const isLoading =
-    isAuthenticated === undefined || (isAuthenticated && (isProfileLoading || isRolesLoading || isRolesFetching))
+  const isLoading = isAuthenticated === undefined || (isAuthenticated && (isProfileLoading || isRolesLoading))
 
   return (
     <AuthContext.Provider
