@@ -1,4 +1,4 @@
-# Krishna Coupon Store
+# Krishna Coupon Store- CoupX
 
 *Automatically synced with your [v0.app](https://v0.app) deployments*
 
