@@ -14,15 +14,27 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import type { Transaction } from "@/lib/mock-data"
+import type { Transaction } from "@/hooks/use-admin-transactions"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
-import { Copy, Check, User, Mail, CreditCard, Clock, CheckCircle, XCircle, AlertCircle, RotateCcw } from "lucide-react"
+import {
+  Copy,
+  Check,
+  User,
+  Mail,
+  CreditCard,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  RotateCcw,
+  Settings,
+} from "lucide-react"
 
 interface TransactionDetailsModalProps {
   transaction: Transaction | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onStatusChange: (txnId: string, newStatus: Transaction["status"]) => void
+  onStatusChange: (txnId: string, newStatus: "success" | "failed") => void
   onRefund: (txnId: string, reason: string) => void
 }
 
@@ -37,7 +49,7 @@ export function TransactionDetailsModal({
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [showRefundForm, setShowRefundForm] = useState(false)
   const [refundReason, setRefundReason] = useState("")
-  const [newStatus, setNewStatus] = useState<Transaction["status"] | "">("")
+  const [newStatus, setNewStatus] = useState<"success" | "failed" | "">("")
 
   if (!transaction) return null
 
@@ -92,6 +104,25 @@ export function TransactionDetailsModal({
     }
   }
 
+  const getMethodName = (method: string | null) => {
+    if (!method) return "Unknown"
+    const m = method.toLowerCase()
+    if (m === "upi") return "UPI"
+    if (m === "card") return "Card"
+    if (m === "netbanking") return "NetBanking"
+    if (m === "admin_credit") return "Admin Credit"
+    if (m === "admin_debit") return "Admin Debit"
+    if (m === "admin_adjustment") return "Admin Adjustment"
+    return method
+  }
+
+  const getMethodIcon = (method: string | null) => {
+    if (!method) return <CreditCard className="h-4 w-4 text-muted-foreground" />
+    const m = method.toLowerCase()
+    if (m.includes("admin")) return <Settings className="h-4 w-4 text-muted-foreground" />
+    return <CreditCard className="h-4 w-4 text-muted-foreground" />
+  }
+
   const canRefund = transaction.status === "success"
   const canChangeStatus = transaction.status === "pending"
 
@@ -101,7 +132,9 @@ export function TransactionDetailsModal({
         <DialogHeader>
           <DialogTitle className="text-foreground flex items-center gap-2">
             Transaction Details
-            <span className="text-sm font-normal text-muted-foreground">#{transaction.id}</span>
+            <span className="text-sm font-normal text-muted-foreground">
+              {transaction.transaction_id || `#${transaction.id.slice(0, 8)}`}
+            </span>
           </DialogTitle>
           <DialogDescription>View and manage transaction information</DialogDescription>
         </DialogHeader>
@@ -121,7 +154,10 @@ export function TransactionDetailsModal({
           {/* Amount */}
           <div className="bg-secondary/50 rounded-xl p-4 text-center">
             <p className="text-sm text-muted-foreground mb-1">Amount</p>
-            <p className="text-3xl font-bold text-primary">{formatCurrency(transaction.amount)}</p>
+            <p className={`text-3xl font-bold ${transaction.amount >= 0 ? "text-green-500" : "text-red-500"}`}>
+              {transaction.amount >= 0 ? "+" : ""}
+              {formatCurrency(transaction.amount)}
+            </p>
           </div>
 
           {/* User Info */}
@@ -130,11 +166,11 @@ export function TransactionDetailsModal({
             <div className="bg-secondary/30 rounded-lg p-3 space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-foreground">{transaction.user_name}</span>
+                <span className="text-foreground">{transaction.user.name}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span className="text-foreground">{transaction.user_email}</span>
+                <span className="text-foreground">{transaction.user.email}</span>
               </div>
             </div>
           </div>
@@ -145,33 +181,35 @@ export function TransactionDetailsModal({
             <div className="space-y-2">
               <div className="flex items-center justify-between bg-secondary/30 rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  {getMethodIcon(transaction.payment_method)}
                   <span className="text-sm text-muted-foreground">Method</span>
                 </div>
-                <span className="text-sm text-foreground font-medium">{transaction.method}</span>
+                <span className="text-sm text-foreground font-medium">{getMethodName(transaction.payment_method)}</span>
               </div>
 
               <div className="bg-secondary/30 rounded-lg p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Order ID</span>
-                  <div className="flex items-center gap-2">
-                    <code className="text-xs text-foreground bg-background px-2 py-1 rounded">
-                      {transaction.razorpay_order_id}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => copyToClipboard(transaction.razorpay_order_id, "Order ID")}
-                    >
-                      {copiedField === "Order ID" ? (
-                        <Check className="h-3 w-3 text-green-500" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                    </Button>
+                {transaction.razorpay_order_id && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Order ID</span>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs text-foreground bg-background px-2 py-1 rounded">
+                        {transaction.razorpay_order_id}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={() => copyToClipboard(transaction.razorpay_order_id!, "Order ID")}
+                      >
+                        {copiedField === "Order ID" ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
                 {transaction.razorpay_payment_id && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Payment ID</span>
@@ -183,7 +221,7 @@ export function TransactionDetailsModal({
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => copyToClipboard(transaction.razorpay_payment_id, "Payment ID")}
+                        onClick={() => copyToClipboard(transaction.razorpay_payment_id!, "Payment ID")}
                       >
                         {copiedField === "Payment ID" ? (
                           <Check className="h-3 w-3 text-green-500" />
@@ -193,6 +231,9 @@ export function TransactionDetailsModal({
                       </Button>
                     </div>
                   </div>
+                )}
+                {!transaction.razorpay_order_id && !transaction.razorpay_payment_id && (
+                  <p className="text-sm text-muted-foreground text-center py-2">No payment IDs available</p>
                 )}
               </div>
             </div>
@@ -245,7 +286,7 @@ export function TransactionDetailsModal({
             <div className="space-y-3 border-t border-border pt-4">
               <h4 className="text-sm font-medium text-foreground">Change Status</h4>
               <div className="flex gap-2">
-                <Select value={newStatus} onValueChange={(v) => setNewStatus(v as Transaction["status"])}>
+                <Select value={newStatus} onValueChange={(v) => setNewStatus(v as "success" | "failed")}>
                   <SelectTrigger className="flex-1 bg-secondary border-border">
                     <SelectValue placeholder="Select new status" />
                   </SelectTrigger>

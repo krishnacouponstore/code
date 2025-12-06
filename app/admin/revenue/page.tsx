@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AdminHeader } from "@/components/admin/admin-header"
@@ -8,6 +8,7 @@ import { TransactionDetailsModal } from "@/components/admin/transaction-details-
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +18,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { mockTransactions, revenueStats, type Transaction } from "@/lib/mock-data"
+import {
+  useRevenueStats,
+  useTransactions,
+  useUpdateTransactionStatus,
+  useRefundTransaction,
+  type Transaction,
+} from "@/hooks/use-admin-transactions"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
 import {
   DollarSign,
@@ -37,6 +44,7 @@ import {
   User,
   ArrowUpRight,
   ArrowDownRight,
+  Settings,
 } from "lucide-react"
 
 export default function RevenuePage() {
@@ -44,16 +52,40 @@ export default function RevenuePage() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions)
+  const [page, setPage] = useState(0)
+  const [pageSize] = useState(20)
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "success" | "failed" | "refunded">("all")
-  const [methodFilter, setMethodFilter] = useState<"all" | "UPI" | "Card" | "NetBanking">("all")
+  const [methodFilter, setMethodFilter] = useState<"all" | "UPI" | "Card" | "NetBanking" | "Admin">("all")
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount_high" | "amount_low">("newest")
   const [dateRange, setDateRange] = useState<"today" | "7days" | "30days" | "all">("all")
 
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const { data: stats, isLoading: statsLoading } = useRevenueStats()
+  const { data: transactionsData, isLoading: transactionsLoading } = useTransactions({
+    page,
+    pageSize,
+    search: debouncedSearch,
+    status: statusFilter,
+    method: methodFilter,
+    sortBy,
+    dateRange,
+  })
+
+  const updateStatusMutation = useUpdateTransactionStatus()
+  const refundMutation = useRefundTransaction()
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(0)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   useEffect(() => {
     if (isLoggingOut) return
@@ -62,85 +94,9 @@ export default function RevenuePage() {
     }
   }, [user, authLoading, router, isLoggingOut])
 
-  // Calculate stats
-  const stats = useMemo(() => {
-    const successTxns = transactions.filter((t) => t.status === "success")
-    const pendingTxns = transactions.filter((t) => t.status === "pending")
-    const refundedFailedTxns = transactions.filter((t) => t.status === "refunded" || t.status === "failed")
-
-    return {
-      totalRevenue: revenueStats.total_revenue,
-      pendingAmount: pendingTxns.reduce((sum, t) => sum + t.amount, 0),
-      successfulCount: revenueStats.successful_transactions,
-      refundedFailedCount: refundedFailedTxns.length,
-    }
-  }, [transactions])
-
-  // Filter and sort transactions
-  const filteredTransactions = useMemo(() => {
-    let result = [...transactions]
-
-    // Date range filter
-    if (dateRange !== "all") {
-      const now = new Date()
-      let startDate: Date
-      switch (dateRange) {
-        case "today":
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-          break
-        case "7days":
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-          break
-        case "30days":
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-          break
-        default:
-          startDate = new Date(0)
-      }
-      result = result.filter((t) => new Date(t.created_at) >= startDate)
-    }
-
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(
-        (t) =>
-          t.id.toLowerCase().includes(query) ||
-          t.user_name.toLowerCase().includes(query) ||
-          t.user_email.toLowerCase().includes(query) ||
-          t.razorpay_order_id.toLowerCase().includes(query) ||
-          t.razorpay_payment_id.toLowerCase().includes(query),
-      )
-    }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      result = result.filter((t) => t.status === statusFilter)
-    }
-
-    // Method filter
-    if (methodFilter !== "all") {
-      result = result.filter((t) => t.method === methodFilter)
-    }
-
-    // Sort
-    switch (sortBy) {
-      case "newest":
-        result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        break
-      case "oldest":
-        result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        break
-      case "amount_high":
-        result.sort((a, b) => b.amount - a.amount)
-        break
-      case "amount_low":
-        result.sort((a, b) => a.amount - b.amount)
-        break
-    }
-
-    return result
-  }, [transactions, searchQuery, statusFilter, methodFilter, sortBy, dateRange])
+  const transactions = transactionsData?.transactions || []
+  const totalTransactions = transactionsData?.total || 0
+  const totalPages = Math.ceil(totalTransactions / pageSize)
 
   if (authLoading || !user?.is_admin) {
     return (
@@ -165,55 +121,58 @@ export default function RevenuePage() {
     setIsDetailsOpen(true)
   }
 
-  const handleStatusChange = (txnId: string, newStatus: Transaction["status"]) => {
-    setTransactions(
-      transactions.map((t) =>
-        t.id === txnId
-          ? {
-              ...t,
-              status: newStatus,
-              verified_at: newStatus === "success" ? new Date().toISOString() : t.verified_at,
-            }
-          : t,
-      ),
-    )
-    toast({
-      title: "Status updated",
-      description: `Transaction #${txnId} marked as ${newStatus}`,
-    })
+  const handleStatusChange = async (txnId: string, newStatus: "success" | "failed") => {
+    const result = await updateStatusMutation.mutateAsync({ id: txnId, status: newStatus })
+    if (result.success) {
+      toast({
+        title: "Status updated",
+        description: `Transaction marked as ${newStatus}`,
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to update status",
+        variant: "destructive",
+      })
+    }
     setIsDetailsOpen(false)
   }
 
-  const handleRefund = (txnId: string, reason: string) => {
-    setTransactions(
-      transactions.map((t) =>
-        t.id === txnId
-          ? {
-              ...t,
-              status: "refunded",
-              refunded_at: new Date().toISOString(),
-              refund_reason: reason,
-            }
-          : t,
-      ),
-    )
-    toast({
-      title: "Refund issued",
-      description: `Transaction #${txnId} has been refunded`,
+  const handleRefund = async (txnId: string, reason: string) => {
+    const txn = transactions.find((t) => t.id === txnId)
+    if (!txn) return
+
+    const result = await refundMutation.mutateAsync({
+      id: txnId,
+      userId: txn.user.id,
+      amount: txn.amount,
     })
+
+    if (result.success) {
+      toast({
+        title: "Refund issued",
+        description: `Transaction has been refunded`,
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to process refund",
+        variant: "destructive",
+      })
+    }
     setIsDetailsOpen(false)
   }
 
   const exportToCSV = () => {
     const headers = ["Transaction ID", "Date", "User", "Email", "Amount", "Method", "Order ID", "Payment ID", "Status"]
-    const rows = filteredTransactions.map((t) => [
-      t.id,
+    const rows = transactions.map((t) => [
+      t.transaction_id || t.id,
       `${formatDate(t.created_at)} ${formatTime(t.created_at)}`,
-      t.user_name,
-      t.user_email,
+      t.user.name,
+      t.user.email,
       t.amount.toFixed(2),
-      t.method,
-      t.razorpay_order_id,
+      t.payment_method || "-",
+      t.razorpay_order_id || "-",
       t.razorpay_payment_id || "-",
       t.status,
     ])
@@ -229,7 +188,7 @@ export default function RevenuePage() {
 
     toast({
       title: "Export successful",
-      description: `${filteredTransactions.length} transactions exported to CSV`,
+      description: `${transactions.length} transactions exported to CSV`,
     })
   }
 
@@ -266,15 +225,26 @@ export default function RevenuePage() {
     }
   }
 
-  const getMethodIcon = (method: Transaction["method"]) => {
-    switch (method) {
-      case "UPI":
-        return <Smartphone className="h-4 w-4" />
-      case "Card":
-        return <CreditCard className="h-4 w-4" />
-      case "NetBanking":
-        return <Building className="h-4 w-4" />
-    }
+  const getMethodIcon = (method: string | null) => {
+    if (!method) return <CreditCard className="h-4 w-4" />
+    const m = method.toLowerCase()
+    if (m === "upi") return <Smartphone className="h-4 w-4" />
+    if (m === "card") return <CreditCard className="h-4 w-4" />
+    if (m === "netbanking") return <Building className="h-4 w-4" />
+    if (m.includes("admin")) return <Settings className="h-4 w-4" />
+    return <CreditCard className="h-4 w-4" />
+  }
+
+  const getMethodName = (method: string | null) => {
+    if (!method) return "Unknown"
+    const m = method.toLowerCase()
+    if (m === "upi") return "UPI"
+    if (m === "card") return "Card"
+    if (m === "netbanking") return "NetBanking"
+    if (m === "admin_credit") return "Admin Credit"
+    if (m === "admin_debit") return "Admin Debit"
+    if (m === "admin_adjustment") return "Admin"
+    return method
   }
 
   return (
@@ -289,7 +259,13 @@ export default function RevenuePage() {
             <p className="text-muted-foreground mt-1">Track all wallet top-ups and payment activity</p>
           </div>
           <div className="flex items-center gap-3">
-            <Select value={dateRange} onValueChange={(v) => setDateRange(v as typeof dateRange)}>
+            <Select
+              value={dateRange}
+              onValueChange={(v) => {
+                setDateRange(v as typeof dateRange)
+                setPage(0)
+              }}
+            >
               <SelectTrigger className="w-[140px] bg-secondary border-border text-foreground">
                 <SelectValue placeholder="Date range" />
               </SelectTrigger>
@@ -308,68 +284,78 @@ export default function RevenuePage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <DollarSign className="h-5 w-5 text-green-500" />
+        {statsLoading ? (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-card border border-border rounded-xl p-4">
+                <Skeleton className="h-16 w-full" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-green-500">{formatCurrency(stats.totalRevenue)}</p>
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
-              </div>
-            </div>
-            <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
-              <ArrowUpRight className="h-3 w-3" />
-              All time earnings
-            </p>
+            ))}
           </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-green-500">{formatCurrency(stats?.totalRevenue || 0)}</p>
+                  <p className="text-sm text-muted-foreground">Total Revenue</p>
+                </div>
+              </div>
+              <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
+                <ArrowUpRight className="h-3 w-3" />
+                All time earnings
+              </p>
+            </div>
 
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <Clock className="h-5 w-5 text-orange-500" />
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-orange-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-orange-500">{formatCurrency(stats?.pendingAmount || 0)}</p>
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-orange-500">{formatCurrency(stats.pendingAmount)}</p>
-                <p className="text-sm text-muted-foreground">Pending</p>
-              </div>
+              <p className="text-xs text-muted-foreground mt-2">Awaiting verification</p>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Awaiting verification</p>
-          </div>
 
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-primary" />
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <CheckCircle className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{(stats?.successfulCount || 0).toLocaleString()}</p>
+                  <p className="text-sm text-muted-foreground">Successful</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.successfulCount.toLocaleString()}</p>
-                <p className="text-sm text-muted-foreground">Successful</p>
-              </div>
+              <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Completed transactions
+              </p>
             </div>
-            <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
-              <CheckCircle className="h-3 w-3" />
-              Completed transactions
-            </p>
-          </div>
 
-          <div className="bg-card border border-border rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <XCircle className="h-5 w-5 text-red-500" />
+            <div className="bg-card border border-border rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{stats?.refundedFailedCount || 0}</p>
+                  <p className="text-sm text-muted-foreground">Refunded/Failed</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stats.refundedFailedCount}</p>
-                <p className="text-sm text-muted-foreground">Refunded/Failed</p>
-              </div>
+              <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                <ArrowDownRight className="h-3 w-3" />
+                Requires attention
+              </p>
             </div>
-            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-              <ArrowDownRight className="h-3 w-3" />
-              Requires attention
-            </p>
           </div>
-        </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
@@ -383,7 +369,13 @@ export default function RevenuePage() {
             />
           </div>
           <div className="flex flex-wrap gap-3">
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => {
+                setStatusFilter(v as typeof statusFilter)
+                setPage(0)
+              }}
+            >
               <SelectTrigger className="w-[130px] bg-secondary border-border text-foreground">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -395,7 +387,13 @@ export default function RevenuePage() {
                 <SelectItem value="refunded">Refunded</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={methodFilter} onValueChange={(v) => setMethodFilter(v as typeof methodFilter)}>
+            <Select
+              value={methodFilter}
+              onValueChange={(v) => {
+                setMethodFilter(v as typeof methodFilter)
+                setPage(0)
+              }}
+            >
               <SelectTrigger className="w-[140px] bg-secondary border-border text-foreground">
                 <SelectValue placeholder="Method" />
               </SelectTrigger>
@@ -404,9 +402,16 @@ export default function RevenuePage() {
                 <SelectItem value="UPI">UPI</SelectItem>
                 <SelectItem value="Card">Card</SelectItem>
                 <SelectItem value="NetBanking">NetBanking</SelectItem>
+                <SelectItem value="Admin">Admin</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <Select
+              value={sortBy}
+              onValueChange={(v) => {
+                setSortBy(v as typeof sortBy)
+                setPage(0)
+              }}
+            >
               <SelectTrigger className="w-[160px] bg-secondary border-border text-foreground">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -423,12 +428,20 @@ export default function RevenuePage() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-muted-foreground">
-            Showing {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? "s" : ""}
+            Showing {totalTransactions} transaction{totalTransactions !== 1 ? "s" : ""}
           </p>
         </div>
 
         {/* Transactions Table */}
-        {filteredTransactions.length === 0 ? (
+        {transactionsLoading ? (
+          <div className="bg-card border border-border rounded-xl p-8">
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))}
+            </div>
+          </div>
+        ) : transactions.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
             <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">No Transactions Found</h3>
@@ -456,9 +469,11 @@ export default function RevenuePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTransactions.map((txn) => (
+                  {transactions.map((txn) => (
                     <TableRow key={txn.id} className="border-border hover:bg-secondary/50">
-                      <TableCell className="font-mono text-sm text-foreground">#{txn.id}</TableCell>
+                      <TableCell className="font-mono text-sm text-foreground">
+                        {txn.transaction_id || `#${txn.id.slice(0, 8)}`}
+                      </TableCell>
                       <TableCell>
                         <div>
                           <p className="text-foreground">{formatDate(txn.created_at)}</p>
@@ -467,35 +482,42 @@ export default function RevenuePage() {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="text-foreground">{txn.user_name}</p>
-                          <p className="text-xs text-muted-foreground">{txn.user_email}</p>
+                          <p className="text-foreground">{txn.user.name}</p>
+                          <p className="text-xs text-muted-foreground">{txn.user.email}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="font-semibold text-foreground">{formatCurrency(txn.amount)}</TableCell>
+                      <TableCell className={`font-semibold ${txn.amount >= 0 ? "text-green-500" : "text-red-500"}`}>
+                        {txn.amount >= 0 ? "+" : ""}
+                        {formatCurrency(txn.amount)}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-foreground">
-                          {getMethodIcon(txn.method)}
-                          {txn.method}
+                          {getMethodIcon(txn.payment_method)}
+                          {getMethodName(txn.payment_method)}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <code className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded max-w-[100px] truncate">
-                            {txn.razorpay_order_id}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => copyToClipboard(txn.razorpay_order_id, txn.id)}
-                          >
-                            {copiedId === txn.id ? (
-                              <Check className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
-                          </Button>
-                        </div>
+                        {txn.razorpay_order_id ? (
+                          <div className="flex items-center gap-1">
+                            <code className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded max-w-[100px] truncate">
+                              {txn.razorpay_order_id}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => copyToClipboard(txn.razorpay_order_id!, txn.id)}
+                            >
+                              {copiedId === txn.id ? (
+                                <Check className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell>{getStatusBadge(txn.status)}</TableCell>
                       <TableCell className="text-right">
@@ -505,55 +527,27 @@ export default function RevenuePage() {
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-card border-border w-48">
-                            <DropdownMenuItem onClick={() => handleViewDetails(txn)} className="cursor-pointer">
+                          <DropdownMenuContent align="end" className="bg-card border-border">
+                            <DropdownMenuItem onClick={() => handleViewDetails(txn)}>
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => copyToClipboard(txn.razorpay_order_id, `order-${txn.id}`)}
-                              className="cursor-pointer"
+                              onClick={() => copyToClipboard(txn.transaction_id || txn.id, `copy-${txn.id}`)}
                             >
                               <Copy className="mr-2 h-4 w-4" />
-                              Copy Order ID
+                              Copy TXN ID
                             </DropdownMenuItem>
-                            {txn.razorpay_payment_id && (
-                              <DropdownMenuItem
-                                onClick={() => copyToClipboard(txn.razorpay_payment_id, `pay-${txn.id}`)}
-                                className="cursor-pointer"
-                              >
-                                <Copy className="mr-2 h-4 w-4" />
-                                Copy Payment ID
-                              </DropdownMenuItem>
-                            )}
                             {txn.status === "pending" && (
                               <>
                                 <DropdownMenuSeparator className="bg-border" />
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusChange(txn.id, "success")}
-                                  className="cursor-pointer text-green-500 focus:text-green-500"
-                                >
-                                  <CheckCircle className="mr-2 h-4 w-4" />
-                                  Mark as Success
+                                <DropdownMenuItem onClick={() => handleStatusChange(txn.id, "success")}>
+                                  <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                                  Mark Success
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleStatusChange(txn.id, "failed")}
-                                  className="cursor-pointer text-red-500 focus:text-red-500"
-                                >
-                                  <XCircle className="mr-2 h-4 w-4" />
-                                  Mark as Failed
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {txn.status === "success" && (
-                              <>
-                                <DropdownMenuSeparator className="bg-border" />
-                                <DropdownMenuItem
-                                  onClick={() => handleViewDetails(txn)}
-                                  className="cursor-pointer text-orange-500 focus:text-orange-500"
-                                >
-                                  <RotateCcw className="mr-2 h-4 w-4" />
-                                  Issue Refund
+                                <DropdownMenuItem onClick={() => handleStatusChange(txn.id, "failed")}>
+                                  <XCircle className="mr-2 h-4 w-4 text-red-500" />
+                                  Mark Failed
                                 </DropdownMenuItem>
                               </>
                             )}
@@ -568,64 +562,74 @@ export default function RevenuePage() {
 
             {/* Mobile Cards */}
             <div className="lg:hidden space-y-4">
-              {filteredTransactions.map((txn) => (
+              {transactions.map((txn) => (
                 <div key={txn.id} className="bg-card border border-border rounded-xl p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <p className="font-mono text-sm text-foreground">#{txn.id}</p>
+                      <p className="font-mono text-sm text-foreground">
+                        {txn.transaction_id || `#${txn.id.slice(0, 8)}`}
+                      </p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(txn.created_at)} at {formatTime(txn.created_at)}
                       </p>
                     </div>
+                    {getStatusBadge(txn.status)}
+                  </div>
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      {getStatusBadge(txn.status)}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-card border-border w-48">
-                          <DropdownMenuItem onClick={() => handleViewDetails(txn)} className="cursor-pointer">
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => copyToClipboard(txn.razorpay_order_id, `mobile-${txn.id}`)}
-                            className="cursor-pointer"
-                          >
-                            <Copy className="mr-2 h-4 w-4" />
-                            Copy Order ID
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-foreground">{txn.user_name}</p>
-                      <p className="text-xs text-muted-foreground">{txn.user_email}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Amount</p>
-                      <p className="text-foreground font-semibold">{formatCurrency(txn.amount)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Method</p>
-                      <div className="flex items-center gap-1 text-foreground">
-                        {getMethodIcon(txn.method)}
-                        {txn.method}
+                      <User className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-foreground">{txn.user.name}</p>
+                        <p className="text-xs text-muted-foreground">{txn.user.email}</p>
                       </div>
                     </div>
+                    <p className={`font-semibold ${txn.amount >= 0 ? "text-green-500" : "text-red-500"}`}>
+                      {txn.amount >= 0 ? "+" : ""}
+                      {formatCurrency(txn.amount)}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {getMethodIcon(txn.payment_method)}
+                      {getMethodName(txn.payment_method)}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleViewDetails(txn)}>
+                      <Eye className="h-4 w-4 mr-1" />
+                      Details
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <p className="text-sm text-muted-foreground">
+                  Page {page + 1} of {totalPages}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="border-border"
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="border-border"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>

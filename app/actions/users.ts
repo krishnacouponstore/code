@@ -126,41 +126,14 @@ export async function getUserStats() {
   }
 }
 
-async function getNextAdminTransactionId(client: GraphQLClient): Promise<string> {
-  try {
-    const query = gql`
-      query GetLastAdminTransaction {
-        topups(
-          where: { transaction_id: { _like: "#ADMIN%" } }
-          order_by: { created_at: desc }
-          limit: 1
-        ) {
-          transaction_id
-        }
-      }
-    `
-
-    const result: any = await client.request(query)
-
-    if (!result.topups || result.topups.length === 0) {
-      return "#ADMIN0001"
-    }
-
-    const lastId = result.topups[0].transaction_id
-    const match = lastId.match(/#ADMIN(\d+)/)
-
-    if (!match) {
-      return "#ADMIN0001"
-    }
-
-    const lastNumber = Number.parseInt(match[1], 10)
-    const nextNumber = lastNumber + 1
-
-    return `#ADMIN${nextNumber.toString().padStart(4, "0")}`
-  } catch (error) {
-    console.error("Error generating admin transaction ID:", error)
-    return `#ADMIN${Date.now()}`
+function generateAdminTransactionId(): string {
+  // Generate random 8-character alphanumeric string
+  const chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  let randomPart = ""
+  for (let i = 0; i < 8; i++) {
+    randomPart += chars.charAt(Math.floor(Math.random() * chars.length))
   }
+  return `ADMIN${randomPart}`
 }
 
 // Adjust user balance
@@ -199,8 +172,7 @@ export async function adjustUserBalance(userId: string, amount: number, type: "a
 
     await client.request(updateQuery, { userId, newBalance })
 
-    // Generate sequential admin transaction ID
-    const transactionId = await getNextAdminTransactionId(client)
+    const transactionId = generateAdminTransactionId()
 
     const logQuery = gql`
       mutation LogAdminAdjustment(
