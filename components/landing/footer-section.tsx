@@ -45,7 +45,8 @@ export function FooterSection() {
             href={SITE_CONTACTS.telegram.channel}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="Telegram"
+            aria-label="Telegram Channel"
+            title="Join our Telegram channel for updates & offers"
             className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
           >
             <Send className="w-full h-full" />

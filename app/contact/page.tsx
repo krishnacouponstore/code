@@ -60,7 +60,7 @@ export default function ContactPage() {
       ? `Hi, I need help with CoupX. My registered email: ${user.email}`
       : "Hi, I need help with CoupX."
     const encodedMessage = encodeURIComponent(message)
-    window.open(`${SITE_CONTACTS.telegram.channel}?text=${encodedMessage}`, "_blank")
+    window.open(`https://t.me/${SITE_CONTACTS.telegram.support.replace("@", "")}?text=${encodedMessage}`, "_blank")
   }
 
   const openEmail = () => {
