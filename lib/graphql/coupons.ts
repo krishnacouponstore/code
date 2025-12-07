@@ -16,7 +16,7 @@ export const GET_AVAILABLE_COUPONS = gql`
       image_url
       available_stock
       created_at
-      pricing_tiers: slot_pricing_tiers(order_by: { unit_price: asc }, limit: 1) {
+      pricing_tiers: slot_pricing_tiers(order_by: { min_quantity: asc }, limit: 1) {
         unit_price
       }
     }
