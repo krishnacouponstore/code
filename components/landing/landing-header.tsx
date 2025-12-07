@@ -134,7 +134,7 @@ export function LandingHeader() {
                     <Link href="/signup" onClick={() => setIsOpen(false)}>
                       <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200 flex items-center justify-center gap-2">
                         <Sparkles className="w-4 h-4" />
-                        Get Started Free
+                        Get Started
                       </Button>
                     </Link>
                   </>
