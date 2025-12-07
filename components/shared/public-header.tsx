@@ -28,11 +28,18 @@ export function PublicHeader() {
         <div className="flex items-center gap-6">
           <Link href="/home" className="flex items-center">
             <Image
-              src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+              src="/images/coupx-logo-dark.png"
               alt="CoupX"
               width={280}
               height={80}
-              className="h-14 md:h-16 w-auto"
+              className="h-14 md:h-16 w-auto dark:hidden scale-125"
+            />
+            <Image
+              src="/images/coupx-logo-light.png"
+              alt="CoupX"
+              width={280}
+              height={80}
+              className="h-14 md:h-16 w-auto hidden dark:block"
             />
           </Link>
           <nav className="hidden md:flex items-center gap-1">

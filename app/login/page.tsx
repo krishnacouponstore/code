@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 function LoginContent() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect")
-  const { theme, setTheme, resolvedTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
 
   return (
     <div className="w-full max-w-md">
@@ -40,11 +40,20 @@ function LoginContent() {
         <div className="text-center mb-8">
           <Link href="/home" className="inline-flex items-center justify-center mb-4">
             <Image
-              src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+              src="/images/coupx-logo-dark.png"
               alt="CoupX"
-              width={200}
-              height={60}
-              className="h-12 w-auto"
+              width={320}
+              height={100}
+              className="h-24 md:h-28 w-auto dark:hidden scale-125"
+              priority
+            />
+            <Image
+              src="/images/coupx-logo-light.png"
+              alt="CoupX"
+              width={320}
+              height={100}
+              className="h-24 md:h-28 w-auto hidden dark:block"
+              priority
             />
           </Link>
         </div>

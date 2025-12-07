@@ -8,13 +8,11 @@ import Image from "next/image"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth-context"
 import { useState } from "react"
-import { useTheme } from "next-themes"
 
 export function LandingHeader() {
   const { user, isAuthenticated } = useAuth()
   const isAdmin = user?.is_admin ?? false
   const [isOpen, setIsOpen] = useState(false)
-  const { resolvedTheme } = useTheme()
 
   return (
     <header className="w-full py-4 px-6">
@@ -22,11 +20,20 @@ export function LandingHeader() {
         <div className="flex items-center gap-6">
           <Link href="/home" className="flex items-center">
             <Image
-              src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+              src="/images/coupx-logo-dark.png"
               alt="CoupX"
-              width={280}
-              height={80}
-              className="h-14 md:h-20 w-auto"
+              width={320}
+              height={100}
+              className="h-16 md:h-24 w-auto dark:hidden"
+              priority
+            />
+            <Image
+              src="/images/coupx-logo-light.png"
+              alt="CoupX"
+              width={320}
+              height={100}
+              className="h-16 md:h-24 w-auto hidden dark:block"
+              priority
             />
           </Link>
         </div>
@@ -77,11 +84,18 @@ export function LandingHeader() {
               <div className="p-6 border-b border-border/50">
                 <div className="flex items-center gap-3">
                   <Image
-                    src={resolvedTheme === "dark" ? "/images/coupx-icon-light.png" : "/images/coupx-icon-dark.png"}
+                    src="/images/coupx-icon-dark.png"
                     alt="CoupX"
                     width={40}
                     height={40}
-                    className="rounded-xl shadow-lg"
+                    className="rounded-xl shadow-lg dark:hidden"
+                  />
+                  <Image
+                    src="/images/coupx-icon-light.png"
+                    alt="CoupX"
+                    width={40}
+                    height={40}
+                    className="rounded-xl shadow-lg hidden dark:block"
                   />
                   <div>
                     <h2 className="text-lg font-semibold text-foreground">CoupX</h2>

@@ -3,11 +3,8 @@
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form"
 import Link from "next/link"
 import Image from "next/image"
-import { useTheme } from "next-themes"
 
 export default function ForgotPasswordPage() {
-  const { resolvedTheme } = useTheme()
-
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
       {/* Subtle gradient overlay */}
@@ -21,11 +18,20 @@ export default function ForgotPasswordPage() {
             <div className="text-center mb-8">
               <Link href="/home" className="inline-flex items-center justify-center">
                 <Image
-                  src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+                  src="/images/coupx-logo-dark.png"
                   alt="CoupX"
-                  width={200}
-                  height={60}
-                  className="h-12 w-auto"
+                  width={320}
+                  height={100}
+                  className="h-24 md:h-28 w-auto dark:hidden scale-125"
+                  priority
+                />
+                <Image
+                  src="/images/coupx-logo-light.png"
+                  alt="CoupX"
+                  width={320}
+                  height={100}
+                  className="h-24 md:h-28 w-auto hidden dark:block"
+                  priority
                 />
               </Link>
             </div>

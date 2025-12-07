@@ -56,11 +56,18 @@ export function AdminHeader() {
         <div className="flex items-center gap-6">
           <Link href="/home" className="flex items-center gap-2">
             <Image
-              src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+              src="/images/coupx-logo-dark.png"
               alt="CoupX"
               width={280}
               height={80}
-              className="h-14 md:h-16 w-auto"
+              className="h-14 md:h-16 w-auto dark:hidden scale-125"
+            />
+            <Image
+              src="/images/coupx-logo-light.png"
+              alt="CoupX"
+              width={280}
+              height={80}
+              className="h-14 md:h-16 w-auto hidden dark:block"
             />
             <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-medium">
               Admin
@@ -165,11 +172,18 @@ export function AdminHeader() {
               <div className="p-6 border-b border-border/50">
                 <div className="flex items-center gap-3">
                   <Image
-                    src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+                    src="/images/coupx-icon-dark.png"
                     alt="CoupX"
                     width={40}
                     height={40}
-                    className="rounded-xl shadow-lg"
+                    className="rounded-xl shadow-lg dark:hidden"
+                  />
+                  <Image
+                    src="/images/coupx-icon-light.png"
+                    alt="CoupX"
+                    width={40}
+                    height={40}
+                    className="rounded-xl shadow-lg hidden dark:block"
                   />
                   <div>
                     <div className="flex items-center gap-2">

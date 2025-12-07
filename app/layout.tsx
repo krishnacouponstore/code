@@ -20,7 +20,16 @@ export const metadata: Metadata = {
   description: "Your trusted platform for buying premium coupon codes at the best prices",
   generator: "@rohanphogatt",
   icons: {
-    icon: "/images/coupx-icon-dark.png",
+    icon: [
+      {
+        url: "/images/coupx-icon-dark.png",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        url: "/images/coupx-icon-light.png",
+        media: "(prefers-color-scheme: dark)",
+      },
+    ],
   },
 }
 

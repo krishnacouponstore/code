@@ -24,11 +24,18 @@ export function FooterSection() {
       <div className="flex flex-col justify-start items-start gap-6 p-4 md:p-8">
         <Link href="/home" className="flex items-center">
           <Image
-            src={resolvedTheme === "dark" ? "/images/coupx-logo-light.png" : "/images/coupx-logo-dark.png"}
+            src="/images/coupx-logo-dark.png"
             alt="CoupX"
-            width={240}
-            height={70}
-            className="h-12 md:h-14 w-auto"
+            width={280}
+            height={80}
+            className="h-14 md:h-20 w-auto dark:hidden scale-125"
+          />
+          <Image
+            src="/images/coupx-logo-light.png"
+            alt="CoupX"
+            width={280}
+            height={80}
+            className="h-14 md:h-20 w-auto hidden dark:block"
           />
         </Link>
         <p className="text-muted-foreground text-sm max-w-xs">
