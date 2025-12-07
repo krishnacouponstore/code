@@ -75,18 +75,37 @@ export default function AddBalancePage() {
     setTimeout(() => setCopiedEmail(false), 2000)
   }
 
-  const handleDownloadQR = () => {
-    const qrCodeUrl = resolvedTheme === "dark" ? "/images/darkqrcode.png" : "/images/whiteqrcode.png"
-    const link = document.createElement("a")
-    link.href = qrCodeUrl
-    link.download = "coupx-upi-qrcode.png"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    toast({
-      title: "Downloaded!",
-      description: "QR code saved to your device",
-    })
+  const handleDownloadQR = async () => {
+    try {
+      const qrCodeUrl = resolvedTheme === "dark" ? "/images/darkqrcode.png" : "/images/whiteqrcode.png"
+
+      const response = await fetch(qrCodeUrl)
+      const blob = await response.blob()
+
+      // Create object URL from blob
+      const blobUrl = URL.createObjectURL(blob)
+
+      const link = document.createElement("a")
+      link.href = blobUrl
+      link.download = "coupx-upi-qrcode.png"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // Cleanup blob URL
+      URL.revokeObjectURL(blobUrl)
+
+      toast({
+        title: "Downloaded!",
+        description: "QR code saved to your device",
+      })
+    } catch (error) {
+      toast({
+        title: "Download failed",
+        description: "Please try again or screenshot the QR code",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleOpenTelegram = () => {
