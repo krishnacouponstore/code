@@ -315,7 +315,7 @@ export async function sendPasswordResetEmail(email: string) {
 
     const redirectTo = process.env.NEXT_PUBLIC_SITE_URL
       ? `${process.env.NEXT_PUBLIC_SITE_URL}/reset-password`
-      : "https://coupx.vercel.app/reset-password"
+      : "https://coupx.in/reset-password"
 
     const response = await fetch(`${NHOST_AUTH_URL}/user/password/reset`, {
       method: "POST",
