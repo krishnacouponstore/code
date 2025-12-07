@@ -8,6 +8,7 @@ import { SlotFormModal } from "@/components/admin/slot-form-modal"
 import { DeleteSlotDialog } from "@/components/admin/delete-slot-dialog"
 import { UploadCodesModal } from "@/components/admin/upload-codes-modal"
 import { ViewSalesModal } from "@/components/admin/view-sales-modal"
+import { ViewCouponsDialog } from "@/components/admin/view-coupons-dialog"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -35,6 +36,7 @@ import {
   AlertTriangle,
   PackageX,
   Loader2,
+  List,
 } from "lucide-react"
 
 export default function ManageCouponsPage() {
@@ -52,6 +54,7 @@ export default function ManageCouponsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
   const [isViewSalesModalOpen, setIsViewSalesModalOpen] = useState(false)
+  const [isViewCouponsDialogOpen, setIsViewCouponsDialogOpen] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
 
   useEffect(() => {
@@ -176,6 +179,11 @@ export default function ManageCouponsPage() {
       title: "Codes uploaded successfully",
       description: `${codesCount} codes have been added to "${selectedSlot?.name}".`,
     })
+  }
+
+  const handleViewCoupons = (slot: Slot) => {
+    setSelectedSlot(slot)
+    setIsViewCouponsDialogOpen(true)
   }
 
   const handleViewSales = (slot: Slot) => {
@@ -355,6 +363,10 @@ export default function ManageCouponsPage() {
                               <Pencil className="mr-2 h-4 w-4" />
                               Edit Coupon
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleViewCoupons(slot)} className="cursor-pointer">
+                              <List className="mr-2 h-4 w-4" />
+                              See Coupons
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleUploadCodes(slot)} className="cursor-pointer">
                               <Upload className="mr-2 h-4 w-4" />
                               Upload Codes
@@ -417,6 +429,10 @@ export default function ManageCouponsPage() {
                         <DropdownMenuItem onClick={() => handleEditSlot(slot)} className="cursor-pointer">
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit Coupon
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewCoupons(slot)} className="cursor-pointer">
+                          <List className="mr-2 h-4 w-4" />
+                          See Coupons
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleUploadCodes(slot)} className="cursor-pointer">
                           <Upload className="mr-2 h-4 w-4" />
@@ -524,6 +540,15 @@ export default function ManageCouponsPage() {
         slot={selectedSlot}
         onViewAllOrders={handleViewAllOrders}
       />
+
+      {selectedSlot && (
+        <ViewCouponsDialog
+          slotId={selectedSlot.id}
+          slotName={selectedSlot.name}
+          open={isViewCouponsDialogOpen}
+          onOpenChange={setIsViewCouponsDialogOpen}
+        />
+      )}
     </div>
   )
 }

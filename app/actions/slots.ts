@@ -345,3 +345,161 @@ export async function getSlotSales(slotId: string) {
     }
   }
 }
+
+export async function getSlotCoupons(
+  slotId: string,
+  options: {
+    limit: number
+    offset: number
+    search?: string
+    filterStatus?: "all" | "sold" | "unsold"
+  },
+) {
+  const client = getAdminGraphQLClient()
+
+  try {
+    // Build the where clause based on filter
+    let is_sold_filter = null
+    if (options.filterStatus === "sold") {
+      is_sold_filter = true
+    } else if (options.filterStatus === "unsold") {
+      is_sold_filter = false
+    }
+
+    const searchPattern = options.search ? `%${options.search}%` : "%"
+
+    // Use inline query to handle optional is_sold filter
+    const query = `
+      query GetSlotCouponsFiltered(
+        $slot_id: uuid!
+        $limit: Int!
+        $offset: Int!
+        $search: String!
+        ${is_sold_filter !== null ? "$is_sold: Boolean!" : ""}
+      ) {
+        coupons(
+          where: {
+            slot_id: { _eq: $slot_id }
+            code: { _ilike: $search }
+            ${is_sold_filter !== null ? "is_sold: { _eq: $is_sold }" : ""}
+          }
+          order_by: { created_at: desc }
+          limit: $limit
+          offset: $offset
+        ) {
+          id
+          code
+          is_sold
+          sold_at
+          created_at
+          user_profile {
+            user {
+              email
+              displayName
+            }
+          }
+        }
+        coupons_aggregate(
+          where: {
+            slot_id: { _eq: $slot_id }
+            code: { _ilike: $search }
+            ${is_sold_filter !== null ? "is_sold: { _eq: $is_sold }" : ""}
+          }
+        ) {
+          aggregate {
+            count
+          }
+        }
+      }
+    `
+
+    const variables: any = {
+      slot_id: slotId,
+      limit: options.limit,
+      offset: options.offset,
+      search: searchPattern,
+    }
+
+    if (is_sold_filter !== null) {
+      variables.is_sold = is_sold_filter
+    }
+
+    const result: any = await client.request(query, variables)
+
+    return {
+      success: true,
+      coupons: result.coupons,
+      totalCount: result.coupons_aggregate.aggregate.count,
+    }
+  } catch (error: any) {
+    console.error("Error fetching slot coupons:", error)
+    return {
+      success: false,
+      error: error.message || "Failed to fetch coupons",
+      coupons: [],
+      totalCount: 0,
+    }
+  }
+}
+
+export async function deleteCoupon(couponId: string) {
+  const client = getAdminGraphQLClient()
+
+  try {
+    const result: any = await client.request(
+      `
+      mutation DeleteCoupon($id: uuid!) {
+        delete_coupons_by_pk(id: $id) {
+          id
+          code
+          slot_id
+          is_sold
+        }
+      }
+    `,
+      { id: couponId },
+    )
+
+    const deletedCoupon = result.delete_coupons_by_pk
+
+    if (!deletedCoupon) {
+      return {
+        success: false,
+        error: "Coupon not found",
+      }
+    }
+
+    // Update slot stock if coupon was not sold
+    if (!deletedCoupon.is_sold) {
+      const slotQuery = `
+        query GetSlot($id: uuid!) {
+          slots_by_pk(id: $id) {
+            available_stock
+            total_uploaded
+          }
+        }
+      `
+      const slotData: any = await client.request(slotQuery, { id: deletedCoupon.slot_id })
+      const currentSlot = slotData.slots_by_pk
+
+      if (currentSlot) {
+        await client.request(UPDATE_SLOT_STOCK, {
+          id: deletedCoupon.slot_id,
+          available_stock: Math.max(0, currentSlot.available_stock - 1),
+          total_uploaded: Math.max(0, currentSlot.total_uploaded - 1),
+        })
+      }
+    }
+
+    return {
+      success: true,
+      deletedCoupon,
+    }
+  } catch (error: any) {
+    console.error("Error deleting coupon:", error)
+    return {
+      success: false,
+      error: error.message || "Failed to delete coupon",
+    }
+  }
+}

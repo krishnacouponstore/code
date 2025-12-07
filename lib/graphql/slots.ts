@@ -54,6 +54,106 @@ export const GET_SLOT_BY_ID = gql`
   }
 `
 
+export const GET_SLOT_COUPONS = gql`
+  query GetSlotCoupons($slot_id: uuid!, $limit: Int, $offset: Int) {
+    coupons(
+      where: { slot_id: { _eq: $slot_id } }
+      order_by: { created_at: desc }
+      limit: $limit
+      offset: $offset
+    ) {
+      id
+      code
+      is_sold
+      sold_to
+      sold_at
+      created_at
+      user_profile {
+        user {
+          email
+          displayName
+        }
+      }
+    }
+    coupons_aggregate(where: { slot_id: { _eq: $slot_id } }) {
+      aggregate {
+        count
+      }
+    }
+  }
+`
+
+export const GET_SLOT_COUPONS_FILTERED = gql`
+  query GetSlotCouponsFiltered(
+    $slot_id: uuid!
+    $limit: Int!
+    $offset: Int!
+    $search: String
+    $is_sold: Boolean
+  ) {
+    coupons(
+      where: {
+        slot_id: { _eq: $slot_id }
+        code: { _ilike: $search }
+        is_sold: { _eq: $is_sold }
+      }
+      order_by: { created_at: desc }
+      limit: $limit
+      offset: $offset
+    ) {
+      id
+      code
+      is_sold
+      sold_at
+      created_at
+      user_profile {
+        user {
+          email
+          displayName
+        }
+      }
+    }
+    coupons_aggregate(
+      where: {
+        slot_id: { _eq: $slot_id }
+        code: { _ilike: $search }
+        is_sold: { _eq: $is_sold }
+      }
+    ) {
+      aggregate {
+        count
+      }
+    }
+  }
+`
+
+export const GET_SLOT_SALES = gql`
+  query GetSlotSales($slot_id: uuid!) {
+    coupons(
+      where: { slot_id: { _eq: $slot_id }, is_sold: { _eq: true } }
+      order_by: { sold_at: desc }
+    ) {
+      id
+      code
+      sold_at
+      sold_to
+      purchase_id
+      user: user_profile {
+        id
+        user {
+          displayName
+          email
+        }
+      }
+    }
+    coupons_aggregate(where: { slot_id: { _eq: $slot_id }, is_sold: { _eq: true } }) {
+      aggregate {
+        count
+      }
+    }
+  }
+`
+
 // Mutations
 export const CREATE_SLOT = gql`
   mutation CreateSlot(
@@ -155,6 +255,17 @@ export const UPDATE_SLOT_STOCK = gql`
   }
 `
 
+export const DELETE_COUPON = gql`
+  mutation DeleteCoupon($id: uuid!) {
+    delete_coupons_by_pk(id: $id) {
+      id
+      code
+      slot_id
+      is_sold
+    }
+  }
+`
+
 // Pricing Tiers
 export const ADD_PRICING_TIERS = gql`
   mutation AddPricingTiers($tiers: [slot_pricing_tiers_insert_input!]!) {
@@ -191,56 +302,6 @@ export const UPLOAD_CODES_BULK = gql`
         code
       }
       affected_rows
-    }
-  }
-`
-
-export const GET_SLOT_COUPONS = gql`
-  query GetSlotCoupons($slot_id: uuid!, $limit: Int, $offset: Int) {
-    coupons(
-      where: { slot_id: { _eq: $slot_id } }
-      order_by: { created_at: desc }
-      limit: $limit
-      offset: $offset
-    ) {
-      id
-      code
-      is_sold
-      sold_to
-      sold_at
-      created_at
-    }
-    coupons_aggregate(where: { slot_id: { _eq: $slot_id } }) {
-      aggregate {
-        count
-      }
-    }
-  }
-`
-
-export const GET_SLOT_SALES = gql`
-  query GetSlotSales($slot_id: uuid!) {
-    coupons(
-      where: { slot_id: { _eq: $slot_id }, is_sold: { _eq: true } }
-      order_by: { sold_at: desc }
-    ) {
-      id
-      code
-      sold_at
-      sold_to
-      purchase_id
-      user: user_profile {
-        id
-        user {
-          displayName
-          email
-        }
-      }
-    }
-    coupons_aggregate(where: { slot_id: { _eq: $slot_id }, is_sold: { _eq: true } }) {
-      aggregate {
-        count
-      }
     }
   }
 `
