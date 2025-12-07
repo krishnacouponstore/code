@@ -10,15 +10,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
-import { Wallet, QrCode, Copy, Check, Mail, MessageCircle, AlertTriangle, ExternalLink } from "lucide-react"
+import { Wallet, QrCode, Copy, Check, Mail, MessageCircle, AlertTriangle, ExternalLink, Download } from "lucide-react"
 import Image from "next/image"
 import { SITE_CONTACTS } from "@/lib/site-config"
+import { useTheme } from "next-themes"
 
 export default function AddBalancePage() {
   const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
+  const { resolvedTheme } = useTheme()
 
   const [copiedUpi, setCopiedUpi] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState(false)
@@ -73,6 +75,20 @@ export default function AddBalancePage() {
     setTimeout(() => setCopiedEmail(false), 2000)
   }
 
+  const handleDownloadQR = () => {
+    const qrCodeUrl = resolvedTheme === "dark" ? "/images/darkqrcode.png" : "/images/whiteqrcode.png"
+    const link = document.createElement("a")
+    link.href = qrCodeUrl
+    link.download = "coupx-upi-qrcode.png"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast({
+      title: "Downloaded!",
+      description: "QR code saved to your device",
+    })
+  }
+
   const handleOpenTelegram = () => {
     const message = encodeURIComponent(`Hi, I want to add balance to my CoupX account.\n\nEmail: ${user.email}`)
     window.open(`https://t.me/${SITE_CONTACTS.telegram.support.replace("@", "")}?text=${message}`, "_blank")
@@ -114,10 +130,29 @@ export default function AddBalancePage() {
             <CardDescription>Scan QR code with any UPI app to pay</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center">
-            {/* QR Code Image */}
-            <div className="relative w-full max-w-[280px] aspect-square bg-white rounded-xl p-4 mb-6 shadow-lg">
-              <Image src="/images/qrcode.png" alt="UPI QR Code" fill className="object-contain p-2" priority />
+            {/* QR Code Image - Theme Based */}
+            <div className="relative w-full max-w-[280px] aspect-square rounded-xl p-4 mb-4 shadow-lg bg-white dark:bg-zinc-900">
+              <Image
+                src="/images/whiteqrcode.png"
+                alt="UPI QR Code"
+                fill
+                className="object-contain p-2 dark:hidden"
+                priority
+              />
+              <Image
+                src="/images/darkqrcode.png"
+                alt="UPI QR Code"
+                fill
+                className="object-contain p-2 hidden dark:block"
+                priority
+              />
             </div>
+
+            {/* Download QR Button */}
+            <Button variant="outline" size="sm" onClick={handleDownloadQR} className="mb-6 bg-transparent">
+              <Download className="h-4 w-4 mr-2" />
+              Download QR Code
+            </Button>
 
             {/* UPI ID with Copy */}
             <div className="w-full max-w-sm space-y-2">
