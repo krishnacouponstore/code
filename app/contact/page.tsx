@@ -8,27 +8,10 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/lib/auth-context"
 import { Send, Mail, Copy, Check, Clock, Wallet, HelpCircle, ChevronRight, ExternalLink } from "lucide-react"
 import Link from "next/link"
-
-const contactInfo = {
-  telegram: {
-    username: "@Krishna_Arora_New",
-    url: "https://t.me/Krishna_Arora_New",
-    response_time: "Usually responds within 1 hour",
-    availability: "24/7",
-  },
-  email: {
-    address: "krishnacouponstore@gmail.com",
-    response_time: "We respond within 24 hours",
-    hours: "Monday - Saturday, 9 AM - 9 PM IST",
-  },
-  business: {
-    name: "CoupX",
-    min_topup: 100,
-  },
-}
+import { SITE_CONTACTS, SITE_CONFIG } from "@/lib/site-config"
 
 const quickLinks = [
-  { label: "How to add balance?", href: "/about#how-it-works" },
+  { label: "How to add balance?", href: "/add-balance" },
   { label: "How to download purchased codes?", href: "/purchase-history" },
   { label: "Refund policy", href: "/refund-policy" },
   { label: "Terms & Conditions", href: "/terms" },
@@ -36,10 +19,10 @@ const quickLinks = [
 ]
 
 const topUpSteps = [
-  "Message us on Telegram (@Krishna_Arora_New)",
+  `Message us on Telegram (${SITE_CONTACTS.telegram.support})`,
   "Provide your registered email address",
-  "Specify the amount you want to add (minimum ₹100)",
-  "Complete payment via UPI/Bank Transfer",
+  `Specify the amount you want to add (minimum ₹${SITE_CONFIG.minTopup})`,
+  "Complete payment via UPI",
   "Your balance will be credited within 10 minutes",
 ]
 
@@ -77,12 +60,12 @@ export default function ContactPage() {
       ? `Hi, I need help with CoupX. My registered email: ${user.email}`
       : "Hi, I need help with CoupX."
     const encodedMessage = encodeURIComponent(message)
-    window.open(`${contactInfo.telegram.url}?text=${encodedMessage}`, "_blank")
+    window.open(`${SITE_CONTACTS.telegram.channel}?text=${encodedMessage}`, "_blank")
   }
 
   const openEmail = () => {
     const subject = encodeURIComponent("CoupX Support Request")
-    window.open(`mailto:${contactInfo.email.address}?subject=${subject}`, "_blank")
+    window.open(`mailto:${SITE_CONTACTS.email}?subject=${subject}`, "_blank")
   }
 
   return (
@@ -116,11 +99,11 @@ export default function ContactPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between bg-muted rounded-lg p-3">
-                  <code className="text-lg font-mono text-primary">{contactInfo.telegram.username}</code>
+                  <code className="text-lg font-mono text-primary">{SITE_CONTACTS.telegram.support}</code>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => copyToClipboard(contactInfo.telegram.username, "telegram")}
+                    onClick={() => copyToClipboard(SITE_CONTACTS.telegram.support, "telegram")}
                     className="h-8 w-8"
                   >
                     {copiedTelegram ? (
@@ -140,7 +123,7 @@ export default function ContactPage() {
                 </Button>
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  {contactInfo.telegram.response_time}
+                  Usually responds within 5 minutes
                 </p>
               </CardContent>
             </Card>
@@ -160,11 +143,11 @@ export default function ContactPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between bg-muted rounded-lg p-3">
-                  <code className="text-sm font-mono text-foreground">{contactInfo.email.address}</code>
+                  <code className="text-sm font-mono text-foreground">{SITE_CONTACTS.email}</code>
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => copyToClipboard(contactInfo.email.address, "email")}
+                    onClick={() => copyToClipboard(SITE_CONTACTS.email, "email")}
                     className="h-8 w-8"
                   >
                     {copiedEmail ? (
@@ -180,7 +163,7 @@ export default function ContactPage() {
                 </Button>
                 <p className="text-sm text-muted-foreground flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  {contactInfo.email.response_time}
+                  Response time: 10-30 minutes
                 </p>
               </CardContent>
             </Card>
@@ -230,11 +213,11 @@ export default function ContactPage() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Telegram</p>
-                    <p className="text-foreground font-medium">{contactInfo.telegram.availability}</p>
+                    <p className="text-foreground font-medium">24/7 Available</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="text-foreground font-medium">{contactInfo.email.hours}</p>
+                    <p className="text-foreground font-medium">Monday - Saturday, 9 AM - 9 PM IST</p>
                   </div>
                 </div>
               </div>
@@ -278,9 +261,9 @@ export default function ContactPage() {
 
         {/* Business Information */}
         <div className="text-center text-muted-foreground text-sm space-y-1">
-          <p className="font-medium text-foreground">{contactInfo.business.name}</p>
-          <p>Email: {contactInfo.email.address}</p>
-          <p>Telegram: {contactInfo.telegram.username}</p>
+          <p className="font-medium text-foreground">{SITE_CONFIG.name}</p>
+          <p>Email: {SITE_CONTACTS.email}</p>
+          <p>Telegram: {SITE_CONTACTS.telegram.support}</p>
         </div>
       </main>
     </div>

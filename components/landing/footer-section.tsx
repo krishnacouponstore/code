@@ -4,12 +4,11 @@ import { Mail, Send } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/lib/auth-context"
-import { useTheme } from "next-themes"
+import { SITE_CONTACTS } from "@/lib/site-config"
 
 export function FooterSection() {
   const { user, isAuthenticated } = useAuth()
   const isAdmin = isAuthenticated && user?.is_admin
-  const { resolvedTheme } = useTheme()
 
   const getProductLink = (path: string) => {
     if (!isAuthenticated) {
@@ -43,7 +42,7 @@ export function FooterSection() {
         </p>
         <div className="flex justify-start items-start gap-4">
           <a
-            href="https://t.me/Krishna_Arora_New"
+            href={SITE_CONTACTS.telegram.channel}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Telegram"
@@ -52,7 +51,7 @@ export function FooterSection() {
             <Send className="w-full h-full" />
           </a>
           <a
-            href="mailto:krishnacouponstore@gmail.com"
+            href={`mailto:${SITE_CONTACTS.email}`}
             aria-label="Email"
             className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
           >
