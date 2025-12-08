@@ -1,6 +1,7 @@
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
+import { SITE_CONTACTS } from "@/lib/site-config"
 
 export const metadata = {
   title: "Privacy Policy | CoupX",
@@ -8,7 +9,7 @@ export const metadata = {
 }
 
 export default function PrivacyPage() {
-  const lastUpdated = "December 1, 2024"
+  const lastUpdated = "December 8, 2025"
 
   return (
     <div className="min-h-screen bg-background">
@@ -119,13 +120,16 @@ export default function PrivacyPage() {
                 <Link href="/contact" className="text-primary hover:underline">
                   our contact page
                 </Link>{" "}
-                or email us at krishnacouponstore@gmail.com.
+                or email us at{" "}
+                <a href={`mailto:${SITE_CONTACTS.email}`} className="text-primary hover:underline">
+                  {SITE_CONTACTS.email}
+                </a>
+                .
               </p>
             </section>
           </CardContent>
         </Card>
 
-        {/* Footer Links */}
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
           <Link href="/terms" className="hover:text-foreground transition-colors">
             Terms & Conditions
@@ -133,6 +137,10 @@ export default function PrivacyPage() {
           <span>•</span>
           <Link href="/refund-policy" className="hover:text-foreground transition-colors">
             Refund Policy
+          </Link>
+          <span>•</span>
+          <Link href="/shipping-delivery" className="hover:text-foreground transition-colors">
+            Shipping & Delivery
           </Link>
           <span>•</span>
           <Link href="/contact" className="hover:text-foreground transition-colors">

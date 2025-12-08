@@ -128,6 +128,9 @@ export function FooterSection() {
             <Link href="/refund-policy" className="text-foreground text-sm hover:text-primary transition-colors">
               Refund Policy
             </Link>
+            <Link href="/shipping-delivery" className="text-foreground text-sm hover:text-primary transition-colors">
+              Shipping & Delivery
+            </Link>
           </div>
         </div>
       </div>

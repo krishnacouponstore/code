@@ -1,6 +1,7 @@
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
+import { SITE_CONFIG } from "@/lib/site-config"
 
 export const metadata = {
   title: "Terms & Conditions | CoupX",
@@ -8,7 +9,7 @@ export const metadata = {
 }
 
 export default function TermsPage() {
-  const lastUpdated = "December 1, 2024"
+  const lastUpdated = "December 8, 2025"
 
   return (
     <div className="min-h-screen bg-background">
@@ -57,11 +58,11 @@ export default function TermsPage() {
               <div className="space-y-4 text-muted-foreground">
                 <ul className="list-disc pl-6 space-y-2">
                   <li>Users must add balance to their wallet before purchasing coupon codes</li>
-                  <li>Minimum top-up amount is ₹100</li>
+                  <li>Minimum top-up amount is ₹{SITE_CONFIG.minTopup}</li>
                   <li>
                     Wallet balance is non-refundable except in specific circumstances outlined in our Refund Policy
                   </li>
-                  <li>All payments are processed securely through our payment partners</li>
+                  <li>All payments are processed securely through UPI</li>
                 </ul>
               </div>
             </section>
@@ -156,6 +157,10 @@ export default function TermsPage() {
           <span>•</span>
           <Link href="/refund-policy" className="hover:text-foreground transition-colors">
             Refund Policy
+          </Link>
+          <span>•</span>
+          <Link href="/shipping-delivery" className="hover:text-foreground transition-colors">
+            Shipping & Delivery
           </Link>
           <span>•</span>
           <Link href="/contact" className="hover:text-foreground transition-colors">
