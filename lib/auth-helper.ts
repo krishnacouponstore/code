@@ -1,7 +1,8 @@
 "use server"
 
 import { cookies } from "next/headers"
-import { getUserRoles } from "@/app/actions/user-roles"
+import { getServerGraphQLClient } from "@/lib/graphql-client-server"
+import { gql } from "graphql-request"
 
 export async function verifyAdminAccess(): Promise<{ isAdmin: boolean; userId: string | null }> {
   try {
@@ -20,8 +21,17 @@ export async function verifyAdminAccess(): Promise<{ isAdmin: boolean; userId: s
       return { isAdmin: false, userId: null }
     }
 
-    // Check user roles from database
-    const { isAdmin } = await getUserRoles(userId)
+    const client = getServerGraphQLClient()
+    const query = gql`
+      query GetUserRole($userId: uuid!) {
+        user_profiles(where: { user_id: { _eq: $userId } }) {
+          is_admin
+        }
+      }
+    `
+
+    const result: any = await client.request(query, { userId })
+    const isAdmin = result.user_profiles?.[0]?.is_admin || false
 
     return { isAdmin, userId }
   } catch (error) {
