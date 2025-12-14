@@ -24,7 +24,7 @@ export default async function DashboardLayout({
       const isAdmin = userRoles.includes("admin")
 
       if (isAdmin) {
-        redirect("/admin/dashboard")
+        redirect("/?error=access_denied")
       }
     } catch (error) {
       console.error("Error validating dashboard access:", error)

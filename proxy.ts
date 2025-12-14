@@ -37,7 +37,9 @@ export async function proxy(request: NextRequest) {
         const isAdmin = userRoles.includes("admin")
 
         if (!isAdmin) {
-          return NextResponse.redirect(new URL("/dashboard", request.url))
+          const homeUrl = new URL("/", request.url)
+          homeUrl.searchParams.set("error", "access_denied")
+          return NextResponse.redirect(homeUrl)
         }
       } else {
         // No session token, redirect to login
@@ -61,7 +63,9 @@ export async function proxy(request: NextRequest) {
         const isAdmin = userRoles.includes("admin")
 
         if (isAdmin) {
-          return NextResponse.redirect(new URL("/admin/dashboard", request.url))
+          const homeUrl = new URL("/", request.url)
+          homeUrl.searchParams.set("error", "access_denied")
+          return NextResponse.redirect(homeUrl)
         }
       }
     } catch (error) {
