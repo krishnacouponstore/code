@@ -16,12 +16,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (isLoading) return
 
     // Check authentication first
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       router.replace("/login")
       return
     }
 
-    if (!user?.is_admin) {
+    if (!user.is_admin) {
       toast({
         title: "Access Denied",
         description: "You don't have permission to access admin pages.",
@@ -31,9 +31,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace("/dashboard")
       return
     }
-  }, [isLoading, isAuthenticated, user?.is_admin, router, toast])
+  }, [isLoading, isAuthenticated, user, router, toast])
 
-  // Show loading while checking auth or loading roles
   if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -42,7 +41,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
-  // Don't render anything if not authenticated
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -51,7 +49,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
-  // Don't render anything if not admin
   if (!user.is_admin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">

@@ -17,6 +17,7 @@ export type User = {
   total_purchased: number
   total_spent: number
   is_admin: boolean
+  role: string
 }
 
 type AuthContextType = {
@@ -74,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated])
 
   const user: User | null =
-    profile && nhostUser
+    profile && nhostUser && rolesData !== undefined
       ? {
           id: profile.id,
           name: nhostUser.displayName || "User",
@@ -83,8 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           wallet_balance: profile.wallet_balance,
           total_purchased: profile.total_purchased,
           total_spent: profile.total_spent,
-          // Only set is_admin if roles have been loaded, otherwise undefined
-          is_admin: rolesData?.isAdmin === true,
+          is_admin: rolesData.isAdmin === true,
+          role: rolesData.role ?? "user",
         }
       : null
 
@@ -106,8 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isLoading =
     isAuthenticated === undefined ||
-    (isAuthenticated && (isProfileLoading || isRolesLoading)) ||
-    (isAuthenticated && (!profile || rolesData === undefined))
+    (isAuthenticated && (isProfileLoading || isRolesLoading || !profile || rolesData === undefined))
 
   return (
     <AuthContext.Provider
