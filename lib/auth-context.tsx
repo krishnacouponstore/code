@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated])
 
   const user: User | null =
-    profile && nhostUser && rolesData !== undefined
+    profile && nhostUser && rolesData
       ? {
           id: profile.id,
           name: nhostUser.displayName || "User",
@@ -106,8 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const isLoading =
-    isAuthenticated === undefined ||
-    (isAuthenticated && (isProfileLoading || isRolesLoading || !profile || rolesData === undefined))
+    isAuthenticated === undefined || (isAuthenticated && (isProfileLoading || isRolesLoading || !profile || !rolesData))
 
   return (
     <AuthContext.Provider

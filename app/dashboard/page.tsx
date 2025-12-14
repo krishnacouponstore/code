@@ -28,7 +28,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!authLoading && isAuthenticated && !profileLoading && !profile && retryCount < 3) {
       const timer = setTimeout(() => {
-        console.log("[v0] Profile not found, retrying fetch...", retryCount + 1)
         refetchProfile()
         setRetryCount((prev) => prev + 1)
       }, 1000)
@@ -44,10 +43,10 @@ export default function DashboardPage() {
       return
     }
 
-    if (!authLoading && profile && !hasCheckedRole) {
+    if (!authLoading && user && !hasCheckedRole) {
       setHasCheckedRole(true)
 
-      if (profile.is_admin) {
+      if (user.is_admin) {
         toast({
           title: "Redirecting to Admin Dashboard",
           description: "You have admin access. Redirecting to admin panel.",
@@ -56,7 +55,7 @@ export default function DashboardPage() {
         router.replace("/admin/dashboard")
       }
     }
-  }, [authLoading, isAuthenticated, profile, router, pathname, isLoggingOut, hasCheckedRole, toast])
+  }, [authLoading, isAuthenticated, user, router, pathname, isLoggingOut, hasCheckedRole, toast])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -67,7 +66,7 @@ export default function DashboardPage() {
 
   const isLoading = authLoading || profileLoading
 
-  if (isLoading || (profile?.is_admin && !hasCheckedRole)) {
+  if (isLoading || (user?.is_admin && !hasCheckedRole)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -112,7 +111,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (profile.is_admin) {
+  if (user.is_admin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
