@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Loader2 } from "lucide-react"
@@ -12,30 +11,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
-  const [hasChecked, setHasChecked] = useState(false)
 
   useEffect(() => {
-    if (!isLoading && !hasChecked) {
-      setHasChecked(true)
+    // Only run checks after loading is complete
+    if (isLoading) return
 
-      if (!isAuthenticated) {
-        router.replace("/login")
-        return
-      }
-
-      if (!user?.is_admin) {
-        toast({
-          title: "Access Denied",
-          description: "You don't have permission to access admin pages.",
-          variant: "destructive",
-          duration: 5000,
-        })
-        router.replace("/dashboard")
-      }
+    // Check authentication first
+    if (!isAuthenticated) {
+      router.replace("/login")
+      return
     }
-  }, [isLoading, isAuthenticated, user, router, hasChecked, toast])
 
-  if (isLoading || !hasChecked) {
+    // Check admin role
+    if (!user?.is_admin) {
+      toast({
+        title: "Access Denied",
+        description: "You don't have permission to access admin pages.",
+        variant: "destructive",
+        duration: 5000,
+      })
+      router.replace("/dashboard")
+      return
+    }
+  }, [isLoading, isAuthenticated, user?.is_admin, router, toast])
+
+  // Show loading while checking auth
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -43,6 +44,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
+  // Don't render anything if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // Don't render anything if not admin
   if (!user?.is_admin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -51,5 +62,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
+  // Only render children if user is authenticated AND is admin
   return <>{children}</>
 }

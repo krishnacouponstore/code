@@ -109,7 +109,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/"
   }
 
-  const isLoading = isAuthenticated === undefined || (isAuthenticated && (isProfileLoading || isRolesLoading))
+  const isLoading =
+    isAuthenticated === undefined ||
+    (isAuthenticated && isProfileLoading) ||
+    (isAuthenticated && isRolesLoading) ||
+    (isAuthenticated && !profile) ||
+    (isAuthenticated && rolesData === undefined)
 
   return (
     <AuthContext.Provider
