@@ -13,7 +13,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { toast } = useToast()
 
   useEffect(() => {
-    // Only run checks after loading is complete
     if (isLoading) return
 
     // Check authentication first
@@ -22,7 +21,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return
     }
 
-    // Check admin role
     if (!user?.is_admin) {
       toast({
         title: "Access Denied",
@@ -35,8 +33,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isLoading, isAuthenticated, user?.is_admin, router, toast])
 
-  // Show loading while checking auth
-  if (isLoading) {
+  // Show loading while checking auth or loading roles
+  if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -54,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // Don't render anything if not admin
-  if (!user?.is_admin) {
+  if (!user.is_admin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

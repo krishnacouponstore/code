@@ -83,27 +83,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           wallet_balance: profile.wallet_balance,
           total_purchased: profile.total_purchased,
           total_spent: profile.total_spent,
-          is_admin: rolesData?.isAdmin ?? false,
+          // Only set is_admin if roles have been loaded, otherwise undefined
+          is_admin: rolesData?.isAdmin === true,
         }
       : null
 
   const logout = async () => {
     setIsLoggingOut(true)
 
-    // Clear React Query cache
     queryClient.clear()
-
-    // Clear SWR cache
     await mutate(() => true, undefined, { revalidate: false })
 
-    // Clear any localStorage items related to auth/user
     if (typeof window !== "undefined") {
       localStorage.removeItem("coupx_password_reset_email")
     }
 
-    // Sign out from Nhost
     await signOut()
-
     await new Promise((resolve) => setTimeout(resolve, 300))
 
     window.location.href = "/"
@@ -111,10 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isLoading =
     isAuthenticated === undefined ||
-    (isAuthenticated && isProfileLoading) ||
-    (isAuthenticated && isRolesLoading) ||
-    (isAuthenticated && !profile) ||
-    (isAuthenticated && rolesData === undefined)
+    (isAuthenticated && (isProfileLoading || isRolesLoading)) ||
+    (isAuthenticated && (!profile || rolesData === undefined))
 
   return (
     <AuthContext.Provider
