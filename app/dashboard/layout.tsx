@@ -8,15 +8,14 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const cookieStore = await cookies()
-  const sessionToken = cookieStore.get("nhostSession")?.value
   const refreshToken = cookieStore.get("nhostRefreshToken")?.value
 
-  // Not authenticated - redirect to login
   if (!refreshToken) {
-    redirect("/login")
+    redirect("/login?redirect=/dashboard")
   }
 
-  // Check if user is admin from session token
+  const sessionToken = cookieStore.get("nhostSession")?.value
+
   if (sessionToken) {
     try {
       const payload = JSON.parse(atob(sessionToken.split(".")[1]))
@@ -24,7 +23,7 @@ export default async function DashboardLayout({
       const isAdmin = userRoles.includes("admin")
 
       if (isAdmin) {
-        redirect("/?error=access_denied")
+        redirect("/admin/dashboard")
       }
     } catch (error) {
       console.error("Error validating dashboard access:", error)
