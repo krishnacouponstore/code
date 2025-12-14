@@ -13,7 +13,8 @@ import {
   GET_ALL_SLOTS,
   GET_SLOT_SALES,
 } from "@/lib/graphql/slots"
-import { verifyAdminAccess, UnauthorizedError } from "@/lib/auth-helper"
+import { verifyAdminAccess } from "@/lib/auth-helper"
+import { UnauthorizedError } from "@/lib/errors"
 
 type PricingTier = {
   min_quantity: number

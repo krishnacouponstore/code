@@ -2,7 +2,8 @@
 
 import { gql } from "graphql-request"
 import { getServerGraphQLClient } from "@/lib/graphql-client-server"
-import { verifyAdminAccess, UnauthorizedError } from "@/lib/auth-helper"
+import { verifyAdminAccess } from "@/lib/auth-helper"
+import { UnauthorizedError } from "@/lib/errors"
 
 export type AdminOrder = {
   id: string
