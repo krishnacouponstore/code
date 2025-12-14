@@ -2,11 +2,10 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { useAuthenticated, useUserData, useSignOut } from "@nhost/nextjs"
+import { useAuthenticationStatus, useUserData, useSignOut } from "@nhost/nextjs"
 import { useUserProfile, type UserProfile } from "@/hooks/use-user-profile"
 import { useQueryClient } from "@tanstack/react-query"
 import { mutate } from "swr"
-import Cookies from "js-cookie"
 
 export type User = {
   id: string
@@ -30,20 +29,6 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-function getIsAdminFromToken(): boolean {
-  try {
-    if (typeof window === "undefined") return false
-    const sessionToken = Cookies.get("nhostSession")
-    if (!sessionToken) return false
-
-    const payload = JSON.parse(atob(sessionToken.split(".")[1]))
-    const userRoles = payload?.["https://hasura.io/jwt/claims"]?.["x-hasura-allowed-roles"] || []
-    return userRoles.includes("admin")
-  } catch {
-    return false
-  }
-}
-
 async function ensureUserProfile(userId: string) {
   try {
     const response = await fetch("/api/ensure-profile", {
@@ -59,22 +44,13 @@ async function ensureUserProfile(userId: string) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const isAuthenticated = useAuthenticated()
+  const { isAuthenticated, isLoading: authLoading } = useAuthenticationStatus()
   const nhostUser = useUserData()
   const { signOut } = useSignOut()
   const { data: profile, isLoading: isProfileLoading, refetch } = useUserProfile()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [profileChecked, setProfileChecked] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
   const queryClient = useQueryClient()
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      setIsAdmin(getIsAdminFromToken())
-    } else {
-      setIsAdmin(false)
-    }
-  }, [isAuthenticated])
 
   useEffect(() => {
     async function checkAndCreateProfile() {
@@ -105,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           wallet_balance: profile.wallet_balance,
           total_purchased: profile.total_purchased,
           total_spent: profile.total_spent,
-          is_admin: isAdmin,
+          is_admin: profile.is_admin || false,
         }
       : null
 
@@ -117,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (typeof window !== "undefined") {
       localStorage.removeItem("coupx_password_reset_email")
+      localStorage.removeItem("user_role")
     }
 
     await signOut()
@@ -126,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/"
   }
 
-  const isLoading = isAuthenticated === undefined || (isAuthenticated && isProfileLoading)
+  const isLoading = authLoading || (isAuthenticated && isProfileLoading)
 
   return (
     <AuthContext.Provider
@@ -136,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isLoggingOut,
         logout,
-        isAuthenticated: isAuthenticated && !!nhostUser,
+        isAuthenticated: isAuthenticated || false,
       }}
     >
       {children}

@@ -5,11 +5,11 @@ import { FeaturesSection } from "@/components/landing/features-section"
 import { TestimonialsSection } from "@/components/landing/testimonials-section"
 import { CTASection } from "@/components/landing/cta-section"
 import { FooterSection } from "@/components/landing/footer-section"
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
-export default function HomePage() {
+function HomeContent() {
   const searchParams = useSearchParams()
   const { toast } = useToast()
 
@@ -21,7 +21,6 @@ export default function HomePage() {
         title: "Access Denied",
         description: "You don't have permission to access that page.",
       })
-      // Clean up URL without page reload
       window.history.replaceState({}, "", "/")
     }
   }, [searchParams, toast])
@@ -34,5 +33,13 @@ export default function HomePage() {
       <CTASection />
       <FooterSection />
     </main>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <HomeContent />
+    </Suspense>
   )
 }
