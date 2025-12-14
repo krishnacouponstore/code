@@ -25,7 +25,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { useQueryClient } from "@tanstack/react-query"
 import { ViewCouponsDialog } from "@/components/admin/view-coupons-dialog"
-import { useRouter } from "next/router"
+import { useRouter } from "next/navigation"
 import { formatCurrency } from "@/utils/currency"
 import { PackageX, AlertTriangle, Package, CheckCircle, FileText, EyeOff, BarChart3 } from "lucide-react"
 
