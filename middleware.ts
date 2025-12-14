@@ -10,9 +10,10 @@ const adminRoutes = ["/admin"]
 // Public routes that should redirect to dashboard if authenticated
 const authRoutes = ["/login", "/signup"]
 
-export async function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Check for Nhost refresh token in cookies (indicates authenticated session)
   const refreshToken = request.cookies.get("nhostRefreshToken")?.value
   const isAuthenticated = !!refreshToken
 
@@ -33,24 +34,9 @@ export async function proxy(request: NextRequest) {
 
   if (isAuthRoute && isAuthenticated) {
     const redirectTo = request.nextUrl.searchParams.get("redirect")
-
     if (redirectTo && !redirectTo.startsWith("/login") && !redirectTo.startsWith("/signup")) {
       return NextResponse.redirect(new URL(redirectTo, request.url))
     }
-
-    try {
-      const sessionToken = request.cookies.get("nhostSession")?.value
-      if (sessionToken) {
-        const payload = JSON.parse(atob(sessionToken.split(".")[1]))
-        const userRoles = payload?.["https://hasura.io/jwt/claims"]?.["x-hasura-allowed-roles"] || []
-        const isAdmin = userRoles.includes("admin")
-
-        return NextResponse.redirect(new URL(isAdmin ? "/admin/dashboard" : "/dashboard", request.url))
-      }
-    } catch (error) {
-      console.error("Error parsing session token:", error)
-    }
-
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 

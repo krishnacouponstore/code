@@ -22,4 +22,3 @@ export function getAdminGraphQLClient() {
 }
 
 export const getServerGraphQLClient = getAdminGraphQLClient
-export const getGraphQLClient = getAdminGraphQLClient

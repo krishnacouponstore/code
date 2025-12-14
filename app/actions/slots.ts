@@ -13,8 +13,6 @@ import {
   GET_ALL_SLOTS,
   GET_SLOT_SALES,
 } from "@/lib/graphql/slots"
-import { verifyAdminAccess } from "@/lib/auth-helper"
-import { UnauthorizedError } from "@/lib/errors"
 
 type PricingTier = {
   min_quantity: number
@@ -42,11 +40,6 @@ type UpdateSlotInput = {
 }
 
 export async function createSlot(input: CreateSlotInput) {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const client = getAdminGraphQLClient()
 
   try {
@@ -107,11 +100,6 @@ export async function createSlot(input: CreateSlotInput) {
 }
 
 export async function updateSlot(input: UpdateSlotInput) {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const client = getAdminGraphQLClient()
 
   try {
@@ -153,11 +141,6 @@ export async function updateSlot(input: UpdateSlotInput) {
 }
 
 export async function deleteSlot(id: string) {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const client = getAdminGraphQLClient()
 
   try {
@@ -177,11 +160,6 @@ export async function deleteSlot(id: string) {
 }
 
 export async function toggleSlotPublish(id: string, is_published: boolean) {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const client = getAdminGraphQLClient()
 
   try {
@@ -204,11 +182,6 @@ export async function toggleSlotPublish(id: string, is_published: boolean) {
 }
 
 export async function uploadCodesToSlot(slotId: string, codes: string[]) {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const client = getAdminGraphQLClient()
 
   try {
@@ -293,11 +266,6 @@ export async function uploadCodesToSlot(slotId: string, codes: string[]) {
 }
 
 export async function checkCodesExistence(codes: string[]) {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const client = getAdminGraphQLClient()
 
   try {
@@ -339,11 +307,6 @@ export async function checkCodesExistence(codes: string[]) {
 }
 
 export async function getAllSlots() {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   try {
     const client = getAdminGraphQLClient()
     const result: any = await client.request(GET_ALL_SLOTS)
@@ -363,11 +326,6 @@ export async function getAllSlots() {
 }
 
 export async function getSlotSales(slotId: string) {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const client = getAdminGraphQLClient()
 
   try {
@@ -397,11 +355,6 @@ export async function getSlotCoupons(
     filterStatus?: "all" | "sold" | "unsold"
   },
 ) {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const client = getAdminGraphQLClient()
 
   try {
@@ -490,11 +443,6 @@ export async function getSlotCoupons(
 }
 
 export async function deleteCoupon(couponId: string) {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const client = getAdminGraphQLClient()
 
   try {

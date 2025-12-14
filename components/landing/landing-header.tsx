@@ -7,27 +7,12 @@ import Link from "next/link"
 import Image from "next/image"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/lib/auth-context"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
 export function LandingHeader() {
-  const { user, isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const isAdmin = user?.is_admin ?? false
   const [isOpen, setIsOpen] = useState(false)
-
-  useEffect(() => {
-    console.log(
-      "[v0] Landing header - isAuthenticated:",
-      isAuthenticated,
-      "isLoading:",
-      isLoading,
-      "user:",
-      !!user,
-      "isAdmin:",
-      isAdmin,
-    )
-  }, [isAuthenticated, isLoading, user, isAdmin])
-
-  const showAuthButtons = !isLoading
 
   return (
     <header className="w-full py-4 px-6">
@@ -54,37 +39,33 @@ export function LandingHeader() {
         </div>
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          {showAuthButtons && (
+          {isAuthenticated ? (
+            isAdmin ? (
+              <Link href="/admin/dashboard" className="hidden md:block">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-full font-medium flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Admin Panel
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/dashboard" className="hidden md:block">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-full font-medium">
+                  Dashboard
+                </Button>
+              </Link>
+            )
+          ) : (
             <>
-              {isAuthenticated ? (
-                isAdmin ? (
-                  <Link href="/admin/dashboard" className="hidden md:block">
-                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-full font-medium flex items-center gap-2">
-                      <Shield className="w-4 h-4" />
-                      Admin Panel
-                    </Button>
-                  </Link>
-                ) : (
-                  <Link href="/dashboard" className="hidden md:block">
-                    <Button className="bg-primary text-primary-foreground hover:bg-primary/90 px-6 py-2 rounded-full font-medium">
-                      Dashboard
-                    </Button>
-                  </Link>
-                )
-              ) : (
-                <>
-                  <Link href="/login" className="hidden md:block">
-                    <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-full">
-                      Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/signup" className="hidden md:block">
-                    <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-full font-medium shadow-sm ring-1 ring-white/10">
-                      Get Started
-                    </Button>
-                  </Link>
-                </>
-              )}
+              <Link href="/login" className="hidden md:block">
+                <Button variant="ghost" className="text-muted-foreground hover:text-foreground rounded-full">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/signup" className="hidden md:block">
+                <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-6 py-2 rounded-full font-medium shadow-sm ring-1 ring-white/10">
+                  Get Started
+                </Button>
+              </Link>
             </>
           )}
 
@@ -125,41 +106,37 @@ export function LandingHeader() {
 
               {/* Action Buttons */}
               <div className="p-4 space-y-3">
-                {showAuthButtons && (
+                {isAuthenticated ? (
+                  isAdmin ? (
+                    <Link href="/admin/dashboard" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200">
+                        <Shield className="w-5 h-5" />
+                        Admin Panel
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200">
+                        Go to Dashboard
+                      </Button>
+                    </Link>
+                  )
+                ) : (
                   <>
-                    {isAuthenticated ? (
-                      isAdmin ? (
-                        <Link href="/admin/dashboard" onClick={() => setIsOpen(false)}>
-                          <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200">
-                            <Shield className="w-5 h-5" />
-                            Admin Panel
-                          </Button>
-                        </Link>
-                      ) : (
-                        <Link href="/dashboard" onClick={() => setIsOpen(false)}>
-                          <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200">
-                            Go to Dashboard
-                          </Button>
-                        </Link>
-                      )
-                    ) : (
-                      <>
-                        <Link href="/login" onClick={() => setIsOpen(false)}>
-                          <Button
-                            variant="outline"
-                            className="w-full rounded-xl h-12 bg-transparent border-border/50 hover:bg-muted/50 transition-all duration-200"
-                          >
-                            Sign In
-                          </Button>
-                        </Link>
-                        <Link href="/signup" onClick={() => setIsOpen(false)}>
-                          <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200 flex items-center justify-center gap-2">
-                            <Sparkles className="w-4 h-4" />
-                            Get Started
-                          </Button>
-                        </Link>
-                      </>
-                    )}
+                    <Link href="/login" onClick={() => setIsOpen(false)}>
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-xl h-12 bg-transparent border-border/50 hover:bg-muted/50 transition-all duration-200"
+                      >
+                        Sign In
+                      </Button>
+                    </Link>
+                    <Link href="/signup" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full bg-primary text-primary-foreground rounded-xl h-12 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all duration-200 flex items-center justify-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        Get Started
+                      </Button>
+                    </Link>
                   </>
                 )}
               </div>

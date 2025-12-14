@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { SlotFormModal } from "@/components/admin/slot-form-modal"
+import { DeleteSlotDialog } from "@/components/admin/delete-slot-dialog"
 import { UploadCodesModal } from "@/components/admin/upload-codes-modal"
 import { ViewSalesModal } from "@/components/admin/view-sales-modal"
 import { ViewCouponsDialog } from "@/components/admin/view-coupons-dialog"
@@ -17,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useToast } from "@/hooks/use-toast"
 import { useSlots, useDeleteSlot, useToggleSlotPublish, useUploadCodes, type Slot } from "@/hooks/use-slots"
 import { formatCurrency } from "@/lib/utils"
 import {
@@ -36,40 +38,36 @@ import {
   Loader2,
   List,
 } from "lucide-react"
-import { useQueryClient } from "@tanstack/react-query"
 
-export default function ManageCoupons() {
-  const { user, isAuthenticated, isLoading: authLoading, isLoggingOut } = useAuth()
+export default function ManageCouponsPage() {
+  const { user, isLoading: authLoading, isLoggingOut } = useAuth()
   const router = useRouter()
-  const queryClient = useQueryClient()
+  const { toast } = useToast()
 
-  const [activeTab, setActiveTab] = useState("drafts")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [isCreatingSlot, setIsCreatingSlot] = useState(false)
-  const [selectedSlotForEdit, setSelectedSlotForEdit] = useState<Slot | null>(null)
-  const [selectedSlotForUpload, setSelectedSlotForUpload] = useState<Slot | null>(null)
-  const [selectedSlotForCoupons, setSelectedSlotForCoupons] = useState<Slot | null>(null)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [showUploadModal, setShowUploadModal] = useState(false)
-  const [showViewCouponsModal, setShowViewCouponsModal] = useState(false)
-
-  const { data: slots = [], isLoading: isLoadingSlots } = useSlots()
+  const { data: slots = [], isLoading: slotsLoading, error: slotsError, refetch } = useSlots()
 
   const deleteSlotMutation = useDeleteSlot()
   const togglePublishMutation = useToggleSlotPublish()
   const uploadCodesMutation = useUploadCodes()
 
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const [isViewSalesModalOpen, setIsViewSalesModalOpen] = useState(false)
+  const [isViewCouponsDialogOpen, setIsViewCouponsDialogOpen] = useState(false)
+  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
+
   useEffect(() => {
     if (isLoggingOut) return
-    if (!authLoading && (!user || !isAuthenticated)) {
+    if (!authLoading && (!user || !user.is_admin)) {
       router.replace("/login")
     }
-  }, [user, authLoading, isAuthenticated, router, isLoggingOut])
+  }, [user, authLoading, router, isLoggingOut])
 
-  if (authLoading || !user || isLoggingOut) {
+  if (authLoading || !user?.is_admin || isLoggingOut) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     )
   }
@@ -110,23 +108,23 @@ export default function ManageCoupons() {
   }
 
   const handleCreateSlot = () => {
-    setSelectedSlotForEdit(null)
-    setIsCreatingSlot(true)
+    setSelectedSlot(null)
+    setIsFormModalOpen(true)
   }
 
   const handleEditSlot = (slot: Slot) => {
-    setSelectedSlotForEdit(slot)
-    setShowEditModal(true)
+    setSelectedSlot(slot)
+    setIsFormModalOpen(true)
   }
 
   const handleDeleteSlot = (slot: Slot) => {
-    setSelectedSlotForEdit(slot)
-    router.push(`/admin/slots/delete/${slot.id}`)
+    setSelectedSlot(slot)
+    setIsDeleteDialogOpen(true)
   }
 
   const handleUploadCodes = (slot: Slot) => {
-    setSelectedSlotForUpload(slot)
-    setShowUploadModal(true)
+    setSelectedSlot(slot)
+    setIsUploadModalOpen(true)
   }
 
   const handleTogglePublish = async (slot: Slot) => {
@@ -136,28 +134,65 @@ export default function ManageCoupons() {
     })
 
     if (result.success) {
-      queryClient.invalidateQueries({ queryKey: ["slots"] })
+      toast({
+        title: slot.is_published ? "Coupon unpublished" : "Coupon published",
+        description: `"${slot.name}" is now ${slot.is_published ? "hidden from" : "visible to"} customers.`,
+      })
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to update coupon",
+        variant: "destructive",
+      })
     }
   }
 
   const handleFormSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ["slots"] })
+    refetch()
+  }
+
+  const handleConfirmDelete = async () => {
+    if (selectedSlot) {
+      const result = await deleteSlotMutation.mutateAsync(selectedSlot.id)
+
+      if (result.success) {
+        toast({
+          title: "Coupon deleted",
+          description: `"${selectedSlot.name}" has been permanently deleted.`,
+          variant: "destructive",
+        })
+        setSelectedSlot(null)
+        setIsDeleteDialogOpen(false)
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to delete coupon",
+          variant: "destructive",
+        })
+      }
+    }
   }
 
   const handleUploadSuccess = (slotId: string, codesCount: number) => {
-    queryClient.invalidateQueries({ queryKey: ["slots"] })
+    refetch()
+    toast({
+      title: "Codes uploaded successfully",
+      description: `${codesCount} codes have been added to "${selectedSlot?.name}".`,
+    })
   }
 
   const handleViewCoupons = (slot: Slot) => {
-    setSelectedSlotForCoupons(slot)
-    setShowViewCouponsModal(true)
+    setSelectedSlot(slot)
+    setIsViewCouponsDialogOpen(true)
   }
 
   const handleViewSales = (slot: Slot) => {
-    router.push(`/admin/slots/sales/${slot.id}`)
+    setSelectedSlot(slot)
+    setIsViewSalesModalOpen(true)
   }
 
   const handleViewAllOrders = () => {
+    setIsViewSalesModalOpen(false)
     router.push("/admin/orders")
   }
 
@@ -230,7 +265,7 @@ export default function ManageCoupons() {
         </div>
 
         {/* Loading State */}
-        {isLoadingSlots ? (
+        {slotsLoading ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
             <p className="text-muted-foreground">Loading coupons...</p>
@@ -477,54 +512,43 @@ export default function ManageCoupons() {
       </main>
 
       {/* Modals */}
-      {isCreatingSlot && (
-        <SlotFormModal
-          open={isCreatingSlot}
-          onOpenChange={setIsCreatingSlot}
-          slot={null}
-          onSuccess={handleFormSuccess}
-        />
-      )}
+      <SlotFormModal
+        open={isFormModalOpen}
+        onOpenChange={setIsFormModalOpen}
+        slot={selectedSlot}
+        onSuccess={handleFormSuccess}
+      />
 
-      {selectedSlotForEdit && (
-        <SlotFormModal
-          open={showEditModal}
-          onOpenChange={setShowEditModal}
-          slot={selectedSlotForEdit}
-          onSuccess={handleFormSuccess}
-        />
-      )}
+      <DeleteSlotDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        slotName={selectedSlot?.name || ""}
+        onConfirm={handleConfirmDelete}
+        isDeleting={deleteSlotMutation.isPending}
+      />
 
-      {selectedSlotForUpload && (
-        <UploadCodesModal
-          open={showUploadModal}
-          onOpenChange={setShowUploadModal}
-          slot={selectedSlotForUpload}
-          onSuccess={handleUploadSuccess}
-        />
-      )}
+      <UploadCodesModal
+        open={isUploadModalOpen}
+        onOpenChange={setIsUploadModalOpen}
+        slot={selectedSlot}
+        onSuccess={handleUploadSuccess}
+      />
 
-      {selectedSlotForCoupons && (
-        <ViewCouponsDialog
-          slotId={selectedSlotForCoupons.id}
-          slotName={selectedSlotForCoupons.name}
-          open={showViewCouponsModal}
-          onOpenChange={setShowViewCouponsModal}
-        />
-      )}
-
-      {/* View Sales Modal */}
       <ViewSalesModal
-        open={isCreatingSlot || selectedSlotForEdit || selectedSlotForUpload || selectedSlotForCoupons}
-        onOpenChange={() => {
-          setIsCreatingSlot(false)
-          setSelectedSlotForEdit(null)
-          setSelectedSlotForUpload(null)
-          setSelectedSlotForCoupons(null)
-        }}
-        slot={selectedSlotForEdit || selectedSlotForUpload || selectedSlotForCoupons}
+        open={isViewSalesModalOpen}
+        onOpenChange={setIsViewSalesModalOpen}
+        slot={selectedSlot}
         onViewAllOrders={handleViewAllOrders}
       />
+
+      {selectedSlot && (
+        <ViewCouponsDialog
+          slotId={selectedSlot.id}
+          slotName={selectedSlot.name}
+          open={isViewCouponsDialogOpen}
+          onOpenChange={setIsViewCouponsDialogOpen}
+        />
+      )}
     </div>
   )
 }

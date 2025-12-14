@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { useAuthenticationStatus, useUserData, useSignOut } from "@nhost/nextjs"
+import { useAuthenticated, useUserData, useSignOut } from "@nhost/nextjs"
 import { useUserProfile, type UserProfile } from "@/hooks/use-user-profile"
+import { useUserRoles } from "@/hooks/use-user-roles"
 import { useQueryClient } from "@tanstack/react-query"
 import { mutate } from "swr"
 
@@ -44,10 +45,11 @@ async function ensureUserProfile(userId: string) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const { isAuthenticated, isLoading: authLoading } = useAuthenticationStatus()
+  const isAuthenticated = useAuthenticated()
   const nhostUser = useUserData()
   const { signOut } = useSignOut()
   const { data: profile, isLoading: isProfileLoading, refetch } = useUserProfile()
+  const { data: rolesData, isLoading: isRolesLoading } = useUserRoles()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [profileChecked, setProfileChecked] = useState(false)
   const queryClient = useQueryClient()
@@ -81,21 +83,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           wallet_balance: profile.wallet_balance,
           total_purchased: profile.total_purchased,
           total_spent: profile.total_spent,
-          is_admin: profile.is_admin || false,
+          is_admin: rolesData?.isAdmin ?? false,
         }
       : null
 
   const logout = async () => {
     setIsLoggingOut(true)
 
+    // Clear React Query cache
     queryClient.clear()
+
+    // Clear SWR cache
     await mutate(() => true, undefined, { revalidate: false })
 
+    // Clear any localStorage items related to auth/user
     if (typeof window !== "undefined") {
       localStorage.removeItem("coupx_password_reset_email")
-      localStorage.removeItem("user_role")
     }
 
+    // Sign out from Nhost
     await signOut()
 
     await new Promise((resolve) => setTimeout(resolve, 300))
@@ -103,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = "/"
   }
 
-  const isLoading = authLoading || (isAuthenticated && isProfileLoading)
+  const isLoading = isAuthenticated === undefined || (isAuthenticated && (isProfileLoading || isRolesLoading))
 
   return (
     <AuthContext.Provider
@@ -113,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isLoggingOut,
         logout,
-        isAuthenticated: isAuthenticated || false,
+        isAuthenticated: isAuthenticated && !!nhostUser,
       }}
     >
       {children}

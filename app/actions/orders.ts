@@ -2,8 +2,6 @@
 
 import { gql } from "graphql-request"
 import { getServerGraphQLClient } from "@/lib/graphql-client-server"
-import { verifyAdminAccess } from "@/lib/auth-helper"
-import { UnauthorizedError } from "@/lib/errors"
 
 export type AdminOrder = {
   id: string
@@ -42,11 +40,6 @@ export async function getAllOrders(params: {
   dateRange?: "today" | "7days" | "30days" | "all"
   sortBy?: "newest" | "oldest" | "amount_high" | "amount_low"
 }): Promise<{ orders: AdminOrder[]; total: number }> {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   const { limit = 25, offset = 0, search, status, slotId, dateRange = "all", sortBy = "newest" } = params
 
   try {
@@ -184,11 +177,6 @@ export async function getAllOrders(params: {
 
 // Get order stats
 export async function getOrderStats(): Promise<OrderStats> {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   try {
     const client = getServerGraphQLClient()
 
@@ -270,11 +258,6 @@ export async function getOrderStats(): Promise<OrderStats> {
 
 // Get unique slots for filter dropdown
 export async function getOrderSlots(): Promise<{ id: string; name: string }[]> {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   try {
     const client = getServerGraphQLClient()
 
@@ -297,11 +280,6 @@ export async function getOrderSlots(): Promise<{ id: string; name: string }[]> {
 
 // Get single order with codes
 export async function getOrderById(orderId: string): Promise<AdminOrder | null> {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   try {
     const client = getServerGraphQLClient()
 
@@ -371,11 +349,6 @@ export async function exportOrders(params: {
   slotId?: string
   dateRange?: "today" | "7days" | "30days" | "all"
 }): Promise<AdminOrder[]> {
-  const { isAdmin } = await verifyAdminAccess()
-  if (!isAdmin) {
-    throw new UnauthorizedError()
-  }
-
   // Fetch all matching orders without pagination
   const result = await getAllOrders({
     ...params,
