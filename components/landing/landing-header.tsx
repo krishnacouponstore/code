@@ -18,7 +18,7 @@ export function LandingHeader() {
     <header className="w-full py-4 px-6">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/home" className="flex items-center">
+          <Link href="/" className="flex items-center">
             <Image
               src="/images/coupx-logo-dark.png"
               alt="CoupX"

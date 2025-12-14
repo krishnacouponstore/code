@@ -17,7 +17,7 @@ function SignupContent() {
   return (
     <div className="w-full max-w-md">
       <div className="flex items-center justify-between mb-6">
-        <Link href="/home">
+        <Link href="/">
           <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             Back to Home
@@ -38,7 +38,7 @@ function SignupContent() {
       <div className="bg-card border border-border/50 rounded-2xl shadow-xl p-8">
         {/* Logo and Branding */}
         <div className="text-center mb-6">
-          <Link href="/home" className="inline-flex items-center justify-center mb-4">
+          <Link href="/" className="inline-flex items-center justify-center mb-4">
             <Image
               src="/images/coupx-logo-dark.png"
               alt="CoupX"

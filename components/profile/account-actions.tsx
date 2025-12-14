@@ -25,7 +25,7 @@ export function AccountActions() {
 
   const handleLogout = () => {
     logout()
-    router.push("/home")
+    router.push("/")
   }
 
   const quickLinks = [

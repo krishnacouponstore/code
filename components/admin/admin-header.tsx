@@ -54,7 +54,7 @@ export function AdminHeader() {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo and Nav */}
         <div className="flex items-center gap-6">
-          <Link href="/home" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <Image
               src="/images/coupx-logo-dark.png"
               alt="CoupX"

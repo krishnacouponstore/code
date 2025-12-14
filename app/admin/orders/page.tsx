@@ -92,7 +92,7 @@ export default function AdminOrdersPage() {
       if (!isAuthenticated) {
         router.push("/login")
       } else if (user && !user.is_admin) {
-        router.push("/home")
+        router.push("/")
       }
     }
   }, [isAuthenticated, user, authLoading, router, isLoggingOut])

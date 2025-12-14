@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     await new Promise((resolve) => setTimeout(resolve, 300))
 
-    window.location.href = "/home"
+    window.location.href = "/"
   }
 
   const isLoading = isAuthenticated === undefined || (isAuthenticated && (isProfileLoading || isRolesLoading))

@@ -16,7 +16,7 @@ export default function ResetPasswordPage() {
           <div className="bg-card border border-border/50 rounded-2xl shadow-xl p-8">
             {/* Logo and Branding */}
             <div className="text-center mb-8">
-              <Link href="/home" className="inline-flex items-center justify-center">
+              <Link href="/" className="inline-flex items-center justify-center">
                 <Image
                   src="/images/coupx-logo-dark.png"
                   alt="CoupX"

@@ -21,7 +21,7 @@ export function FooterSection() {
     <footer className="w-full max-w-[1320px] mx-auto px-5 flex flex-col md:flex-row justify-between items-start gap-8 md:gap-0 py-10 md:py-16 border-t border-border">
       {/* Left Section */}
       <div className="flex flex-col justify-start items-start gap-6 p-4 md:p-8">
-        <Link href="/home" className="flex items-center">
+        <Link href="/" className="flex items-center">
           <Image
             src="/images/coupx-logo-dark.png"
             alt="CoupX"
