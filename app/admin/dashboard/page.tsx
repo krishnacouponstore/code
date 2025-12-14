@@ -66,10 +66,7 @@ export default function AdminDashboardPage() {
     if (!authLoading && !isAuthenticated) {
       router.replace("/login")
     }
-    if (!authLoading && user && !user.is_admin) {
-      router.replace("/dashboard")
-    }
-  }, [authLoading, isAuthenticated, user, router, isLoggingOut])
+  }, [authLoading, isAuthenticated, router, isLoggingOut])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {

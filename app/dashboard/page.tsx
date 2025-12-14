@@ -39,11 +39,7 @@ export default function DashboardPage() {
     if (!authLoading && !isAuthenticated) {
       router.replace(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
-    // Redirect admin to admin dashboard
-    if (!authLoading && profile?.is_admin) {
-      router.replace("/admin/dashboard")
-    }
-  }, [authLoading, isAuthenticated, profile, router, pathname, isLoggingOut])
+  }, [authLoading, isAuthenticated, router, pathname, isLoggingOut])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
