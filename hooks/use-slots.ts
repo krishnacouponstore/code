@@ -123,3 +123,5 @@ export function useSlotSales(slotId: string | null) {
     enabled: !!slotId,
   })
 }
+
+export { useToggleSlotPublish as useTogglePublish }

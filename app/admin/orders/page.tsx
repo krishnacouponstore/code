@@ -34,10 +34,15 @@ import {
   ChevronLeft,
   ChevronRight,
   FileDown,
+  Filter,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { useAdminOrders, useOrderStats, useOrderSlots, type AdminOrder } from "@/hooks/use-admin-orders"
+import { useOrderStats, useOrderSlots, type AdminOrder } from "@/hooks/use-admin-orders"
 import { exportOrders } from "@/app/actions/orders"
+import { useOrders, type OrderFilters } from "@/hooks/use-orders"
+import { DatePickerWithRange } from "@/components/ui/date-range-picker"
+import type { DateRange as DateRangeType } from "react-day-picker"
+import { format } from "date-fns" // Import format from date-fns
 
 export default function AdminOrdersPage() {
   const { user, isAuthenticated, isLoading: authLoading, isLoggingOut } = useAuth()
@@ -46,10 +51,10 @@ export default function AdminOrdersPage() {
 
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [couponFilter, setCouponFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "failed">("all")
+  const [couponFilter, setCouponFilter] = useState<string>("all")
+  const [dateRange, setDateRange] = useState<DateRangeType | undefined>(undefined)
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount_high" | "amount_low">("newest")
-  const [dateRange, setDateRange] = useState<"today" | "7days" | "30days" | "all">("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null)
   const [showOrderDetails, setShowOrderDetails] = useState(false)
@@ -57,17 +62,24 @@ export default function AdminOrdersPage() {
   const [selectedUserForProfile, setSelectedUserForProfile] = useState<AdminOrder["user"] | null>(null)
   const [showUserProfile, setShowUserProfile] = useState(false)
 
-  const ordersPerPage = 25
+  const ordersPerPage = 20
 
-  const { data: ordersData, isLoading: ordersLoading } = useAdminOrders({
+  const filters: OrderFilters = {
     page: currentPage,
-    pageSize: ordersPerPage,
-    search: debouncedSearch,
-    status: statusFilter,
-    slotId: couponFilter,
-    dateRange,
+    limit: ordersPerPage,
+    status: statusFilter === "all" ? undefined : statusFilter,
+    slotId: couponFilter === "all" ? undefined : couponFilter,
+    dateRange: dateRange
+      ? {
+          from: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
+          to: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
+        }
+      : undefined,
     sortBy,
-  })
+    search: searchQuery || undefined,
+  }
+
+  const { data: ordersData, isLoading: ordersLoading } = useOrders(filters)
 
   const { data: stats, isLoading: statsLoading } = useOrderStats()
   const { data: slots } = useOrderSlots()
@@ -344,7 +356,6 @@ export default function AdminOrdersPage() {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="refunded">Refunded</SelectItem>
               </SelectContent>
             </Select>
             <Select value={couponFilter} onValueChange={setCouponFilter}>
@@ -360,17 +371,27 @@ export default function AdminOrdersPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={dateRange} onValueChange={(v: any) => setDateRange(v)}>
-              <SelectTrigger className="bg-background border-border">
-                <SelectValue placeholder="Date Range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="7days">Last 7 Days</SelectItem>
-                <SelectItem value="30days">Last 30 Days</SelectItem>
-              </SelectContent>
-            </Select>
+            <DatePickerWithRange value={dateRange} onChange={setDateRange} />
+            <div className="flex items-center justify-between space-x-2">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium">Sort by</span>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="bg-background border-border">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="oldest">Oldest</SelectItem>
+                    <SelectItem value="amount_high">Amount (High to Low)</SelectItem>
+                    <SelectItem value="amount_low">Amount (Low to High)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" className="gap-2 bg-transparent">
+                <Filter className="h-4 w-4" />
+                Apply Filters
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -443,11 +464,7 @@ export default function AdminOrdersPage() {
                       </TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                        {format(new Date(order.created_at), "dd MMM yyyy")}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>

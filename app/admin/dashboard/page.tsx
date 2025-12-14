@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { Button } from "@/components/ui/button"
@@ -43,8 +42,7 @@ import { Progress } from "@/components/ui/progress"
 import type { DateRange } from "@/app/actions/dashboard"
 
 export default function AdminDashboardPage() {
-  const { user, isAuthenticated, isLoading: authLoading, isLoggingOut } = useAuth()
-  const router = useRouter()
+  const { user, isLoading: authLoading, isLoggingOut } = useAuth()
   const [dateRange, setDateRange] = useState<DateRange>("today")
   const queryClient = useQueryClient()
 
@@ -60,16 +58,6 @@ export default function AdminDashboardPage() {
   const { data: lowStockAlerts, isLoading: lowStockLoading } = useLowStockAlerts()
 
   const { data: allSlots } = useSlots()
-
-  useEffect(() => {
-    if (isLoggingOut) return
-    if (!authLoading && !isAuthenticated) {
-      router.replace("/login")
-    }
-    if (!authLoading && user && !user.is_admin) {
-      router.replace("/dashboard")
-    }
-  }, [authLoading, isAuthenticated, user, router, isLoggingOut])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {

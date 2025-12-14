@@ -1,76 +1,50 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { AdminHeader } from "@/components/admin/admin-header"
-import { SlotFormModal } from "@/components/admin/slot-form-modal"
-import { DeleteSlotDialog } from "@/components/admin/delete-slot-dialog"
-import { UploadCodesModal } from "@/components/admin/upload-codes-modal"
-import { ViewSalesModal } from "@/components/admin/view-sales-modal"
-import { ViewCouponsDialog } from "@/components/admin/view-coupons-dialog"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useToast } from "@/hooks/use-toast"
-import { useSlots, useDeleteSlot, useToggleSlotPublish, useUploadCodes, type Slot } from "@/hooks/use-slots"
-import { formatCurrency } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MoreVertical, Edit, Upload, Trash2, Eye, Plus, List, Loader2 } from "lucide-react"
+import { useSlots, useDeleteSlot, useTogglePublish, type Slot } from "@/hooks/use-slots"
+import { SlotFormModal } from "@/components/admin/slot-form-modal"
+import { UploadCodesModal } from "@/components/admin/upload-codes-modal"
 import {
-  Plus,
-  MoreVertical,
-  Pencil,
-  Upload,
-  BarChart3,
-  Eye,
-  EyeOff,
-  Trash2,
-  Package,
-  CheckCircle,
-  FileText,
-  AlertTriangle,
-  PackageX,
-  Loader2,
-  List,
-} from "lucide-react"
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
+import { useQueryClient } from "@tanstack/react-query"
+import { ViewCouponsDialog } from "@/components/admin/view-coupons-dialog"
+import { useRouter } from "next/router"
+import { formatCurrency } from "@/utils/currency"
+import { PackageX, AlertTriangle, Package, CheckCircle, FileText, EyeOff, BarChart3 } from "lucide-react"
 
-export default function ManageCouponsPage() {
+export default function AdminSlotsPage() {
   const { user, isLoading: authLoading, isLoggingOut } = useAuth()
-  const router = useRouter()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const router = useRouter()
 
-  const { data: slots = [], isLoading: slotsLoading, error: slotsError, refetch } = useSlots()
-
+  const { data: slots = [], isLoading: slotsLoading } = useSlots()
   const deleteSlotMutation = useDeleteSlot()
-  const togglePublishMutation = useToggleSlotPublish()
-  const uploadCodesMutation = useUploadCodes()
+  const togglePublishMutation = useTogglePublish()
 
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
-  const [isViewSalesModalOpen, setIsViewSalesModalOpen] = useState(false)
-  const [isViewCouponsDialogOpen, setIsViewCouponsDialogOpen] = useState(false)
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null)
-
-  useEffect(() => {
-    if (isLoggingOut) return
-    if (!authLoading && (!user || !user.is_admin)) {
-      router.replace("/login")
-    }
-  }, [user, authLoading, router, isLoggingOut])
-
-  if (authLoading || !user?.is_admin || isLoggingOut) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    )
-  }
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [selectedSlotForEdit, setSelectedSlotForEdit] = useState<Slot | null>(null)
+  const [selectedSlotForUpload, setSelectedSlotForUpload] = useState<Slot | null>(null)
+  const [selectedSlotForView, setSelectedSlotForView] = useState<Slot | null>(null)
+  const [slotToDelete, setSlotToDelete] = useState<Slot | null>(null)
 
   // Calculate stats
   const totalSlots = slots.length
@@ -108,23 +82,22 @@ export default function ManageCouponsPage() {
   }
 
   const handleCreateSlot = () => {
-    setSelectedSlot(null)
-    setIsFormModalOpen(true)
+    setSelectedSlotForEdit(null)
+    setIsCreateModalOpen(true)
   }
 
   const handleEditSlot = (slot: Slot) => {
-    setSelectedSlot(slot)
-    setIsFormModalOpen(true)
+    setSelectedSlotForEdit(slot)
+    setIsCreateModalOpen(true)
   }
 
   const handleDeleteSlot = (slot: Slot) => {
-    setSelectedSlot(slot)
-    setIsDeleteDialogOpen(true)
+    setSlotToDelete(slot)
   }
 
   const handleUploadCodes = (slot: Slot) => {
-    setSelectedSlot(slot)
-    setIsUploadModalOpen(true)
+    setSelectedSlotForUpload(slot)
+    setSelectedSlotForView(null)
   }
 
   const handleTogglePublish = async (slot: Slot) => {
@@ -148,21 +121,20 @@ export default function ManageCouponsPage() {
   }
 
   const handleFormSuccess = () => {
-    refetch()
+    queryClient.invalidateQueries(["slots"])
   }
 
   const handleConfirmDelete = async () => {
-    if (selectedSlot) {
-      const result = await deleteSlotMutation.mutateAsync(selectedSlot.id)
+    if (slotToDelete) {
+      const result = await deleteSlotMutation.mutateAsync(slotToDelete.id)
 
       if (result.success) {
         toast({
           title: "Coupon deleted",
-          description: `"${selectedSlot.name}" has been permanently deleted.`,
+          description: `"${slotToDelete.name}" has been permanently deleted.`,
           variant: "destructive",
         })
-        setSelectedSlot(null)
-        setIsDeleteDialogOpen(false)
+        setSlotToDelete(null)
       } else {
         toast({
           title: "Error",
@@ -173,26 +145,13 @@ export default function ManageCouponsPage() {
     }
   }
 
-  const handleUploadSuccess = (slotId: string, codesCount: number) => {
-    refetch()
-    toast({
-      title: "Codes uploaded successfully",
-      description: `${codesCount} codes have been added to "${selectedSlot?.name}".`,
-    })
-  }
-
   const handleViewCoupons = (slot: Slot) => {
-    setSelectedSlot(slot)
-    setIsViewCouponsDialogOpen(true)
-  }
-
-  const handleViewSales = (slot: Slot) => {
-    setSelectedSlot(slot)
-    setIsViewSalesModalOpen(true)
+    setSelectedSlotForView(slot)
+    setSelectedSlotForUpload(null)
   }
 
   const handleViewAllOrders = () => {
-    setIsViewSalesModalOpen(false)
+    setSelectedSlotForView(null)
     router.push("/admin/orders")
   }
 
@@ -207,13 +166,21 @@ export default function ManageCouponsPage() {
             <h1 className="text-2xl font-bold text-foreground">Manage Coupons</h1>
             <p className="text-muted-foreground mt-1">Create and manage coupon categories and upload codes</p>
           </div>
-          <Button
-            onClick={handleCreateSlot}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create New Coupon
-          </Button>
+          <div className="flex items-center gap-4">
+            <Input
+              placeholder="Search coupons..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full sm:w-auto"
+            />
+            <Button
+              onClick={handleCreateSlot}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create New Coupon
+            </Button>
+          </div>
         </div>
 
         {/* Stats Summary */}
@@ -339,15 +306,15 @@ export default function ManageCouponsPage() {
                       <TableCell className="text-foreground">{getPriceRange(slot)}</TableCell>
                       <TableCell>
                         {slot.is_published ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
-                            <Eye className="h-3 w-3" />
+                          <Badge variant="success">
+                            <Eye className="mr-2 h-4 w-4" />
                             Published
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            <EyeOff className="h-3 w-3" />
+                          <Badge variant="default">
+                            <EyeOff className="mr-2 h-4 w-4" />
                             Draft
-                          </span>
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -360,7 +327,7 @@ export default function ManageCouponsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-card border-border w-48">
                             <DropdownMenuItem onClick={() => handleEditSlot(slot)} className="cursor-pointer">
-                              <Pencil className="mr-2 h-4 w-4" />
+                              <Edit className="mr-2 h-4 w-4" />
                               Edit Coupon
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleViewCoupons(slot)} className="cursor-pointer">
@@ -371,11 +338,11 @@ export default function ManageCouponsPage() {
                               <Upload className="mr-2 h-4 w-4" />
                               Upload Codes
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleViewSales(slot)} className="cursor-pointer">
+                            <DropdownMenuItem onClick={() => handleViewCoupons(slot)} className="cursor-pointer">
                               <BarChart3 className="mr-2 h-4 w-4" />
                               View Sales
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-border" />
+                            {/* DropdownMenuSeparator className="bg-border" */}
                             <DropdownMenuItem
                               onClick={() => handleTogglePublish(slot)}
                               className="cursor-pointer"
@@ -393,7 +360,7 @@ export default function ManageCouponsPage() {
                                 </>
                               )}
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-border" />
+                            {/* DropdownMenuSeparator className="bg-border" */}
                             <DropdownMenuItem
                               onClick={() => handleDeleteSlot(slot)}
                               className="cursor-pointer text-destructive focus:text-destructive"
@@ -427,7 +394,7 @@ export default function ManageCouponsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-card border-border w-48">
                         <DropdownMenuItem onClick={() => handleEditSlot(slot)} className="cursor-pointer">
-                          <Pencil className="mr-2 h-4 w-4" />
+                          <Edit className="mr-2 h-4 w-4" />
                           Edit Coupon
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleViewCoupons(slot)} className="cursor-pointer">
@@ -438,7 +405,7 @@ export default function ManageCouponsPage() {
                           <Upload className="mr-2 h-4 w-4" />
                           Upload Codes
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleViewSales(slot)} className="cursor-pointer">
+                        <DropdownMenuItem onClick={() => handleViewCoupons(slot)} className="cursor-pointer">
                           <BarChart3 className="mr-2 h-4 w-4" />
                           View Sales
                         </DropdownMenuItem>
@@ -455,7 +422,6 @@ export default function ManageCouponsPage() {
                             </>
                           )}
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="bg-border" />
                         <DropdownMenuItem
                           onClick={() => handleDeleteSlot(slot)}
                           className="cursor-pointer text-destructive focus:text-destructive"
@@ -483,15 +449,15 @@ export default function ManageCouponsPage() {
 
                   <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                     {slot.is_published ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
-                        <Eye className="h-3 w-3" />
+                      <Badge variant="success">
+                        <Eye className="mr-2 h-4 w-4" />
                         Published
-                      </span>
+                      </Badge>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        <EyeOff className="h-3 w-3" />
+                      <Badge variant="default">
+                        <EyeOff className="mr-2 h-4 w-4" />
                         Draft
-                      </span>
+                      </Badge>
                     )}
                     {slot.total_uploaded === 0 && (
                       <Button
@@ -513,41 +479,43 @@ export default function ManageCouponsPage() {
 
       {/* Modals */}
       <SlotFormModal
-        open={isFormModalOpen}
-        onOpenChange={setIsFormModalOpen}
-        slot={selectedSlot}
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        slot={selectedSlotForEdit}
         onSuccess={handleFormSuccess}
       />
 
-      <DeleteSlotDialog
-        open={isDeleteDialogOpen}
-        onOpenChange={setIsDeleteDialogOpen}
-        slotName={selectedSlot?.name || ""}
-        onConfirm={handleConfirmDelete}
-        isDeleting={deleteSlotMutation.isPending}
-      />
-
       <UploadCodesModal
-        open={isUploadModalOpen}
-        onOpenChange={setIsUploadModalOpen}
-        slot={selectedSlot}
-        onSuccess={handleUploadSuccess}
+        open={Boolean(selectedSlotForUpload)}
+        onOpenChange={() => setSelectedSlotForUpload(null)}
+        slot={selectedSlotForUpload}
+        onSuccess={handleFormSuccess}
       />
 
-      <ViewSalesModal
-        open={isViewSalesModalOpen}
-        onOpenChange={setIsViewSalesModalOpen}
-        slot={selectedSlot}
-        onViewAllOrders={handleViewAllOrders}
-      />
-
-      {selectedSlot && (
+      {selectedSlotForView && (
         <ViewCouponsDialog
-          slotId={selectedSlot.id}
-          slotName={selectedSlot.name}
-          open={isViewCouponsDialogOpen}
-          onOpenChange={setIsViewCouponsDialogOpen}
+          slotId={selectedSlotForView.id}
+          slotName={selectedSlotForView.name}
+          open={Boolean(selectedSlotForView)}
+          onOpenChange={() => setSelectedSlotForView(null)}
         />
+      )}
+
+      {slotToDelete && (
+        <AlertDialog open={Boolean(slotToDelete)} onOpenChange={() => setSlotToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the coupon "{slotToDelete.name}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   )

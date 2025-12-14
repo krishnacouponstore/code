@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AdminHeader } from "@/components/admin/admin-header"
@@ -20,7 +20,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useToast } from "@/hooks/use-toast"
 import {
   useRevenueStats,
-  useTransactions,
   useUpdateTransactionStatus,
   useRefundTransaction,
   type Transaction,
@@ -43,10 +42,16 @@ import {
   Building,
   User,
   Settings,
+  IndianRupee,
+  Users,
 } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DatePickerWithRange } from "@/components/ui/date-range-picker"
+import type { DateRange } from "react-day-picker"
+import { useRecentTransactions, type RevenueFilters } from "@/hooks/use-revenue"
+import { format } from "date-fns"
 
-export default function RevenuePage() {
+export default function AdminRevenuePage() {
   const { user, isLoading: authLoading, isLoggingOut } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
@@ -58,22 +63,25 @@ export default function RevenuePage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "success" | "failed" | "refunded">("all")
   const [methodFilter, setMethodFilter] = useState<"all" | "UPI" | "Card" | "NetBanking" | "Admin">("all")
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount_high" | "amount_low">("newest")
-  const [dateRange, setDateRange] = useState<"today" | "7days" | "30days" | "all">("all")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+  const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">("today")
 
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const { data: stats, isLoading: statsLoading } = useRevenueStats(dateRange)
-  const { data: transactionsData, isLoading: transactionsLoading } = useTransactions({
-    page,
-    pageSize,
-    search: debouncedSearch,
-    status: statusFilter,
-    method: methodFilter,
-    sortBy,
-    dateRange,
-  })
+  const filters: RevenueFilters = {
+    dateRange: dateRange
+      ? {
+          from: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
+          to: dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
+        }
+      : undefined,
+    timeRange: !dateRange ? timeRange : undefined,
+  }
+
+  const { data: stats, isLoading: statsLoading } = useRevenueStats(filters)
+  const { data: transactionsData = [], isLoading: transactionsLoading } = useRecentTransactions(filters)
 
   const updateStatusMutation = useUpdateTransactionStatus()
   const refundMutation = useRefundTransaction()
@@ -87,11 +95,10 @@ export default function RevenuePage() {
   }, [searchQuery])
 
   useEffect(() => {
-    if (isLoggingOut) return
-    if (!authLoading && (!user || !user.is_admin)) {
-      router.replace("/login")
+    if (dateRange?.from || dateRange?.to) {
+      setTimeRange("today")
     }
-  }, [user, authLoading, router, isLoggingOut])
+  }, [dateRange])
 
   const transactions = transactionsData?.transactions || []
   const totalTransactions = transactionsData?.total || 0
@@ -181,7 +188,7 @@ export default function RevenuePage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `transactions_${dateRange}_${new Date().toISOString().split("T")[0]}.csv`
+    a.download = `transactions_${timeRange}_${new Date().toISOString().split("T")[0]}.csv`
     a.click()
     URL.revokeObjectURL(url)
 
@@ -258,21 +265,22 @@ export default function RevenuePage() {
             <p className="text-muted-foreground mt-1">Track all wallet top-ups and payment activity</p>
           </div>
           <div className="flex items-center gap-3">
+            <DatePickerWithRange value={dateRange} onChange={setDateRange} />
             <Select
-              value={dateRange}
+              value={timeRange}
               onValueChange={(v) => {
-                setDateRange(v as typeof dateRange)
+                setTimeRange(v as typeof timeRange)
                 setPage(0)
               }}
             >
               <SelectTrigger className="w-[140px] bg-secondary border-border text-foreground">
-                <SelectValue placeholder="Date range" />
+                <SelectValue placeholder="Time range" />
               </SelectTrigger>
               <SelectContent className="bg-card border-border">
                 <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="7days">Last 7 Days</SelectItem>
-                <SelectItem value="30days">Last 30 Days</SelectItem>
-                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="week">Last Week</SelectItem>
+                <SelectItem value="month">Last Month</SelectItem>
+                <SelectItem value="year">Last Year</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={exportToCSV} variant="outline" className="border-border bg-transparent">
@@ -299,66 +307,84 @@ export default function RevenuePage() {
           ) : (
             <>
               <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle>Total Revenue</CardTitle>
+                </CardHeader>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                      <DollarSign className="h-5 w-5 text-emerald-400" />
+                      <IndianRupee className="h-5 w-5 text-emerald-400" />
                     </div>
                   </div>
                   <p className="text-2xl font-bold text-emerald-400">
                     ₹{(stats?.totalRevenue || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </p>
-                  <p className="text-sm text-muted-foreground">Total Revenue</p>
+                  <p className="text-sm text-muted-foreground">Revenue</p>
                   <p className="text-xs text-emerald-400 mt-1">
                     ↗{" "}
-                    {dateRange === "today"
+                    {timeRange === "today"
                       ? "Today"
-                      : dateRange === "7days"
-                        ? "Last 7 days"
-                        : dateRange === "30days"
-                          ? "Last 30 days"
-                          : "All time"}{" "}
+                      : timeRange === "week"
+                        ? "Last Week"
+                        : timeRange === "month"
+                          ? "Last Month"
+                          : "Last Year"}{" "}
                     earnings
                   </p>
                 </CardContent>
               </Card>
               <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle>Active Users</CardTitle>
+                </CardHeader>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center">
-                      <Clock className="h-5 w-5 text-orange-400" />
+                    <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                      <Users className="h-5 w-5 text-blue-400" />
                     </div>
                   </div>
-                  <p className="text-2xl font-bold text-orange-400">
-                    ₹{(stats?.pendingAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  <p className="text-2xl font-bold text-blue-400">{stats?.activeUsers || 0}</p>
+                  <p className="text-sm text-muted-foreground">Active Users</p>
+                  <p className="text-xs text-blue-400 mt-1">
+                    {timeRange === "today"
+                      ? "Today"
+                      : timeRange === "week"
+                        ? "Last Week"
+                        : timeRange === "month"
+                          ? "Last Month"
+                          : "Last Year"}
                   </p>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-xs text-muted-foreground mt-1">Awaiting verification</p>
                 </CardContent>
               </Card>
               <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle>Successful Transactions</CardTitle>
+                </CardHeader>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                      <CheckCircle className="h-5 w-5 text-emerald-400" />
+                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-green-400" />
                     </div>
                   </div>
                   <p className="text-2xl font-bold text-foreground">{stats?.successfulCount || 0}</p>
                   <p className="text-sm text-muted-foreground">Successful</p>
                   <p className="text-xs text-emerald-400 mt-1">
                     ✓{" "}
-                    {dateRange === "today"
+                    {timeRange === "today"
                       ? "Today"
-                      : dateRange === "7days"
-                        ? "Last 7 days"
-                        : dateRange === "30days"
-                          ? "Last 30 days"
-                          : "All time"}{" "}
+                      : timeRange === "week"
+                        ? "Last Week"
+                        : timeRange === "month"
+                          ? "Last Month"
+                          : "Last Year"}{" "}
                     completed
                   </p>
                 </CardContent>
               </Card>
               <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle>Failed/Refunded Transactions</CardTitle>
+                </CardHeader>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center">
@@ -368,13 +394,13 @@ export default function RevenuePage() {
                   <p className="text-2xl font-bold text-foreground">{stats?.refundedFailedCount || 0}</p>
                   <p className="text-sm text-muted-foreground">Failed/Refunded</p>
                   <p className="text-xs text-red-400 mt-1">
-                    {dateRange === "today"
+                    {timeRange === "today"
                       ? "Today"
-                      : dateRange === "7days"
-                        ? "Last 7 days"
-                        : dateRange === "30days"
-                          ? "Last 30 days"
-                          : "All time"}
+                      : timeRange === "week"
+                        ? "Last Week"
+                        : timeRange === "month"
+                          ? "Last Month"
+                          : "Last Year"}
                   </p>
                 </CardContent>
               </Card>

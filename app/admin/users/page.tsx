@@ -1,7 +1,8 @@
 "use client"
 
+import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+
 import { useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { AdminHeader } from "@/components/admin/admin-header"
 import { UserPurchaseHistoryModal } from "@/components/admin/user-purchase-history-modal"
@@ -12,46 +13,38 @@ import { DeleteUserDialog } from "@/components/admin/delete-user-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Badge } from "@/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  useAdminUsers,
-  useUserStats,
-  useAdjustBalance,
-  useBlockUser,
-  useUnblockUser,
-  useDeleteUser,
-  useUserPurchaseHistory, // Import the new hook
-  type AdminUser,
-} from "@/hooks/use-admin-users"
-import { formatCurrency, formatDate } from "@/lib/utils"
-import {
+  Search,
+  MoreVertical,
+  Ban,
+  CheckCircle2,
+  Trash2,
+  Wallet,
+  Eye,
+  Loader2,
   Users,
   UserCheck,
   UserX,
-  UserPlus,
-  Search,
-  MoreHorizontal,
-  Shield,
-  ShieldOff,
-  Trash2,
-  DollarSign,
-  History,
-  ArrowUpDown,
-  ArrowUp,
   Trophy,
+  ArrowUp,
+  UserPlus,
+  Shield,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import {
+  useAdminUsers,
+  useBlockUser,
+  useUnblockUser,
+  useDeleteUser,
+  useAdjustBalance,
+  useUserStats,
+} from "@/hooks/use-admin-users"
 
 export default function AdminUsersPage() {
-  const { user, isLoading: authLoading, isLoggingOut } = useAuth()
-  const router = useRouter()
+  const { user, isLoggingOut } = useAuth()
   const { toast } = useToast()
 
   const { data: users = [], isLoading: usersLoading } = useAdminUsers()
@@ -67,7 +60,7 @@ export default function AdminUsersPage() {
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "spent" | "purchases">("newest")
 
   // Modal states
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
+  const [selectedUser, setSelectedUser] = useState(null)
   const [isPurchaseHistoryOpen, setIsPurchaseHistoryOpen] = useState(false)
   const [isAdjustBalanceOpen, setIsAdjustBalanceOpen] = useState(false)
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false)
@@ -131,39 +124,27 @@ export default function AdminUsersPage() {
     return result
   }, [users, searchQuery, statusFilter, sortBy])
 
-  const { data: purchaseHistory = [], isLoading: isPurchaseHistoryLoading } = useUserPurchaseHistory(
-    isPurchaseHistoryOpen && selectedUser ? selectedUser.id : null,
-  )
-
-  if (authLoading || !user?.is_admin || isLoggingOut) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    )
-  }
-
-  const handleViewPurchaseHistory = (u: AdminUser) => {
+  const handleViewPurchaseHistory = (u) => {
     setSelectedUser(u)
     setIsPurchaseHistoryOpen(true)
   }
 
-  const handleAdjustBalance = (u: AdminUser) => {
+  const handleAdjustBalance = (u) => {
     setSelectedUser(u)
     setIsAdjustBalanceOpen(true)
   }
 
-  const handleBlockUser = (u: AdminUser) => {
+  const handleBlockUser = (u) => {
     setSelectedUser(u)
     setIsBlockDialogOpen(true)
   }
 
-  const handleUnblockUser = (u: AdminUser) => {
+  const handleUnblockUser = (u) => {
     setSelectedUser(u)
     setIsUnblockDialogOpen(true)
   }
 
-  const handleDeleteUser = (u: AdminUser) => {
+  const handleDeleteUser = (u) => {
     setSelectedUser(u)
     setIsDeleteDialogOpen(true)
   }
@@ -177,7 +158,7 @@ export default function AdminUsersPage() {
           description: `${selectedUser.full_name} has been blocked.`,
         })
         setIsBlockDialogOpen(false)
-      } catch (error: any) {
+      } catch (error) {
         toast({
           title: "Error",
           description: error.message || "Failed to block user",
@@ -196,7 +177,7 @@ export default function AdminUsersPage() {
           description: `${selectedUser.full_name} can now login and make purchases.`,
         })
         setIsUnblockDialogOpen(false)
-      } catch (error: any) {
+      } catch (error) {
         toast({
           title: "Error",
           description: error.message || "Failed to unblock user",
@@ -216,7 +197,7 @@ export default function AdminUsersPage() {
           variant: "destructive",
         })
         setIsDeleteDialogOpen(false)
-      } catch (error: any) {
+      } catch (error) {
         toast({
           title: "Error",
           description: error.message || "Failed to delete user",
@@ -226,12 +207,12 @@ export default function AdminUsersPage() {
     }
   }
 
-  const handleConfirmAdjustBalance = async (userId: string, amount: number, type: "add" | "deduct") => {
+  const handleConfirmAdjustBalance = async (userId, amount, type) => {
     await adjustBalanceMutation.mutateAsync({ userId, amount, type })
     setIsAdjustBalanceOpen(false)
     toast({
       title: "Balance adjusted",
-      description: `Successfully ${type === "add" ? "added" : "deducted"} ${formatCurrency(amount)}`,
+      description: `Successfully ${type === "add" ? "added" : "deducted"} ${amount}`,
     })
   }
 
@@ -322,7 +303,7 @@ export default function AdminUsersPage() {
             />
           </div>
           <div className="flex gap-3">
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v)}>
               <SelectTrigger className="w-[140px] bg-secondary border-border text-foreground">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -332,7 +313,7 @@ export default function AdminUsersPage() {
                 <SelectItem value="blocked">Blocked</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v)}>
               <SelectTrigger className="w-[160px] bg-secondary border-border text-foreground">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -349,7 +330,7 @@ export default function AdminUsersPage() {
         {/* Users Table */}
         {usersLoading ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
-            <ArrowUpDown className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
             <p className="text-muted-foreground">Loading users...</p>
           </div>
         ) : filteredUsers.length === 0 ? (
@@ -388,10 +369,10 @@ export default function AdminUsersPage() {
                             <p className="font-medium text-foreground flex items-center gap-2">
                               {u.full_name}
                               {u.is_admin && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-yellow-500/10 text-yellow-500">
-                                  <Shield className="h-3 w-3" />
+                                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
+                                  <Shield className="h-3 w-3 mr-1" />
                                   Admin
-                                </span>
+                                </Badge>
                               )}
                             </p>
                             <p className="text-sm text-muted-foreground">{u.email}</p>
@@ -401,47 +382,47 @@ export default function AdminUsersPage() {
                       <TableCell className="text-foreground">
                         {u.phone || <span className="text-muted-foreground">-</span>}
                       </TableCell>
-                      <TableCell className="text-foreground font-medium">{formatCurrency(u.wallet_balance)}</TableCell>
-                      <TableCell className="text-foreground">{formatCurrency(u.total_spent)}</TableCell>
+                      <TableCell className="text-foreground font-medium">{u.wallet_balance}</TableCell>
+                      <TableCell className="text-foreground">{u.total_spent}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="text-foreground">{u.total_purchased}</span>
                           {u.id === topBuyerId && u.total_purchased > 0 && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-yellow-500/10 text-yellow-500">
-                              <Trophy className="h-3 w-3" />
+                            <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
+                              <Trophy className="h-3 w-3 mr-1" />
                               Top Buyer
-                            </span>
+                            </Badge>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(u.created_at)}</TableCell>
+                      <TableCell className="text-muted-foreground">{u.created_at}</TableCell>
                       <TableCell>
                         {u.is_blocked ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
+                          <Badge variant="outline" className="bg-red-500/10 text-red-500">
                             Blocked
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
+                          <Badge variant="outline" className="bg-green-500/10 text-green-500">
                             Active
-                          </span>
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
+                              <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-card border-border w-48">
                             <DropdownMenuItem onClick={() => handleViewPurchaseHistory(u)} className="cursor-pointer">
-                              <History className="mr-2 h-4 w-4" />
+                              <Eye className="mr-2 h-4 w-4" />
                               View Purchase History
                             </DropdownMenuItem>
                             {!u.is_admin && (
                               <>
                                 <DropdownMenuItem onClick={() => handleAdjustBalance(u)} className="cursor-pointer">
-                                  <DollarSign className="mr-2 h-4 w-4" />
+                                  <Wallet className="mr-2 h-4 w-4" />
                                   Adjust Balance
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-border" />
@@ -450,7 +431,7 @@ export default function AdminUsersPage() {
                                     onClick={() => handleUnblockUser(u)}
                                     className="cursor-pointer text-green-500 focus:text-green-500"
                                   >
-                                    <UserCheck className="mr-2 h-4 w-4" />
+                                    <CheckCircle2 className="mr-2 h-4 w-4" />
                                     Unblock User
                                   </DropdownMenuItem>
                                 ) : (
@@ -458,7 +439,7 @@ export default function AdminUsersPage() {
                                     onClick={() => handleBlockUser(u)}
                                     className="cursor-pointer text-destructive focus:text-destructive"
                                   >
-                                    <ShieldOff className="mr-2 h-4 w-4" />
+                                    <Ban className="mr-2 h-4 w-4" />
                                     Block User
                                   </DropdownMenuItem>
                                 )}
@@ -489,39 +470,39 @@ export default function AdminUsersPage() {
                       <p className="font-medium text-foreground flex items-center gap-2">
                         {u.full_name}
                         {u.is_admin && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-yellow-500/10 text-yellow-500">
-                            <Shield className="h-3 w-3" />
+                          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
+                            <Shield className="h-3 w-3 mr-1" />
                             Admin
-                          </span>
+                          </Badge>
                         )}
                       </p>
                       <p className="text-sm text-muted-foreground">{u.email}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {u.is_blocked ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
+                        <Badge variant="outline" className="bg-red-500/10 text-red-500">
                           Blocked
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-500">
+                        <Badge variant="outline" className="bg-green-500/10 text-green-500">
                           Active
-                        </span>
+                        </Badge>
                       )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
+                            <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-card border-border w-48">
                           <DropdownMenuItem onClick={() => handleViewPurchaseHistory(u)} className="cursor-pointer">
-                            <History className="mr-2 h-4 w-4" />
+                            <Eye className="mr-2 h-4 w-4" />
                             View Purchase History
                           </DropdownMenuItem>
                           {!u.is_admin && (
                             <>
                               <DropdownMenuItem onClick={() => handleAdjustBalance(u)} className="cursor-pointer">
-                                <DollarSign className="mr-2 h-4 w-4" />
+                                <Wallet className="mr-2 h-4 w-4" />
                                 Adjust Balance
                               </DropdownMenuItem>
                               <DropdownMenuSeparator className="bg-border" />
@@ -530,7 +511,7 @@ export default function AdminUsersPage() {
                                   onClick={() => handleUnblockUser(u)}
                                   className="cursor-pointer text-green-500 focus:text-green-500"
                                 >
-                                  <UserCheck className="mr-2 h-4 w-4" />
+                                  <CheckCircle2 className="mr-2 h-4 w-4" />
                                   Unblock User
                                 </DropdownMenuItem>
                               ) : (
@@ -538,7 +519,7 @@ export default function AdminUsersPage() {
                                   onClick={() => handleBlockUser(u)}
                                   className="cursor-pointer text-destructive focus:text-destructive"
                                 >
-                                  <ShieldOff className="mr-2 h-4 w-4" />
+                                  <Ban className="mr-2 h-4 w-4" />
                                   Block User
                                 </DropdownMenuItem>
                               )}
@@ -559,27 +540,27 @@ export default function AdminUsersPage() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-muted-foreground">Wallet</p>
-                      <p className="font-medium text-foreground">{formatCurrency(u.wallet_balance)}</p>
+                      <p className="font-medium text-foreground">{u.wallet_balance}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Total Spent</p>
-                      <p className="font-medium text-foreground">{formatCurrency(u.total_spent)}</p>
+                      <p className="font-medium text-foreground">{u.total_spent}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Purchases</p>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-foreground">{u.total_purchased}</span>
                         {u.id === topBuyerId && u.total_purchased > 0 && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-yellow-500/10 text-yellow-500">
-                            <Trophy className="h-3 w-3" />
+                          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500">
+                            <Trophy className="h-3 w-3 mr-1" />
                             Top Buyer
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Joined</p>
-                      <p className="font-medium text-foreground">{formatDate(u.created_at)}</p>
+                      <p className="font-medium text-foreground">{u.created_at}</p>
                     </div>
                   </div>
                 </div>
@@ -594,8 +575,6 @@ export default function AdminUsersPage() {
         open={isPurchaseHistoryOpen}
         onOpenChange={setIsPurchaseHistoryOpen}
         user={selectedUser}
-        purchases={purchaseHistory}
-        isLoading={isPurchaseHistoryLoading}
       />
 
       <AdjustBalanceModal

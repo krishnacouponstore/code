@@ -13,6 +13,7 @@ import { Wallet, ShoppingBag, TrendingUp, Loader2, RefreshCw } from "lucide-reac
 import { Toaster } from "@/components/ui/toaster"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading: authLoading, isLoggingOut } = useAuth()
@@ -21,6 +22,8 @@ export default function DashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
   const [retryCount, setRetryCount] = useState(0)
+  const { toast } = useToast()
+  const [hasCheckedRole, setHasCheckedRole] = useState(false)
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && !profileLoading && !profile && retryCount < 3) {
@@ -38,12 +41,22 @@ export default function DashboardPage() {
 
     if (!authLoading && !isAuthenticated) {
       router.replace(`/login?redirect=${encodeURIComponent(pathname)}`)
+      return
     }
-    // Redirect admin to admin dashboard
-    if (!authLoading && profile?.is_admin) {
-      router.replace("/admin/dashboard")
+
+    if (!authLoading && profile && !hasCheckedRole) {
+      setHasCheckedRole(true)
+
+      if (profile.is_admin) {
+        toast({
+          title: "Redirecting to Admin Dashboard",
+          description: "You have admin access. Redirecting to admin panel.",
+          duration: 3000,
+        })
+        router.replace("/admin/dashboard")
+      }
     }
-  }, [authLoading, isAuthenticated, profile, router, pathname, isLoggingOut])
+  }, [authLoading, isAuthenticated, profile, router, pathname, isLoggingOut, hasCheckedRole, toast])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -54,7 +67,7 @@ export default function DashboardPage() {
 
   const isLoading = authLoading || profileLoading
 
-  if (isLoading) {
+  if (isLoading || (profile?.is_admin && !hasCheckedRole)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -95,6 +108,14 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
+      </div>
+    )
+  }
+
+  if (profile.is_admin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
