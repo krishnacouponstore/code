@@ -77,7 +77,7 @@ export default function AddBalancePage() {
 
   const handleDownloadQR = async () => {
     try {
-      const qrCodeUrl = resolvedTheme === "dark" ? "/images/darkqrcode.png" : "/images/whiteqrcode.png"
+      const qrCodeUrl = resolvedTheme === "dark" ? "/images/blackqr.jpg" : "/images/lightqr.jpg"
 
       const response = await fetch(qrCodeUrl)
       const blob = await response.blob()
@@ -152,14 +152,14 @@ export default function AddBalancePage() {
             {/* QR Code Image - Theme Based */}
             <div className="relative w-full max-w-[280px] aspect-square rounded-xl p-4 mb-4 shadow-lg bg-white dark:bg-zinc-900">
               <Image
-                src="/images/whiteqrcode.png"
+                src="/images/lightqr.jpg"
                 alt="UPI QR Code"
                 fill
                 className="object-contain p-2 dark:hidden"
                 priority
               />
               <Image
-                src="/images/darkqrcode.png"
+                src="/images/blackqr.jpg"
                 alt="UPI QR Code"
                 fill
                 className="object-contain p-2 hidden dark:block"

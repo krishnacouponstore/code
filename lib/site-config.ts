@@ -6,7 +6,7 @@ export const SITE_CONTACTS = {
     channelName: "@coupxofficial",
   },
   email: "coupxofficial@gmail.com",
-  upiId: "arorakrishna139@oksbi",
+  upiId: "sandhya1313@ptyes",
 }
 
 export const SITE_CONFIG = {
