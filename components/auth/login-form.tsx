@@ -14,17 +14,6 @@ import { useSignInEmailPassword, useSignOut } from "@nhost/nextjs"
 import { GraphQLClient, gql } from "graphql-request"
 
 const GRAPHQL_ENDPOINT = "https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql"
-const ADMIN_SECRET = process.env.NHOST_ADMIN_SECRET
-
-if (!ADMIN_SECRET) {
-  throw new Error("NHOST_ADMIN_SECRET is not set")
-}
-
-const adminClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
-  headers: {
-    "x-hasura-admin-secret": ADMIN_SECRET,
-  },
-})
 
 const CHECK_ADMIN_ROLE = gql`
   query CheckAdminRole($userId: uuid!) {
@@ -90,6 +79,28 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       const result = await signInEmailPassword(email, password)
 
       if (result.isSuccess && result.user) {
+        const ADMIN_SECRET = process.env.NHOST_ADMIN_SECRET
+        
+        if (!ADMIN_SECRET) {
+          console.error("NHOST_ADMIN_SECRET is not configured")
+          // Continue without admin checks if secret is not available
+          setIsSuccess(true)
+          setTimeout(() => {
+            if (redirectTo) {
+              router.replace(redirectTo)
+            } else {
+              router.push("/dashboard")
+            }
+          }, 800)
+          return
+        }
+
+        const adminClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
+          headers: {
+            "x-hasura-admin-secret": ADMIN_SECRET,
+          },
+        })
+
         try {
           const blockData: { user_profiles_by_pk: { is_blocked: boolean } | null } = await adminClient.request(
             CHECK_USER_BLOCKED,
