@@ -13,11 +13,17 @@ export const GET_AVAILABLE_COUPONS = gql`
       id
       name
       description
-      image_url
+      thumbnail_url
+      expiry_date
       available_stock
       created_at
       pricing_tiers: slot_pricing_tiers(order_by: { min_quantity: asc }, limit: 1) {
         unit_price
+      }
+      redemption_steps(order_by: { step_number: asc }) {
+        id
+        step_number
+        step_text
       }
     }
   }
@@ -30,13 +36,19 @@ export const GET_SLOT_PRICING = gql`
       id
       name
       description
+      thumbnail_url
+      expiry_date
       available_stock
-      image_url
       pricing_tiers: slot_pricing_tiers(order_by: { min_quantity: asc }) {
         id
         min_quantity
         max_quantity
         unit_price
+      }
+      redemption_steps(order_by: { step_number: asc }) {
+        id
+        step_number
+        step_text
       }
     }
   }
@@ -155,30 +167,40 @@ export const UPDATE_SLOT_AFTER_PURCHASE = gql`
 `
 
 // Types
+export interface RedemptionStep {
+  id: string
+  step_number: number
+  step_text: string
+}
+
 export interface AvailableCoupon {
   id: string
   name: string
   description: string | null
-  image_url: string | null
+  thumbnail_url: string | null
+  expiry_date: string | null
   available_stock: number
   created_at: string
   pricing_tiers: Array<{
     unit_price: number
   }>
+  redemption_steps: RedemptionStep[]
 }
 
 export interface SlotPricing {
   id: string
   name: string
   description: string | null
+  thumbnail_url: string | null
+  expiry_date: string | null
   available_stock: number
-  image_url: string | null
   pricing_tiers: Array<{
     id: string
     min_quantity: number
     max_quantity: number | null
     unit_price: number
   }>
+  redemption_steps: RedemptionStep[]
 }
 
 export interface UserWallet {

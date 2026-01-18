@@ -11,7 +11,8 @@ export const GET_ALL_SLOTS = gql`
       available_stock
       total_uploaded
       total_sold
-      image_url
+      thumbnail_url
+      expiry_date
       created_at
       updated_at
       pricing_tiers: slot_pricing_tiers(order_by: { min_quantity: asc }) {
@@ -20,6 +21,11 @@ export const GET_ALL_SLOTS = gql`
         max_quantity
         unit_price
         label
+      }
+      redemption_steps(order_by: { step_number: asc }) {
+        id
+        step_number
+        step_text
       }
       coupons_aggregate(where: { is_sold: { _eq: false } }) {
         aggregate {
@@ -40,7 +46,8 @@ export const GET_SLOT_BY_ID = gql`
       available_stock
       total_uploaded
       total_sold
-      image_url
+      thumbnail_url
+      expiry_date
       created_at
       updated_at
       pricing_tiers: slot_pricing_tiers(order_by: { min_quantity: asc }) {
@@ -49,6 +56,11 @@ export const GET_SLOT_BY_ID = gql`
         max_quantity
         unit_price
         label
+      }
+      redemption_steps(order_by: { step_number: asc }) {
+        id
+        step_number
+        step_text
       }
     }
   }
@@ -159,14 +171,16 @@ export const CREATE_SLOT = gql`
   mutation CreateSlot(
     $name: String!
     $description: String
-    $image_url: String
+    $thumbnail_url: String
+    $expiry_date: timestamptz
     $is_published: Boolean!
   ) {
     insert_slots_one(
       object: {
         name: $name
         description: $description
-        image_url: $image_url
+        thumbnail_url: $thumbnail_url
+        expiry_date: $expiry_date
         is_published: $is_published
       }
     ) {
@@ -177,7 +191,8 @@ export const CREATE_SLOT = gql`
       available_stock
       total_uploaded
       total_sold
-      image_url
+      thumbnail_url
+      expiry_date
       created_at
     }
   }
@@ -188,7 +203,8 @@ export const UPDATE_SLOT = gql`
     $id: uuid!
     $name: String!
     $description: String
-    $image_url: String
+    $thumbnail_url: String
+    $expiry_date: timestamptz
     $is_published: Boolean!
   ) {
     update_slots_by_pk(
@@ -196,7 +212,8 @@ export const UPDATE_SLOT = gql`
       _set: {
         name: $name
         description: $description
-        image_url: $image_url
+        thumbnail_url: $thumbnail_url
+        expiry_date: $expiry_date
         is_published: $is_published
         updated_at: "now()"
       }
@@ -205,7 +222,8 @@ export const UPDATE_SLOT = gql`
       name
       description
       is_published
-      image_url
+      thumbnail_url
+      expiry_date
       updated_at
     }
   }
@@ -302,6 +320,41 @@ export const UPLOAD_CODES_BULK = gql`
         code
       }
       affected_rows
+    }
+  }
+`
+
+// Redemption Steps
+export const ADD_REDEMPTION_STEPS = gql`
+  mutation AddRedemptionSteps($steps: [redemption_steps_insert_input!]!) {
+    insert_redemption_steps(objects: $steps) {
+      returning {
+        id
+        slot_id
+        step_number
+        step_text
+      }
+    }
+  }
+`
+
+export const DELETE_REDEMPTION_STEPS = gql`
+  mutation DeleteRedemptionSteps($slot_id: uuid!) {
+    delete_redemption_steps(where: { slot_id: { _eq: $slot_id } }) {
+      affected_rows
+    }
+  }
+`
+
+export const UPDATE_REDEMPTION_STEP = gql`
+  mutation UpdateRedemptionStep($id: uuid!, $step_text: String!) {
+    update_redemption_steps_by_pk(
+      pk_columns: { id: $id }
+      _set: { step_text: $step_text, updated_at: "now()" }
+    ) {
+      id
+      step_text
+      updated_at
     }
   }
 `

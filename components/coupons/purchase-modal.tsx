@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -69,6 +69,8 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
   const [purchaseResult, setPurchaseResult] = useState<PurchaseResult | null>(null)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false)
+  const [availabilityStatus, setAvailabilityStatus] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle')
 
   const { data: slot, isLoading: slotLoading, error: slotError, refetch } = useSlotPricing(slotId)
   const { data: walletData } = useUserWallet(user?.id || null)
@@ -98,9 +100,43 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
     }
   }, [slot, quantity])
 
+  // Debounced availability check
+  useEffect(() => {
+    if (quantity === 0 || !slot) {
+      setAvailabilityStatus('idle')
+      setIsCheckingAvailability(false)
+      return
+    }
+
+    setIsCheckingAvailability(true)
+    setAvailabilityStatus('checking')
+
+    const timer = setTimeout(async () => {
+      try {
+        // Check if quantity is available in stock
+        const isAvailable = quantity <= slot.available_stock
+        
+        setAvailabilityStatus(isAvailable ? 'available' : 'unavailable')
+        
+        if (!isAvailable) {
+          setError(`Only ${slot.available_stock} codes available in stock`)
+        } else {
+          setError(null)
+        }
+      } catch (err) {
+        setAvailabilityStatus('unavailable')
+        setError('Failed to check availability')
+      } finally {
+        setIsCheckingAvailability(false)
+      }
+    }, 800) // 800ms delay for debouncing
+
+    return () => clearTimeout(timer)
+  }, [quantity, slot])
+
   const isInsufficientBalance = totalAmount > walletBalance
-  const isQuantityInvalid = quantity < 1 || (slot && quantity > slot.available_stock)
-  const canPurchase = !isInsufficientBalance && !isQuantityInvalid && !isBlocked && slot && slot.available_stock > 0
+  const isQuantityInvalid = quantity < 1 || (slot && quantity > slot.available_stock) || availabilityStatus === 'unavailable'
+  const canPurchase = !isInsufficientBalance && !isQuantityInvalid && !isBlocked && slot && slot.available_stock > 0 && availabilityStatus === 'available'
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -436,19 +472,18 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[600px] bg-card border-border p-0 gap-0 max-h-[90vh] overflow-y-auto">
           <DialogHeader className="p-6 pb-4 border-b border-border">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <DialogTitle className="text-xl font-semibold text-foreground mb-2">{slot.name}</DialogTitle>
-                <p className="text-sm text-muted-foreground">{slot.description}</p>
-              </div>
-              <Badge
-                variant="secondary"
-                className={`shrink-0 ${
-                  slot.available_stock === 0 ? "bg-destructive/20 text-destructive" : "bg-primary/20 text-primary"
-                }`}
-              >
-                {slot.available_stock === 0 ? "Out of Stock" : `${slot.available_stock} available`}
-              </Badge>
+            <div className="flex items-center justify-between gap-4">
+              <DialogTitle className="text-xl font-semibold text-foreground">{slot.name}</DialogTitle>
+              {slot.available_stock < 50 && (
+                <Badge
+                  variant="secondary"
+                  className={`shrink-0 ${
+                    slot.available_stock === 0 ? "bg-destructive/20 text-destructive" : "bg-chart-4/20 text-chart-4 border-chart-4/30"
+                  }`}
+                >
+                  {slot.available_stock === 0 ? "Out of Stock" : "Low Stock"}
+                </Badge>
+              )}
             </div>
           </DialogHeader>
 
@@ -513,6 +548,18 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
+                {isCheckingAvailability && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-xs">Checking availability...</span>
+                  </div>
+                )}
+                {!isCheckingAvailability && availabilityStatus === 'available' && quantity > 0 && (
+                  <div className="flex items-center gap-2 text-primary animate-in fade-in slide-in-from-left-2 duration-300">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-xs font-medium">Stock available</span>
+                  </div>
+                )}
               </div>
               {error && (
                 <p className="text-xs text-destructive mt-2 flex items-center gap-1">

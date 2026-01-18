@@ -1,7 +1,11 @@
 "use server"
 
 const GRAPHQL_ENDPOINT = "https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql"
-const ADMIN_SECRET = "b%$=u(i'FPeG9hGIhasTLkdcYz5c'7vr"
+const ADMIN_SECRET = process.env.NHOST_ADMIN_SECRET
+
+if (!ADMIN_SECRET) {
+  throw new Error("NHOST_ADMIN_SECRET is not set")
+}
 
 interface UpdateUserInput {
   userId: string

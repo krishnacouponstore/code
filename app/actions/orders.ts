@@ -13,7 +13,6 @@ export type AdminOrder = {
     phone: string | null
   }
   slot_name: string
-  slot_image: string | null
   quantity: number
   unit_price: number
   total_price: number
@@ -130,7 +129,6 @@ export async function getAllOrders(params: {
           slot {
             id
             name
-            image_url
           }
           coupons {
             code
@@ -156,7 +154,6 @@ export async function getAllOrders(params: {
         phone: p.user_profile?.user?.phoneNumber || null,
       },
       slot_name: p.slot?.name || "Unknown",
-      slot_image: p.slot?.image_url || null,
       quantity: p.quantity,
       unit_price: Number(p.unit_price),
       total_price: Number(p.total_price),
@@ -304,7 +301,6 @@ export async function getOrderById(orderId: string): Promise<AdminOrder | null> 
           slot {
             id
             name
-            image_url
           }
           coupons {
             code
@@ -328,7 +324,6 @@ export async function getOrderById(orderId: string): Promise<AdminOrder | null> 
         phone: p.user_profile?.user?.phoneNumber || null,
       },
       slot_name: p.slot?.name || "Unknown",
-      slot_image: p.slot?.image_url || null,
       quantity: p.quantity,
       unit_price: Number(p.unit_price),
       total_price: Number(p.total_price),

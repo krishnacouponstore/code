@@ -12,6 +12,8 @@ import {
   UPDATE_SLOT_STOCK,
   GET_ALL_SLOTS,
   GET_SLOT_SALES,
+  ADD_REDEMPTION_STEPS,
+  DELETE_REDEMPTION_STEPS,
 } from "@/lib/graphql/slots"
 
 type PricingTier = {
@@ -21,12 +23,19 @@ type PricingTier = {
   label?: string
 }
 
+type RedemptionStep = {
+  step_number: number
+  step_text: string
+}
+
 type CreateSlotInput = {
   name: string
   description: string
-  image_url?: string
+  thumbnail_url?: string
+  expiry_date?: string
   is_published: boolean
   pricing_tiers: PricingTier[]
+  redemption_steps?: RedemptionStep[]
   codes_to_upload?: string[]
 }
 
@@ -34,9 +43,11 @@ type UpdateSlotInput = {
   id: string
   name: string
   description: string
-  image_url?: string
+  thumbnail_url?: string
+  expiry_date?: string
   is_published: boolean
   pricing_tiers: PricingTier[]
+  redemption_steps?: RedemptionStep[]
 }
 
 export async function createSlot(input: CreateSlotInput) {
@@ -47,7 +58,8 @@ export async function createSlot(input: CreateSlotInput) {
     const slotResult: any = await client.request(CREATE_SLOT, {
       name: input.name,
       description: input.description,
-      image_url: input.image_url || null,
+      thumbnail_url: input.thumbnail_url || null,
+      expiry_date: input.expiry_date || null,
       is_published: input.is_published,
     })
 
@@ -66,7 +78,18 @@ export async function createSlot(input: CreateSlotInput) {
       await client.request(ADD_PRICING_TIERS, { tiers })
     }
 
-    // Step 3: Upload codes if provided
+    // Step 3: Add redemption steps if provided
+    if (input.redemption_steps && input.redemption_steps.length > 0) {
+      const steps = input.redemption_steps.map((step) => ({
+        slot_id: slotId,
+        step_number: step.step_number,
+        step_text: step.step_text,
+      }))
+
+      await client.request(ADD_REDEMPTION_STEPS, { steps })
+    }
+
+    // Step 4: Upload codes if provided
     let codesUploaded = 0
     if (input.codes_to_upload && input.codes_to_upload.length > 0) {
       const codes = input.codes_to_upload.map((code) => ({
@@ -108,7 +131,8 @@ export async function updateSlot(input: UpdateSlotInput) {
       id: input.id,
       name: input.name,
       description: input.description,
-      image_url: input.image_url || null,
+      thumbnail_url: input.thumbnail_url || null,
+      expiry_date: input.expiry_date || null,
       is_published: input.is_published,
     })
 
@@ -125,6 +149,19 @@ export async function updateSlot(input: UpdateSlotInput) {
       }))
 
       await client.request(ADD_PRICING_TIERS, { tiers })
+    }
+
+    // Step 3: Replace redemption steps (delete existing, add new)
+    await client.request(DELETE_REDEMPTION_STEPS, { slot_id: input.id })
+
+    if (input.redemption_steps && input.redemption_steps.length > 0) {
+      const steps = input.redemption_steps.map((step) => ({
+        slot_id: input.id,
+        step_number: step.step_number,
+        step_text: step.step_text,
+      }))
+
+      await client.request(ADD_REDEMPTION_STEPS, { steps })
     }
 
     return {

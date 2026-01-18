@@ -19,6 +19,12 @@ export type PricingTier = {
   label?: string
 }
 
+export type RedemptionStep = {
+  id?: string
+  step_number: number
+  step_text: string
+}
+
 export type Slot = {
   id: string
   name: string
@@ -27,10 +33,12 @@ export type Slot = {
   available_stock: number
   total_uploaded: number
   total_sold: number
-  image_url: string | null
+  thumbnail_url?: string | null
+  expiry_date?: string | null
   created_at: string
   updated_at: string
   pricing_tiers: PricingTier[]
+  redemption_steps?: RedemptionStep[]
   coupons_aggregate?: {
     aggregate: {
       count: number

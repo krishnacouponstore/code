@@ -29,8 +29,11 @@ import {
   AlertTriangle,
   XCircle,
   File,
+  ListOrdered,
+  Image,
+  Calendar,
 } from "lucide-react"
-import { useCreateSlot, useUpdateSlot, type Slot, type PricingTier } from "@/hooks/use-slots"
+import { useCreateSlot, useUpdateSlot, type Slot, type PricingTier, type RedemptionStep } from "@/hooks/use-slots"
 import { useToast } from "@/hooks/use-toast"
 
 type ValidationResult = {
@@ -45,9 +48,11 @@ type ValidationResult = {
 type SlotFormData = {
   name: string
   description: string
-  image_url: string
+  thumbnail_url: string
+  expiry_date: string
   is_published: boolean
   pricing_tiers: PricingTier[]
+  redemption_steps: RedemptionStep[]
   codes_to_upload: string[]
 }
 
@@ -77,9 +82,11 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
   const [formData, setFormData] = useState<SlotFormData>({
     name: "",
     description: "",
-    image_url: "",
+    thumbnail_url: "",
+    expiry_date: "",
     is_published: false,
     pricing_tiers: [{ min_quantity: 1, max_quantity: null, unit_price: 10 }],
+    redemption_steps: [],
     codes_to_upload: [],
   })
 
@@ -88,7 +95,8 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
       setFormData({
         name: slot.name,
         description: slot.description,
-        image_url: slot.image_url || "",
+        thumbnail_url: slot.thumbnail_url || "",
+        expiry_date: slot.expiry_date ? new Date(slot.expiry_date).toISOString().split('T')[0] : "",
         is_published: slot.is_published,
         pricing_tiers:
           slot.pricing_tiers.length > 0
@@ -99,15 +107,23 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
                 label: t.label,
               }))
             : [{ min_quantity: 1, max_quantity: null, unit_price: 10 }],
+        redemption_steps: slot.redemption_steps?.length
+          ? slot.redemption_steps.map((s) => ({
+              step_number: s.step_number,
+              step_text: s.step_text,
+            }))
+          : [],
         codes_to_upload: [],
       })
     } else {
       setFormData({
         name: "",
         description: "",
-        image_url: "",
+        thumbnail_url: "",
+        expiry_date: "",
         is_published: false,
         pricing_tiers: [{ min_quantity: 1, max_quantity: null, unit_price: 10 }],
+        redemption_steps: [],
         codes_to_upload: [],
       })
     }
@@ -266,9 +282,11 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
         id: slot.id,
         name: formData.name,
         description: formData.description,
-        image_url: formData.image_url || undefined,
+        thumbnail_url: formData.thumbnail_url || undefined,
+        expiry_date: formData.expiry_date || undefined,
         is_published: formData.is_published,
         pricing_tiers: formData.pricing_tiers,
+        redemption_steps: formData.redemption_steps.filter(s => s.step_text.trim()),
       })
 
       if (result.success) {
@@ -290,9 +308,11 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
       const result = await createSlotMutation.mutateAsync({
         name: formData.name,
         description: formData.description,
-        image_url: formData.image_url || undefined,
+        thumbnail_url: formData.thumbnail_url || undefined,
+        expiry_date: formData.expiry_date || undefined,
         is_published: formData.is_published,
         pricing_tiers: formData.pricing_tiers,
+        redemption_steps: formData.redemption_steps.filter(s => s.step_text.trim()),
         codes_to_upload: skipUpload ? [] : formData.codes_to_upload,
       })
 
@@ -348,6 +368,33 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
     setFormData({ ...formData, pricing_tiers: newTiers })
   }
 
+  const addRedemptionStep = () => {
+    const nextStepNumber = formData.redemption_steps.length + 1
+    setFormData({
+      ...formData,
+      redemption_steps: [
+        ...formData.redemption_steps,
+        { step_number: nextStepNumber, step_text: "" }
+      ]
+    })
+  }
+
+  const removeRedemptionStep = (index: number) => {
+    const newSteps = formData.redemption_steps.filter((_, i) => i !== index)
+    // Renumber the steps
+    const renumberedSteps = newSteps.map((step, i) => ({
+      ...step,
+      step_number: i + 1
+    }))
+    setFormData({ ...formData, redemption_steps: renumberedSteps })
+  }
+
+  const updateRedemptionStep = (index: number, text: string) => {
+    const newSteps = [...formData.redemption_steps]
+    newSteps[index] = { ...newSteps[index], step_text: text }
+    setFormData({ ...formData, redemption_steps: newSteps })
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -361,7 +408,7 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-          <TabsList className="grid w-full grid-cols-3 bg-secondary">
+          <TabsList className="grid w-full grid-cols-4 bg-secondary">
             <TabsTrigger
               value="basic"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -375,6 +422,13 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
             >
               <DollarSign className="h-4 w-4 mr-2" />
               Pricing
+            </TabsTrigger>
+            <TabsTrigger
+              value="redemption"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              <ListOrdered className="h-4 w-4 mr-2" />
+              How to Redeem
             </TabsTrigger>
             {!isEditing && (
               <TabsTrigger
@@ -408,14 +462,14 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
 
             <div className="space-y-2">
               <Label htmlFor="description" className="text-foreground">
-                Description <span className="text-destructive">*</span>
+                Terms and Conditions <span className="text-destructive">*</span>
               </Label>
               <Textarea
                 id="description"
-                placeholder="Describe what this coupon is for and any usage conditions"
+                placeholder="Enter terms and conditions for using this coupon"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="bg-secondary border-border text-foreground min-h-[80px]"
+                className="bg-secondary border-border text-foreground min-h-[100px]"
                 maxLength={200}
               />
               <div className="flex justify-between">
@@ -431,17 +485,33 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="image_url" className="text-foreground">
-                Image URL <span className="text-muted-foreground text-xs">(optional)</span>
+              <Label htmlFor="thumbnail_url" className="text-foreground flex items-center gap-2">
+                <Image className="h-4 w-4" />
+                Thumbnail/Condition URL <span className="text-muted-foreground text-xs">(optional)</span>
               </Label>
               <Input
-                id="image_url"
-                placeholder="https://example.com/image.jpg"
-                value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                id="thumbnail_url"
+                placeholder="https://example.com/thumbnail.jpg"
+                value={formData.thumbnail_url}
+                onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
                 className="bg-secondary border-border text-foreground"
               />
-              <p className="text-xs text-muted-foreground">Add a logo or icon URL for this coupon</p>
+              <p className="text-xs text-muted-foreground">Add a thumbnail or condition image for this coupon</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="expiry_date" className="text-foreground flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Expiry Date <span className="text-muted-foreground text-xs">(optional)</span>
+              </Label>
+              <Input
+                id="expiry_date"
+                type="date"
+                value={formData.expiry_date}
+                onChange={(e) => setFormData({ ...formData, expiry_date: e.target.value })}
+                className="bg-secondary border-border text-foreground"
+              />
+              <p className="text-xs text-muted-foreground">Set when this coupon offer expires</p>
             </div>
 
             <div className="flex items-center justify-between p-4 bg-secondary rounded-lg border border-border">
@@ -558,6 +628,67 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
                 </div>
               ))}
             </div>
+          </TabsContent>
+
+          <TabsContent value="redemption" className="mt-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-foreground">How to Redeem Steps</Label>
+                <p className="text-xs text-muted-foreground mt-1">Add step-by-step instructions for redeeming the coupon (optional)</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addRedemptionStep}
+                className="border-border text-foreground bg-transparent"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Step
+              </Button>
+            </div>
+
+            {formData.redemption_steps.length === 0 ? (
+              <div className="p-6 border-2 border-dashed border-border rounded-lg text-center">
+                <ListOrdered className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mb-3">No redemption steps added yet</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addRedemptionStep}
+                  className="border-border"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add First Step
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {formData.redemption_steps.map((step, index) => (
+                  <div key={index} className="p-4 bg-secondary rounded-lg border border-border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-foreground">Step {step.step_number}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeRedemptionStep(index)}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <Textarea
+                      placeholder={`e.g., ${index === 0 ? "Claim the deal." : index === 1 ? "You will get a coupon code." : "Add product to cart and apply the coupon code during checkout."}`}
+                      value={step.step_text}
+                      onChange={(e) => updateRedemptionStep(index, e.target.value)}
+                      className="bg-background border-border text-foreground min-h-[60px]"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {!isEditing && (

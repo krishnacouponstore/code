@@ -42,18 +42,23 @@ export default function CouponsPage() {
       id: coupon.id,
       name: coupon.name,
       description: coupon.description || "",
-      image_url: coupon.image_url,
+      thumbnail_url: coupon.thumbnail_url,
+      expiry_date: coupon.expiry_date,
       available_stock: coupon.available_stock,
       starting_price: coupon.pricing_tiers?.[0]?.unit_price || 0,
       created_at: coupon.created_at,
       is_published: true,
+      redemption_steps: coupon.redemption_steps || [],
     }))
 
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       slots = slots.filter(
-        (slot) => slot.name.toLowerCase().includes(query) || slot.description.toLowerCase().includes(query),
+        (slot) =>
+          slot.name.toLowerCase().includes(query) ||
+          slot.description.toLowerCase().includes(query) ||
+          slot.thumbnail_url?.toLowerCase().includes(query),
       )
     }
 
