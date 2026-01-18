@@ -1,11 +1,6 @@
 "use server"
 
 const GRAPHQL_ENDPOINT = "https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql"
-const ADMIN_SECRET = process.env.NHOST_ADMIN_SECRET
-
-if (!ADMIN_SECRET) {
-  throw new Error("NHOST_ADMIN_SECRET is not set")
-}
 
 interface UpdateUserInput {
   userId: string
@@ -14,6 +9,12 @@ interface UpdateUserInput {
 }
 
 export async function updateUserProfile(input: UpdateUserInput) {
+  const ADMIN_SECRET = process.env.NHOST_ADMIN_SECRET
+
+  if (!ADMIN_SECRET) {
+    return { success: false, error: "Server configuration error: NHOST_ADMIN_SECRET is not set" }
+  }
+
   const { userId, displayName, phoneNumber } = input
 
   // Build the set object dynamically based on what's provided
