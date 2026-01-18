@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { GraphQLClient, gql } from "graphql-request"
 
 const GRAPHQL_ENDPOINT = "https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql"
-const ADMIN_SECRET = "b%$=u(i'FPeG9hGIhasTLkdcYz5c'7vr"
+const ADMIN_SECRET = "rohanpwd123"
 
 const adminClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
   headers: {
