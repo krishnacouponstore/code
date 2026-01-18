@@ -14,10 +14,10 @@ import { useSignInEmailPassword, useSignOut } from "@nhost/nextjs"
 import { GraphQLClient, gql } from "graphql-request"
 
 const GRAPHQL_ENDPOINT = "https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql"
-const ADMIN_SECRET = process.env.NEXT_PUBLIC_NHOST_ADMIN_SECRET
+const ADMIN_SECRET = process.env.NHOST_ADMIN_SECRET
 
 if (!ADMIN_SECRET) {
-  throw new Error("NEXT_PUBLIC_NHOST_ADMIN_SECRET is not set")
+  throw new Error("NHOST_ADMIN_SECRET is not set")
 }
 
 const adminClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
