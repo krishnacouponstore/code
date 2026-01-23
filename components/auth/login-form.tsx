@@ -12,16 +12,10 @@ import { Eye, EyeOff, Mail, Lock, Loader2, Check, ShieldX, Sparkles, ArrowRight 
 import Link from "next/link"
 import { useSignInEmailPassword, useSignOut } from "@nhost/nextjs"
 import { GraphQLClient, gql } from "graphql-request"
+import { getUserRoles } from "@/app/actions/user-roles"
+import { nhost } from "@/lib/nhost"
 
 const GRAPHQL_ENDPOINT = "https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql"
-
-const CHECK_ADMIN_ROLE = gql`
-  query CheckAdminRole($userId: uuid!) {
-    authUserRoles(where: { userId: { _eq: $userId }, role: { _eq: "admin" } }) {
-      role
-    }
-  }
-`
 
 const CHECK_USER_BLOCKED = gql`
   query CheckUserBlocked($userId: uuid!) {
@@ -79,30 +73,25 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       const result = await signInEmailPassword(email, password)
 
       if (result.isSuccess && result.user) {
-        const ADMIN_SECRET = process.env.NHOST_ADMIN_SECRET
-        
-        if (!ADMIN_SECRET) {
-          console.error("NHOST_ADMIN_SECRET is not configured")
-          // Continue without admin checks if secret is not available
-          setIsSuccess(true)
-          setTimeout(() => {
-            if (redirectTo) {
-              router.replace(redirectTo)
-            } else {
-              router.push("/store")
-            }
-          }, 800)
+        // Get the access token from Nhost auth
+        const accessToken = nhost.auth.getAccessToken()
+
+        if (!accessToken) {
+          console.error("No access token available after login")
+          setErrors({ general: "Authentication error. Please try again." })
           return
         }
 
-        const adminClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
+        // Use the access token to make authenticated GraphQL requests
+        const userClient = new GraphQLClient(GRAPHQL_ENDPOINT, {
           headers: {
-            "x-hasura-admin-secret": ADMIN_SECRET,
+            Authorization: `Bearer ${accessToken}`,
           },
         })
 
         try {
-          const blockData: { user_profiles_by_pk: { is_blocked: boolean } | null } = await adminClient.request(
+          // Check if user is blocked
+          const blockData: { user_profiles_by_pk: { is_blocked: boolean } | null } = await userClient.request(
             CHECK_USER_BLOCKED,
             { userId: result.user.id },
           )
@@ -112,20 +101,25 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
             await signOut()
             return
           }
-        } catch {}
+        } catch (error) {
+          console.error("Error checking user block status:", error)
+          // Continue if block check fails - better to allow login than block legitimate users
+        }
 
         setIsSuccess(true)
 
+        // Check if user has admin role using server action
         let isAdmin = false
         try {
-          const data: { authUserRoles: { role: string }[] } = await adminClient.request(CHECK_ADMIN_ROLE, {
-            userId: result.user.id,
-          })
-          isAdmin = data.authUserRoles && data.authUserRoles.length > 0
-        } catch {
+          const { isAdmin: userIsAdmin } = await getUserRoles(result.user.id)
+          isAdmin = userIsAdmin
+        } catch (error) {
+          console.error("Error checking admin role:", error)
+          // Default to false if role check fails - user can still log in as regular user
           isAdmin = false
         }
 
+        // Redirect based on role
         setTimeout(() => {
           if (isAdmin) {
             router.replace("/admin/dashboard")
@@ -154,7 +148,9 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       } else {
         setErrors({ general: "Invalid email or password. Please try again." })
       }
-    } catch {
+    } catch (error) {
+      // Only catch errors from the signInEmailPassword call itself
+      console.error("Login error:", error)
       setErrors({ general: "An unexpected error occurred. Please try again." })
     }
   }
@@ -194,9 +190,8 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
             placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={`pl-10 h-11 bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary ${
-              errors.email ? "border-destructive" : ""
-            }`}
+            className={`pl-10 h-11 bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary ${errors.email ? "border-destructive" : ""
+              }`}
             required
             disabled={isLoading}
             aria-describedby={errors.email ? "email-error" : undefined}
@@ -223,9 +218,8 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
             placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={`pl-10 pr-10 h-11 bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary ${
-              errors.password ? "border-destructive" : ""
-            }`}
+            className={`pl-10 pr-10 h-11 bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary ${errors.password ? "border-destructive" : ""
+              }`}
             required
             disabled={isLoading}
             autoComplete="off"
@@ -262,13 +256,12 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
 
       <Button
         type="submit"
-        className={`w-full h-11 rounded-full font-medium transition-all duration-500 ease-out overflow-hidden relative ${
-          isSuccess
-            ? "bg-primary text-primary-foreground shadow-[0_0_30px_rgba(52,211,153,0.4)] scale-[1.02]"
-            : isLoading
-              ? "bg-primary/80 text-primary-foreground"
-              : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-        }`}
+        className={`w-full h-11 rounded-full font-medium transition-all duration-500 ease-out overflow-hidden relative ${isSuccess
+          ? "bg-primary text-primary-foreground shadow-[0_0_30px_rgba(52,211,153,0.4)] scale-[1.02]"
+          : isLoading
+            ? "bg-primary/80 text-primary-foreground"
+            : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+          }`}
         disabled={isLoading || isSuccess}
       >
         {isLoading ? (

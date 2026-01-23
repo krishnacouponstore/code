@@ -19,6 +19,7 @@ import { usePurchaseStats, usePurchases } from "@/hooks/use-purchases"
 import { useSystemSettings } from "@/hooks/use-system-settings"
 import { getGraphQLClient } from "@/lib/graphql-client"
 import { GET_PURCHASE_CODES } from "@/lib/graphql/purchases"
+import { hasAuthCookie } from "@/lib/check-auth-cookie"
 import {
   Search,
   ShoppingBag,
@@ -62,13 +63,31 @@ export default function PurchaseHistoryPage() {
   useEffect(() => {
     if (isLoggingOut) return
 
-    if (!authLoading && !isAuthenticated) {
-      router.push(`/signup?redirect=${encodeURIComponent(pathname)}`)
+    // Don't redirect if auth cookie exists (session is being restored)
+    if (!authLoading && !isAuthenticated && !hasAuthCookie()) {
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
+
+    // Redirect admin to admin dashboard with toast
     if (!authLoading && user?.is_admin) {
+      toast({
+        title: "Access Restricted",
+        description: "Admin users should use the admin dashboard",
+        variant: "default",
+        duration: 5000,
+      })
       router.push("/admin/dashboard")
     }
-  }, [user, authLoading, isAuthenticated, router, pathname, isLoggingOut])
+  }, [user, authLoading, isAuthenticated, router, pathname, isLoggingOut, toast])
+
+  // Block rendering if admin (before showing user content)
+  if (!authLoading && user?.is_admin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
+  }
 
   // Pagination
   const totalPages = Math.ceil(purchases.length / ITEMS_PER_PAGE)
@@ -442,7 +461,7 @@ export default function PurchaseHistoryPage() {
                     <p className="font-semibold text-gray-900 dark:text-white">#{purchase.order_number}</p>
                     {getStatusBadge(purchase.status)}
                   </div>
-                  
+
                   {/* Store Info */}
                   {purchase.slot.store && (
                     <Link href={`/store/${purchase.slot.store.slug}`} className="flex items-center gap-3 mb-3 p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors">
@@ -458,7 +477,7 @@ export default function PurchaseHistoryPage() {
                       <span className="text-gray-900 dark:text-white font-medium">{purchase.slot.store.name}</span>
                     </Link>
                   )}
-                  
+
                   <p className="text-gray-900 dark:text-white font-medium mb-2">{purchase.slot.name}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                     {purchase.quantity} codes &bull; {formatPrice(purchase.total_price)}
@@ -483,20 +502,20 @@ export default function PurchaseHistoryPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 rounded-xl">
-                          <DropdownMenuItem
-                            onClick={() => handleDownload(purchase.id, purchase.order_number, "csv")}
-                            className="cursor-pointer"
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            Download CSV
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDownload(purchase.id, purchase.order_number, "txt")}
-                            className="cursor-pointer"
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            Download TXT
-                          </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDownload(purchase.id, purchase.order_number, "csv")}
+                          className="cursor-pointer"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDownload(purchase.id, purchase.order_number, "txt")}
+                          className="cursor-pointer"
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Download TXT
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

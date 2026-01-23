@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { hasAuthCookie } from "@/lib/check-auth-cookie"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -15,13 +16,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (isLoading) return
 
-    // Check authentication first
+    // Check authentication first - don't redirect if cookie exists (restoring session)
     if (!isAuthenticated || !user) {
-      router.replace("/login")
+      if (!hasAuthCookie()) {
+        router.replace("/login")
+      }
       return
     }
 
-    // Check admin role
+    // Check admin role - redirect non-admins immediately
     if (!user.is_admin) {
       toast({
         title: "Access Denied",
@@ -34,7 +37,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [isLoading, isAuthenticated, user, router, toast])
 
-  if (isLoading || !user || !isAuthenticated || !user.is_admin) {
+  // Block rendering IMMEDIATELY if not admin - prevents any flash of content
+  // This happens BEFORE useEffect runs on subsequent renders
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // Not authenticated yet - show loading
+  if (!user || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  // User is authenticated but NOT admin - show loading while redirecting (no flash)
+  if (!user.is_admin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

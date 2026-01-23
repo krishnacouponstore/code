@@ -77,16 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const user: User | null =
     profile && nhostUser && rolesData
       ? {
-          id: profile.id,
-          name: nhostUser.displayName || "User",
-          email: nhostUser.email || "",
-          phone: nhostUser.phoneNumber || null,
-          wallet_balance: profile.wallet_balance,
-          total_purchased: profile.total_purchased,
-          total_spent: profile.total_spent,
-          is_admin: rolesData.isAdmin === true,
-          role: rolesData.role ?? "user",
-        }
+        id: profile.id,
+        name: nhostUser.displayName || "User",
+        email: nhostUser.email || "",
+        phone: nhostUser.phoneNumber || null,
+        wallet_balance: profile.wallet_balance,
+        total_purchased: profile.total_purchased,
+        total_spent: profile.total_spent,
+        is_admin: rolesData.isAdmin === true,
+        role: rolesData.role ?? "user",
+      }
       : null
 
   const logout = async () => {
@@ -106,7 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const isLoading =
-    isAuthenticated === undefined || (isAuthenticated && (isProfileLoading || isRolesLoading || !profile || !rolesData))
+    isAuthenticated === undefined ||
+    (isAuthenticated && (isProfileLoading || isRolesLoading || !profile || !rolesData))
 
   return (
     <AuthContext.Provider

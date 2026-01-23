@@ -15,6 +15,7 @@ import Image from "next/image"
 import { SITE_CONTACTS } from "@/lib/site-config"
 import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
+import { hasAuthCookie } from "@/lib/check-auth-cookie"
 
 export default function AddBalancePage() {
   const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth()
@@ -29,13 +30,31 @@ export default function AddBalancePage() {
   useEffect(() => {
     if (isLoggingOut) return
 
-    if (!isLoading && !isAuthenticated) {
-      router.push(`/signup?redirect=${encodeURIComponent(pathname)}`)
+    //Don't redirect if auth cookie exists (session is being restored)
+    if (!isLoading && !isAuthenticated && !hasAuthCookie()) {
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
+
+    // Redirect admin to admin dashboard with toast
     if (!isLoading && user?.is_admin) {
+      toast({
+        title: "Access Restricted",
+        description: "Admin users should use the admin dashboard",
+        variant: "default",
+        duration: 5000,
+      })
       router.push("/admin/dashboard")
     }
-  }, [isLoading, isAuthenticated, router, pathname, isLoggingOut, user])
+  }, [isLoading, isAuthenticated, router, pathname, isLoggingOut, user, toast])
+
+  // Block rendering if admin (before showing user content)
+  if (!isLoading && user?.is_admin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -181,10 +200,10 @@ export default function AddBalancePage() {
             </div>
 
             {/* Download QR Button */}
-            <Button 
-              variant="outline" 
-              size="lg" 
-              onClick={handleDownloadQR} 
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={handleDownloadQR}
               className="mb-8 border-primary/30 hover:bg-primary/10 hover:border-primary transition-all"
             >
               <Download className="h-4 w-4 mr-2" />
@@ -195,14 +214,14 @@ export default function AddBalancePage() {
             <div className="w-full max-w-md space-y-3">
               <Label className="text-center block text-gray-600 dark:text-gray-400 font-medium">Or pay using UPI ID</Label>
               <div className="flex gap-2">
-                <Input 
-                  value={SITE_CONTACTS.upiId} 
-                  readOnly 
-                  className="font-mono bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-center text-lg h-12" 
+                <Input
+                  value={SITE_CONTACTS.upiId}
+                  readOnly
+                  className="font-mono bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-center text-lg h-12"
                 />
-                <Button 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={handleCopyUpi}
                   className="h-12 w-12 border-primary/30 hover:bg-primary/10 hover:border-primary transition-all"
                 >
@@ -244,13 +263,13 @@ export default function AddBalancePage() {
                 Telegram (Recommended - Fastest)
               </Label>
               <div className="flex gap-2">
-                <Input 
-                  value={SITE_CONTACTS.telegram.support} 
-                  readOnly 
-                  className="font-mono bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 h-12" 
+                <Input
+                  value={SITE_CONTACTS.telegram.support}
+                  readOnly
+                  className="font-mono bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 h-12"
                 />
-                <Button 
-                  onClick={handleOpenTelegram} 
+                <Button
+                  onClick={handleOpenTelegram}
                   className="shrink-0 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
@@ -266,14 +285,14 @@ export default function AddBalancePage() {
                 Email (Alternative)
               </Label>
               <div className="flex gap-2">
-                <Input 
-                  value={SITE_CONTACTS.email} 
-                  readOnly 
-                  className="font-mono bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-sm h-12" 
+                <Input
+                  value={SITE_CONTACTS.email}
+                  readOnly
+                  className="font-mono bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-sm h-12"
                 />
-                <Button 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={handleCopyEmail}
                   className="h-12 w-12 border-primary/30 hover:bg-primary/10 hover:border-primary transition-all"
                 >

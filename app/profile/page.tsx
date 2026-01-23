@@ -10,25 +10,46 @@ import { AccountStats } from "@/components/profile/account-stats"
 import { AccountActions } from "@/components/profile/account-actions"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle2 } from "lucide-react"
+import { hasAuthCookie } from "@/lib/check-auth-cookie"
+import { useToast } from "@/hooks/use-toast"
 
 export default function ProfilePage() {
   const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const { toast } = useToast()
 
   const justVerified = searchParams.get("verified") === "true"
 
   useEffect(() => {
     if (isLoggingOut) return
 
-    if (!isLoading && !isAuthenticated) {
-      router.replace(`/signup?redirect=${encodeURIComponent(pathname)}`)
+    // Don't redirect if auth cookie exists (session is being restored)
+    if (!isLoading && !isAuthenticated && !hasAuthCookie()) {
+      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
+
+    // Redirect admin to admin dashboard with toast
     if (!isLoading && user?.is_admin) {
+      toast({
+        title: "Access Restricted",
+        description: "Admin users should use the admin dashboard",
+        variant: "default",
+        duration: 5000,
+      })
       router.replace("/admin/dashboard")
     }
-  }, [isLoading, isAuthenticated, router, pathname, isLoggingOut, user])
+  }, [isLoading, isAuthenticated, router, pathname, isLoggingOut, user, toast])
+
+  // Block rendering if admin (before showing user content)
+  if (!isLoading && user?.is_admin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Redirecting...</div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
