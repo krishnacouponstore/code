@@ -1,25 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 auth schema details 
 📌 Table Overview: users
 
@@ -1077,13 +1055,13 @@ This document contains all permission configurations for the Flipkart Coupon Sel
 
 #### **SELECT Permission**
 - **Row select permissions:**
-```json
+\`\`\`json
 {
   "id": {
     "_eq": "X-Hasura-User-Id"
   }
 }
-```
+\`\`\`
 - **Column permissions:** `id`, `email`, `full_name`, `phone`, `wallet_balance`, `is_blocked`, `total_spent`, `total_purchased`, `created_at`, `updated_at`
 - **Excluded columns:** `is_admin`
 - **Aggregation queries:** No
@@ -1091,13 +1069,13 @@ This document contains all permission configurations for the Flipkart Coupon Sel
 
 #### **UPDATE Permission**
 - **Row update permissions:**
-```json
+\`\`\`json
 {
   "id": {
     "_eq": "X-Hasura-User-Id"
   }
 }
-```
+\`\`\`
 - **Column permissions:** `full_name`, `phone`
 - **Column presets:** `updated_at` = `now()`
 - **Logic:** Users can only update their name and phone
@@ -1125,13 +1103,13 @@ This document contains all permission configurations for the Flipkart Coupon Sel
 
 #### **SELECT Permission**
 - **Row select permissions:**
-```json
+\`\`\`json
 {
   "is_published": {
     "_eq": true
   }
 }
-```
+\`\`\`
 - **Column permissions:** All columns
 - **Aggregation queries:** Yes
 - **Logic:** Users can only see published slots
@@ -1166,7 +1144,7 @@ same for redemption_steps table
 
 #### **SELECT Permission**
 - **Row select permissions:**
-```json
+\`\`\`json
 {
   "slot": {
     "is_published": {
@@ -1174,7 +1152,7 @@ same for redemption_steps table
     }
   }
 }
-```
+\`\`\`
 - **Column permissions:** All columns
 - **Aggregation queries:** No
 - **Logic:** Users can only see pricing for published slots (uses relationship to slots table)
@@ -1204,13 +1182,13 @@ same for redemption_steps table
 
 #### **SELECT Permission**
 - **Row select permissions:**
-```json
+\`\`\`json
 {
   "sold_to": {
     "_eq": "X-Hasura-User-Id"
   }
 }
-```
+\`\`\`
 - **Column permissions:** All columns
 - **Aggregation queries:** No
 - **Logic:** Users can only see coupons they purchased (for download feature)
@@ -1239,26 +1217,26 @@ same for redemption_steps table
 
 #### **SELECT Permission**
 - **Row select permissions:**
-```json
+\`\`\`json
 {
   "user_id": {
     "_eq": "X-Hasura-User-Id"
   }
 }
-```
+\`\`\`
 - **Column permissions:** All columns
 - **Aggregation queries:** Yes
 - **Logic:** Users can only see their own purchase history
 
 #### **INSERT Permission**
 - **Row insert permissions:**
-```json
+\`\`\`json
 {
   "user_id": {
     "_eq": "X-Hasura-User-Id"
   }
 }
-```
+\`\`\`
 - **Column permissions:** `slot_id`, `quantity`, `unit_price`, `total_price`, `status`
 - **Column presets:** `user_id` = `X-Hasura-User-Id`, `id` = `gen_random_uuid()`, `created_at` = `now()`
 - **Logic:** Users can create purchases for themselves
@@ -1285,7 +1263,7 @@ same for redemption_steps table
 
 #### **SELECT Permission**
 - **Row select permissions:**
-```json
+\`\`\`json
 {
   "purchase": {
     "user_id": {
@@ -1293,14 +1271,14 @@ same for redemption_steps table
     }
   }
 }
-```
+\`\`\`
 - **Column permissions:** All columns
 - **Aggregation queries:** No
 - **Logic:** Users can see items only from their own purchases (uses relationship to purchases table)
 
 #### **INSERT Permission**
 - **Row insert permissions:**
-```json
+\`\`\`json
 {
   "purchase": {
     "user_id": {
@@ -1308,7 +1286,7 @@ same for redemption_steps table
     }
   }
 }
-```
+\`\`\`
 - **Column permissions:** `purchase_id`, `coupon_id`
 - **Column presets:** `id` = `gen_random_uuid()`, `created_at` = `now()`
 - **Logic:** Users can assign coupons only to their own purchases
@@ -1335,39 +1313,39 @@ same for redemption_steps table
 
 #### **SELECT Permission**
 - **Row select permissions:**
-```json
+\`\`\`json
 {
   "user_id": {
     "_eq": "X-Hasura-User-Id"
   }
 }
-```
+\`\`\`
 - **Column permissions:** All columns
 - **Aggregation queries:** Yes
 - **Logic:** Users can only see their own top-up history
 
 #### **INSERT Permission**
 - **Row insert permissions:**
-```json
+\`\`\`json
 {
   "user_id": {
     "_eq": "X-Hasura-User-Id"
   }
 }
-```
+\`\`\`
 - **Column permissions:** `amount`, `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`, `status`, `payment_method`
 - **Column presets:** `user_id` = `X-Hasura-User-Id`, `id` = `gen_random_uuid()`, `created_at` = `now()`
 - **Logic:** Users can create top-up records for themselves
 
 #### **UPDATE Permission**
 - **Row update permissions:**
-```json
+\`\`\`json
 {
   "user_id": {
     "_eq": "X-Hasura-User-Id"
   }
 }
-```
+\`\`\`
 - **Column permissions:** `status`, `verified_at`
 - **Logic:** Users can update status (needed for Razorpay webhook to mark as verified)
 
@@ -1432,21 +1410,21 @@ same for redemption_steps table
 ## **GraphQL Headers for Authentication**
 
 ### **For Regular Users:**
-```
+\`\`\`
 x-hasura-role: user
 x-hasura-user-id: <uuid-from-nhost-auth>
-```
+\`\`\`
 
 ### **For Admin:**
-```
+\`\`\`
 x-hasura-role: admin
 x-hasura-user-id: <admin-uuid>
-```
+\`\`\`
 
 ### **For Backend/Webhooks:**
-```
+\`\`\`
 x-hasura-admin-secret: <your-admin-secret>
-```
+\`\`\`
 
 ***
 
@@ -1519,4 +1497,3 @@ Added Column: store_id (UUID, FK -> stores.id)
 Permissions Updated: Users/Public can SELECT store_id.
 
 ***
-
