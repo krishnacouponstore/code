@@ -84,7 +84,7 @@ export function FooterSection() {
             ) : (
               <>
                 <Link
-                  href={getProductLink("/coupons")}
+                  href={getProductLink("/store")}
                   className="text-foreground text-sm hover:text-primary transition-colors"
                 >
                   Browse Coupons
@@ -96,7 +96,7 @@ export function FooterSection() {
                   Add Balance
                 </Link>
                 <Link
-                  href={getProductLink("/purchase-history")}
+                  href={getProductLink("/history")}
                   className="text-foreground text-sm hover:text-primary transition-colors"
                 >
                   Purchase History

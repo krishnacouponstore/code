@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ import {
   Calendar,
 } from "lucide-react"
 import { useCreateSlot, useUpdateSlot, type Slot, type PricingTier, type RedemptionStep } from "@/hooks/use-slots"
+import { useAdminStores } from "@/hooks/use-admin-stores"
 import { useToast } from "@/hooks/use-toast"
 
 type ValidationResult = {
@@ -48,11 +50,12 @@ type ValidationResult = {
 type SlotFormData = {
   name: string
   description: string
-  thumbnail_url: string
+  thumbnail: string
   expiry_date: string
   is_published: boolean
   pricing_tiers: PricingTier[]
   redemption_steps: RedemptionStep[]
+  store_id: string
   codes_to_upload: string[]
 }
 
@@ -68,6 +71,7 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
   const { toast } = useToast()
   const createSlotMutation = useCreateSlot()
   const updateSlotMutation = useUpdateSlot()
+  const { data: stores = [] } = useAdminStores()
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState("basic")
@@ -82,12 +86,13 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
   const [formData, setFormData] = useState<SlotFormData>({
     name: "",
     description: "",
-    thumbnail_url: "",
+    thumbnail: "",
     expiry_date: "",
     is_published: false,
     pricing_tiers: [{ min_quantity: 1, max_quantity: null, unit_price: 10 }],
     redemption_steps: [],
     codes_to_upload: [],
+    store_id: "",
   })
 
   useEffect(() => {
@@ -95,9 +100,10 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
       setFormData({
         name: slot.name,
         description: slot.description,
-        thumbnail_url: slot.thumbnail_url || "",
+        thumbnail: slot.thumbnail || "",
         expiry_date: slot.expiry_date ? new Date(slot.expiry_date).toISOString().split('T')[0] : "",
         is_published: slot.is_published,
+        store_id: slot.store?.id || "",
         pricing_tiers:
           slot.pricing_tiers.length > 0
             ? slot.pricing_tiers.map((t) => ({
@@ -119,12 +125,13 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
       setFormData({
         name: "",
         description: "",
-        thumbnail_url: "",
+        thumbnail: "",
         expiry_date: "",
         is_published: false,
         pricing_tiers: [{ min_quantity: 1, max_quantity: null, unit_price: 10 }],
         redemption_steps: [],
         codes_to_upload: [],
+        store_id: "",
       })
     }
     setErrors({})
@@ -247,6 +254,10 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
       newErrors.name = "Coupon name must be less than 50 characters"
     }
 
+    if (!formData.store_id || formData.store_id === "" || formData.store_id === "none") {
+      newErrors.store_id = "Store selection is required"
+    }
+
     if (!formData.description.trim()) {
       newErrors.description = "Description is required"
     } else if (formData.description.length > 200) {
@@ -282,11 +293,12 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
         id: slot.id,
         name: formData.name,
         description: formData.description,
-        thumbnail_url: formData.thumbnail_url || undefined,
+        thumbnail: formData.thumbnail || undefined,
         expiry_date: formData.expiry_date || undefined,
         is_published: formData.is_published,
         pricing_tiers: formData.pricing_tiers,
         redemption_steps: formData.redemption_steps.filter(s => s.step_text.trim()),
+        store_id: formData.store_id && formData.store_id !== "none" ? formData.store_id : undefined,
       })
 
       if (result.success) {
@@ -308,12 +320,13 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
       const result = await createSlotMutation.mutateAsync({
         name: formData.name,
         description: formData.description,
-        thumbnail_url: formData.thumbnail_url || undefined,
+        thumbnail: formData.thumbnail || undefined,
         expiry_date: formData.expiry_date || undefined,
         is_published: formData.is_published,
         pricing_tiers: formData.pricing_tiers,
         redemption_steps: formData.redemption_steps.filter(s => s.step_text.trim()),
         codes_to_upload: skipUpload ? [] : formData.codes_to_upload,
+        store_id: formData.store_id && formData.store_id !== "none" ? formData.store_id : undefined,
       })
 
       if (result.success) {
@@ -443,6 +456,32 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
 
           <TabsContent value="basic" className="mt-4 space-y-6">
             <div className="space-y-2">
+              <Label htmlFor="store" className="text-foreground">
+                Store <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={formData.store_id}
+                onValueChange={(value) => setFormData({ ...formData, store_id: value })}
+              >
+                <SelectTrigger className="bg-secondary border-border text-foreground">
+                  <SelectValue placeholder="Select a store" />
+                </SelectTrigger>
+                <SelectContent>
+                  {stores.map((store) => (
+                    <SelectItem key={store.id} value={store.id}>
+                      {store.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.store_id && (
+                <p className="text-destructive text-sm flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> {errors.store_id}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="name" className="text-foreground">
                 Coupon Name <span className="text-destructive">*</span>
               </Label>
@@ -485,15 +524,15 @@ export function SlotFormModal({ open, onOpenChange, slot, onSuccess }: SlotFormM
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="thumbnail_url" className="text-foreground flex items-center gap-2">
+              <Label htmlFor="thumbnail" className="text-foreground flex items-center gap-2">
                 <Image className="h-4 w-4" />
-                Thumbnail/Condition URL <span className="text-muted-foreground text-xs">(optional)</span>
+                Thumbnail/Condition <span className="text-destructive">*</span>
               </Label>
               <Input
-                id="thumbnail_url"
-                placeholder="https://example.com/thumbnail.jpg"
-                value={formData.thumbnail_url}
-                onChange={(e) => setFormData({ ...formData, thumbnail_url: e.target.value })}
+                id="thumbnail"
+                placeholder=""
+                value={formData.thumbnail}
+                onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
                 className="bg-secondary border-border text-foreground"
               />
               <p className="text-xs text-muted-foreground">Add a thumbnail or condition image for this coupon</p>

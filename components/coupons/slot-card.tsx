@@ -12,7 +12,7 @@ interface Slot {
   id: string
   name: string
   description: string | null
-  thumbnail_url?: string | null
+  thumbnail?: string | null
   expiry_date?: string | null
   available_stock: number
   starting_price: number
@@ -90,38 +90,41 @@ export function SlotCard({ slot, onCheckPricing }: SlotCardProps) {
         )}
 
         <CardContent className="p-6">
-          <div
-            className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 ${
-              isOutOfStock
-                ? "bg-muted"
-                : "bg-gradient-to-br from-primary/15 to-primary/5 dark:from-primary/20 dark:to-primary/5"
-            }`}
-          >
-            <ShoppingBag
-              className={`h-7 w-7 transition-colors ${isOutOfStock ? "text-muted-foreground" : "text-primary"}`}
-            />
-          </div>
+          {/* Thumbnail or Icon */}
+          {slot.thumbnail ? (
+            <div className="relative w-full h-32 mb-4 rounded-xl overflow-hidden">
+              <img
+                src={slot.thumbnail}
+                alt={slot.name}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+              />
+            </div>
+          ) : (
+            <div
+              className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110 ${
+                isOutOfStock
+                  ? "bg-muted"
+                  : "bg-gradient-to-br from-primary/15 to-primary/5 dark:from-primary/20 dark:to-primary/5"
+              }`}
+            >
+              <ShoppingBag
+                className={`h-7 w-7 transition-colors ${isOutOfStock ? "text-muted-foreground" : "text-primary"}`}
+              />
+            </div>
+          )}
 
           {/* Name */}
-          <h3 className="text-lg font-semibold text-foreground mb-3 line-clamp-1">{slot.name}</h3>
+          <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2">{slot.name}</h3>
 
-          {/* Thumbnail/Condition and Expiry Date */}
-          <div className="flex items-center gap-2 mb-4 min-h-[20px]">
-            {slot.thumbnail_url && (
-              <>
-                <span className="text-sm text-muted-foreground line-clamp-1">{slot.thumbnail_url}</span>
-                {expiryDate && (
-                  <>
-                    <span className="text-2xl text-muted-foreground/40 leading-none">•</span>
-                    <span className="text-sm text-muted-foreground flex-shrink-0">{expiryDate}</span>
-                  </>
-                )}
-              </>
-            )}
-            {!slot.thumbnail_url && expiryDate && (
-              <span className="text-sm text-muted-foreground">{expiryDate}</span>
-            )}
-          </div>
+          {/* Expiry Date with Clock Icon */}
+          {expiryDate && (
+            <div className="flex items-center gap-1.5 mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm text-muted-foreground">Expires: {expiryDate}</span>
+            </div>
+          )}
 
           {/* Pricing */}
           <div className="mb-4">

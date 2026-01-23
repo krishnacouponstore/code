@@ -29,8 +29,8 @@ export function AccountActions() {
   }
 
   const quickLinks = [
-    { icon: History, label: "Purchase History", href: "/purchase-history" },
-    { icon: ShoppingBag, label: "Browse Coupons", href: "/coupons" },
+    { icon: History, label: "Purchase History", href: "/history" },
+    { icon: ShoppingBag, label: "Browse Coupons", href: "/store" },
     { icon: Plus, label: "Add Balance", href: "/add-balance" },
   ]
 

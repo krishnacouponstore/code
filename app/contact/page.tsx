@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Navbar } from "@/components/navbar"
+import { PublicNavbar } from "@/components/public-navbar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -12,7 +13,7 @@ import { SITE_CONTACTS, SITE_CONFIG } from "@/lib/site-config"
 
 const quickLinks = [
   { label: "How to add balance?", href: "/add-balance" },
-  { label: "How to download purchased codes?", href: "/purchase-history" },
+  { label: "How to download purchased codes?", href: "/history" },
   { label: "Refund policy", href: "/refund-policy" },
   { label: "Terms & Conditions", href: "/terms" },
   { label: "Privacy Policy", href: "/privacy" },
@@ -27,7 +28,7 @@ const topUpSteps = [
 ]
 
 export default function ContactPage() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, isAuthenticated } = useAuth()
   const { toast } = useToast()
   const [copiedTelegram, setCopiedTelegram] = useState(false)
   const [copiedEmail, setCopiedEmail] = useState(false)
@@ -69,14 +70,14 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader />
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+      {isAuthenticated ? <Navbar /> : <PublicNavbar />}
 
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
+      <main className="container mx-auto px-4 py-8 max-w-5xl pt-32">
         {/* Page Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-foreground mb-3">Contact Us</h1>
-          <p className="text-muted-foreground text-lg">Have questions? We're here to help</p>
+          <h1 className="text-4xl font-display font-bold text-gray-900 dark:text-white mb-3">Contact Us</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-lg">Have questions? We're here to help</p>
         </div>
 
         {/* Contact Methods Grid */}

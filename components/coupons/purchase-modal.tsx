@@ -46,6 +46,7 @@ interface PurchaseModalProps {
   slotId: string | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  brandColor?: string
 }
 
 type PurchaseResult = {
@@ -58,7 +59,7 @@ type PurchaseResult = {
   codes: Array<{ id: string; code: string }>
 }
 
-export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps) {
+export function PurchaseModal({ slotId, open, onOpenChange, brandColor }: PurchaseModalProps) {
   const { user } = useAuth()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -71,6 +72,15 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false)
   const [availabilityStatus, setAvailabilityStatus] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle')
+
+  // Calculate theme colors from brand color
+  const themeStyles = useMemo(() => {
+    if (!brandColor) return {}
+    return {
+      '--modal-brand-color': brandColor,
+      '--modal-brand-glow': `${brandColor}30`,
+    } as React.CSSProperties
+  }, [brandColor])
 
   const { data: slot, isLoading: slotLoading, error: slotError, refetch } = useSlotPricing(slotId)
   const { data: walletData } = useUserWallet(user?.id || null)
@@ -304,7 +314,7 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
 
   const handleViewHistory = () => {
     handleOpenChange(false)
-    router.push("/purchase-history")
+    router.push("/history")
   }
 
   // Loading state
@@ -470,7 +480,10 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
   return (
     <>
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-[600px] bg-card border-border p-0 gap-0 max-h-[90vh] overflow-y-auto">
+        <DialogContent 
+          className="sm:max-w-[600px] bg-card border-border p-0 gap-0 max-h-[90vh] overflow-y-auto"
+          style={themeStyles}
+        >
           <DialogHeader className="p-6 pb-4 border-b border-border">
             <div className="flex items-center justify-between gap-4">
               <DialogTitle className="text-xl font-semibold text-foreground">{slot.name}</DialogTitle>
@@ -535,9 +548,10 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
                   value={quantity === 0 ? "" : quantity}
                   onChange={handleQuantityInputChange}
                   placeholder="0"
-                  className="w-24 text-center bg-secondary border-border rounded-lg"
+                  className="w-24 text-center bg-secondary border-border rounded-lg purchase-modal-brand-border"
                   min={0}
                   max={slot.available_stock}
+                  style={{ borderColor: brandColor ? `${brandColor}40` : undefined }}
                 />
                 <Button
                   variant="outline"
@@ -555,7 +569,7 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
                   </div>
                 )}
                 {!isCheckingAvailability && availabilityStatus === 'available' && quantity > 0 && (
-                  <div className="flex items-center gap-2 text-primary animate-in fade-in slide-in-from-left-2 duration-300">
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300" style={{ color: brandColor || 'hsl(var(--primary))' }}>
                     <CheckCircle2 className="h-4 w-4" />
                     <span className="text-xs font-medium">Stock available</span>
                   </div>
@@ -581,8 +595,8 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
               </div>
               {savings > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-primary">You save</span>
-                  <span className="text-primary font-medium">{formatCurrency(savings)}</span>
+                  <span style={{ color: brandColor || 'hsl(var(--primary))' }}>You save</span>
+                  <span className="font-medium" style={{ color: brandColor || 'hsl(var(--primary))' }}>{formatCurrency(savings)}</span>
                 </div>
               )}
               <div className="border-t border-border pt-3 flex justify-between">
@@ -591,7 +605,7 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
               </div>
               {activeTier && (
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Check className="h-3 w-3 text-primary" />
+                  <Check className="h-3 w-3" style={{ color: brandColor || 'hsl(var(--primary))' }} />
                   {activeTier.min_quantity}-{activeTier.max_quantity ?? `${activeTier.min_quantity}+`} codes tier
                   applied
                 </p>
@@ -623,7 +637,11 @@ export function PurchaseModal({ slotId, open, onOpenChange }: PurchaseModalProps
             {/* Action Buttons */}
             <div className="flex flex-col gap-3">
               <Button
-                className="w-full rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
+                className="w-full rounded-full h-12"
+                style={{ 
+                  background: brandColor || 'hsl(var(--primary))',
+                  color: 'white'
+                }}
                 disabled={!canPurchase || isProcessing}
                 onClick={handlePurchaseClick}
               >

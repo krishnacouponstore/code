@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - CodeX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'var(--bg-color)',
+                        surface: 'var(--surface-color)',
+                        card: 'var(--card-bg)',
+                        primary: '#78fcd6',
+                        'primary-dark': '#4fd1ad',
+                        secondary: '#1c252e',
+                        border: 'var(--border-color)',
+                        text: 'var(--text-main)',
+                        'text-muted': 'var(--text-muted)'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            /* Light Theme Variables */
+            --bg-color: #f2f7f8;
+            --surface-color: #ffffff;
+            --card-bg: rgba(255, 255, 255, 0.65);
+            --border-color: rgba(0, 0, 0, 0.06); 
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --glass-shadow: 0 8px 32px 0 rgba(100, 100, 111, 0.05);
+            --nav-bg: #ffffff;
+            --icon-bg: rgba(0,0,0,0.05);
+
+            /* Decorative Gradients */
+            --bg-gradient-1: rgba(120, 252, 214, 0.15); 
+            --bg-gradient-2: rgba(59, 130, 246, 0.08);  
+        }
+
+        .dark {
+            /* Dark Theme Variables */
+            --bg-color: #0a0f14;
+            --surface-color: #12181f;
+            --card-bg: rgba(18, 24, 31, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --nav-bg: #0a0f14;
+             --icon-bg: rgba(255,255,255,0.05);
+
+             /* Decorative Gradients */
+            --bg-gradient-1: rgba(120, 252, 214, 0.05);
+            --bg-gradient-2: rgba(59, 130, 246, 0.05);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            background-image: 
+                radial-gradient(circle at 15% 50%, var(--bg-gradient-1) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, var(--bg-gradient-2) 0%, transparent 25%);
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        .glass-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--glass-shadow);
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(120, 252, 214, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); 
+        }
+
+        .credit-card {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .credit-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(45deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.6s;
+        }
+        
+        .credit-card:hover::before {
+            transform: translateX(100%);
+        }
+
+        .credit-card-mesh {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(120, 252, 214, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.15) 0px, transparent 50%);
+            mix-blend-mode: screen;
+        }
+
+        /* Table Row Styling */
+        .table-row-card {
+            transition: all 0.2s ease;
+            background: var(--surface-color); 
+            border: 1px solid var(--border-color);
+        }
+        
+        .dark .table-row-card {
+            background: rgba(22, 30, 37, 0.5);
+        }
+
+        .table-row-card:hover {
+            background: var(--card-bg);
+            transform: scale-[1.005];
+            border-color: var(--border-color);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #2c3e50; }
+        ::-webkit-scrollbar-thumb:hover { background: #78fcd6; }
+
+        .nav-item {
+            position: relative;
+        }
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: -24px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #78fcd6;
+            box-shadow: 0 -2px 10px #78fcd6;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-sm">
+
+    <!-- Floating Navbar -->
+    <div class="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+        <nav class="w-full max-w-5xl bg-[var(--nav-bg)] shadow-2xl border border-border rounded-full flex items-center justify-between px-6 py-3 pointer-events-auto transition-all duration-300">
+            <!-- Logo -->
+            <a href="dashboard.html" class="flex items-center gap-3 group">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-blue-500 flex items-center justify-center text-black font-bold shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <span class="font-display font-bold text-xl text-text tracking-tight group-hover:text-primary transition-colors">CoupX</span>
+            </a>
+
+            <!-- Center Menu -->
+            <div class="hidden md:flex items-center gap-1 bg-[var(--icon-bg)] rounded-full px-1.5 py-1.5 border border-border">
+                <a href="dashboard.html" class="px-6 py-2 rounded-full text-sm font-bold text-black bg-primary shadow transition-all">Dashboard</a>
+                <a href="store.html" class="px-6 py-2 rounded-full text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-all">Store</a>
+                <a href="#" class="px-6 py-2 rounded-full text-sm font-medium text-text-muted hover:text-text hover:bg-surface transition-all">History</a>
+            </div>
+
+            <!-- Right Actions -->
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center gap-3 px-4 py-2 rounded-full bg-[var(--icon-bg)] border border-border shadow-inner group cursor-pointer hover:border-primary/30 transition-colors">
+                    <i class="fas fa-wallet text-text-muted group-hover:text-primary transition-colors text-xs"></i>
+                    <span class="font-display font-bold text-text text-sm">₹490.00</span>
+                </div>
+                
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-[var(--icon-bg)] border border-border flex items-center justify-center text-text-muted hover:text-text hover:bg-surface transition-all active:scale-95">
+                    <i class="fas fa-sun hidden dark:block text-yellow-400"></i>
+                    <i class="fas fa-moon block dark:hidden text-slate-600"></i>
+                </button>
+
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 border border-border flex items-center justify-center text-white cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all shadow-lg">
+                    <i class="fas fa-user-circle text-xl"></i>
+                </div>
+            </div>
+        </nav>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-6 py-8 space-y-8 pt-32">
+        
+        <!-- Welcome Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-display font-bold text-text mb-1">Welcome back, Rohan! 👋</h1>
+                <p class="text-text-muted">Here's what's happening with your account today.</p>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Wallet Card (Redesigned) -->
+            <div class="glass-card rounded-3xl p-6 h-48 flex flex-col justify-between relative overflow-hidden group">
+                <!-- Decorative Background -->
+                <div class="absolute right-0 top-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
+                    <i class="fas fa-wallet text-8xl text-primary"></i>
+                </div>
+                <svg class="absolute bottom-0 right-0 w-32 h-32 text-primary opacity-10 transform translate-y-10 translate-x-10" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="currentColor" d="M44.7,-76.4C58.9,-69.2,71.8,-59.1,79.6,-46.3C87.4,-33.5,90.1,-18,89,-2.6C87.9,12.7,83,27.9,74.5,40.6C66,53.3,53.9,63.5,40.6,71.2C27.3,78.9,12.9,84.1,-0.7,85.3C-14.3,86.5,-27.4,83.7,-39.8,76.5C-52.2,69.3,-63.9,57.7,-71.7,44.4C-79.5,31.1,-83.4,16,-82.1,1.5C-80.8,-13,-74.3,-26.9,-65.4,-39.1C-56.5,-51.3,-45.2,-61.8,-32.6,-69.7C-20,-77.6,-6.1,-82.9,6.1,-93.5L18.3,-104.1L18.3,0L6.1,0C-6.1,0,-20,0,-32.6,0C-45.2,0,-56.5,0,-65.4,0C-74.3,0,-80.8,0,-82.1,0C-83.4,0,-79.5,0,-71.7,0C-63.9,0,-52.2,0,-39.8,0C-27.4,0,-14.3,0,-0.7,0C12.9,0,27.3,0,40.6,0C53.9,0,66,0,74.5,0C83,0,87.9,0,89,0C90.1,0,87.4,0,79.6,0C71.8,0,58.9,0,44.7,0Z" transform="translate(100 100)" />
+                </svg>
+
+                <div class="relative z-10 flex justify-between items-start">
+                    <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary-dark">
+                        <i class="fas fa-wallet text-xl"></i>
+                    </div>
+                    <button class="text-xs font-bold uppercase tracking-wider text-primary-dark bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg hover:bg-primary hover:text-black transition-all">
+                        Add Funds
+                    </button>
+                </div>
+
+                <div class="relative z-10">
+                    <div class="text-text-muted text-xs font-bold uppercase tracking-widest mb-1">Available Balance</div>
+                    <div class="text-4xl font-display font-bold text-text tracking-tight">₹490.00</div>
+                </div>
+            </div>
+
+            <!-- Purchased Coupons Card (Redesigned) -->
+            <div class="glass-card rounded-3xl p-6 h-48 flex flex-col justify-between relative overflow-hidden group">
+                <!-- Decorative Background -->
+                <div class="absolute right-0 top-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity transform group-hover:scale-110 duration-500">
+                    <i class="fas fa-ticket-alt text-8xl text-blue-500"></i>
+                </div>
+                <svg class="absolute bottom-0 left-0 w-full h-24 text-blue-500 opacity-10" viewBox="0 0 1440 320" preserveAspectRatio="none">
+                    <path fill="currentColor" fill-opacity="1" d="M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                </svg>
+
+                <div class="relative z-10 flex justify-between items-start">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 text-blue-500">
+                        <i class="fas fa-ticket-alt text-xl"></i>
+                    </div>
+                </div>
+
+                <div class="relative z-10">
+                    <div class="text-text-muted text-xs font-bold uppercase tracking-widest mb-1">Purchased Coupons</div>
+                    <div class="flex items-end gap-3">
+                        <div class="text-4xl font-display font-bold text-text tracking-tight">12</div>
+                        <div class="mb-2 text-xs font-bold text-green-500 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20 flex items-center gap-1">
+                            <i class="fas fa-arrow-up text-[10px]"></i> 2 new
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stat Card 2 -->
+            <div class="glass-card rounded-3xl p-6 h-48 flex flex-col justify-center relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-500">
+                    <i class="fas fa-chart-pie text-8xl text-purple-500"></i>
+                </div>
+                
+                <!-- SVG Sparkline Background -->
+                <svg class="absolute bottom-0 left-0 w-full h-16 opacity-20 text-purple-500" viewBox="0 0 100 20" preserveAspectRatio="none">
+                    <path d="M0 20 L0 10 Q10 15 20 5 T40 10 T60 5 T80 12 L100 8 L100 20 Z" fill="currentColor"/>
+                </svg>
+
+                <div class="relative z-10">
+                    <div class="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4 border border-purple-500/20 text-purple-400">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="text-text-muted font-medium mb-1">Total Spent</div>
+                    <div class="text-3xl font-display font-bold text-text">₹1,240.00</div>
+                    <div class="mt-4 flex items-center gap-2 text-xs text-purple-400 bg-purple-500/5 w-fit px-2 py-1 rounded border border-purple-500/10">
+                        All time total
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Split Section: Orders & Quick Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left: Recent Purchases (Redesigned Table) -->
+            <div class="lg:col-span-2 space-y-4">
+                <div class="flex items-center justify-between px-1">
+                    <h2 class="text-lg font-bold text-text">Recent Purchases</h2>
+                    <a href="#" class="text-primary hover:text-text text-xs font-bold uppercase tracking-wide transition-colors">View All</a>
+                </div>
+
+                <!-- Clean Table Container -->
+                <div class="glass-panel rounded-3xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-[var(--icon-bg)] text-xs text-text-muted uppercase font-bold tracking-wider">
+                                <tr>
+                                    <th class="px-6 py-4">Order ID</th>
+                                    <th class="px-6 py-4">Coupon Name</th>
+                                    <th class="px-6 py-4 text-center">Quantity</th>
+                                    <th class="px-6 py-4 text-right">Amount</th>
+                                    <th class="px-6 py-4 text-right">Date</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border">
+                                <!-- Row 1 -->
+                                <tr class="group hover:bg-[var(--icon-bg)] transition-colors">
+                                    <td class="px-6 py-5">
+                                        <div class="font-bold text-text text-sm">#ORD2601217725</div>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0">
+                                                <i class="fas fa-bolt text-yellow-500 text-xs"></i>
+                                            </div>
+                                            <span class="font-medium text-primary-dark font-bold">Flipkart minutes</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5 text-center text-text-muted text-sm">
+                                        1 codes
+                                    </td>
+                                    <td class="px-6 py-5 text-right">
+                                        <span class="font-display font-bold text-text">₹10.00</span>
+                                    </td>
+                                    <td class="px-6 py-5 text-right text-text-muted text-sm">
+                                        21 Jan 2026
+                                    </td>
+                                </tr>
+
+                                <!-- Row 2 -->
+                                <tr class="group hover:bg-[var(--icon-bg)] transition-colors">
+                                    <td class="px-6 py-5">
+                                        <div class="font-bold text-text text-sm">#ORD2601218821</div>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                                                <i class="fas fa-hamburger text-orange-500 text-xs"></i>
+                                            </div>
+                                            <span class="font-medium text-primary-dark font-bold">Swiggy Flat 100</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5 text-center text-text-muted text-sm">
+                                        2 codes
+                                    </td>
+                                    <td class="px-6 py-5 text-right">
+                                        <span class="font-display font-bold text-text">₹15.00</span>
+                                    </td>
+                                    <td class="px-6 py-5 text-right text-text-muted text-sm">
+                                        19 Jan 2026
+                                    </td>
+                                </tr>
+
+                                <!-- Row 3 -->
+                                <tr class="group hover:bg-[var(--icon-bg)] transition-colors">
+                                    <td class="px-6 py-5">
+                                        <div class="font-bold text-text text-sm">#ORD2601217102</div>
+                                    </td>
+                                    <td class="px-6 py-5">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center shrink-0">
+                                                <i class="fas fa-shopping-basket text-green-500 text-xs"></i>
+                                            </div>
+                                            <span class="font-medium text-primary-dark font-bold">BigBasket Gift Card</span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-5 text-center text-text-muted text-sm">
+                                        1 codes
+                                    </td>
+                                    <td class="px-6 py-5 text-right">
+                                        <span class="font-display font-bold text-text">₹500.00</span>
+                                    </td>
+                                    <td class="px-6 py-5 text-right text-text-muted text-sm">
+                                        15 Jan 2026
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Action Cards (Occupies 1 col) -->
+            <div class="space-y-6">
+                
+                <!-- Quick Ad/Promo Card -->
+                <div class="glass-panel p-6 rounded-3xl relative overflow-hidden text-center group">
+                    <div class="absolute inset-0 bg-gradient-to-b from-primary/10 to-transparent opacity-50"></div>
+                    
+                    <div class="relative z-10">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-tr from-primary to-blue-500 rounded-full flex items-center justify-center shadow-lg shadow-primary/20 mb-4 animate-float">
+                            <i class="fas fa-gift text-2xl text-black"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-text mb-2">Need More Coupons?</h3>
+                        <p class="text-text-muted text-xs mb-6 leading-relaxed">Browse our verified collection of 50+ stores and save big today.</p>
+                        <a href="store.html" class="block w-full py-3 rounded-xl bg-[#111827] text-white dark:bg-white dark:text-black font-bold hover:opacity-90 transition-opacity shadow-lg">
+                            Go to Store <i class="fas fa-arrow-right ml-1 text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Support / Help -->
+                <div class="glass-panel p-6 rounded-3xl flex items-center gap-4 group cursor-pointer hover:bg-surface transition-colors">
+                    <div class="w-12 h-12 rounded-full bg-[var(--nav-bg)] border border-border flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform text-text-muted group-hover:text-text">
+                        <i class="far fa-life-ring"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-text text-sm">Help & Support</div>
+                        <div class="text-xs text-text-muted">Contact our support team</div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+        
+        // Initialize
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else {
+            // Default to dark if not set
+             document.documentElement.classList.add('dark');
+        }
+    </script>
+</body>
+</html>

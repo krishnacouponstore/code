@@ -180,6 +180,22 @@ export default function AdminSlotsPage() {
               <Plus className="h-4 w-4 mr-2" />
               Create New Coupon
             </Button>
+            <Button
+              onClick={() => router.push("/admin/store")}
+              variant="outline"
+              className="rounded-full"
+            >
+              <Package className="h-4 w-4 mr-2" />
+              Manage Stores
+            </Button>
+            <Button
+              onClick={() => router.push("/admin/banner")}
+              variant="outline"
+              className="rounded-full"
+            >
+              <List className="h-4 w-4 mr-2" />
+              Banner Studio
+            </Button>
           </div>
         </div>
 
@@ -260,6 +276,7 @@ export default function AdminSlotsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground">Store</TableHead>
                     <TableHead className="text-muted-foreground">Coupon Name</TableHead>
                     <TableHead className="text-muted-foreground">Description</TableHead>
                     <TableHead className="text-muted-foreground">Stock</TableHead>
@@ -271,6 +288,20 @@ export default function AdminSlotsPage() {
                 <TableBody>
                   {slots.map((slot) => (
                     <TableRow key={slot.id} className="border-border hover:bg-secondary/50">
+                      <TableCell className="font-medium text-foreground">
+                        {slot.store ? (
+                            <div className="flex items-center gap-2">
+                                {slot.store.logo_url && (
+                                    <div className="w-6 h-6 rounded bg-white p-0.5 overflow-hidden">
+                                        <img src={slot.store.logo_url} alt={slot.store.name} className="w-full h-full object-contain" />
+                                    </div>
+                                )}
+                                <span>{slot.store.name}</span>
+                            </div>
+                        ) : (
+                            <span className="text-muted-foreground italic">No Store</span>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium text-foreground">{slot.name}</TableCell>
                       <TableCell className="text-muted-foreground max-w-[200px] truncate">{slot.description}</TableCell>
                       <TableCell>

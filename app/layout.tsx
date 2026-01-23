@@ -1,18 +1,20 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Outfit, Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Providers } from "./providers"
 import "./globals.css"
 
-const geistSans = Geist({
+const outfit = Outfit({ 
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  variable: "--font-outfit",
+  display: "swap",
 })
 
-const geistMono = Geist_Mono({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-geist-mono",
+  variable: "--font-inter", 
+  display: "swap",
 })
 
 export const metadata: Metadata = {
@@ -40,7 +42,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
+      <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet" />
+      </head>
+      <body className={`${outfit.variable} ${inter.variable} font-sans antialiased transition-colors duration-500 ease-in-out`}>
         <Providers>{children}</Providers>
         <Analytics />
       </body>

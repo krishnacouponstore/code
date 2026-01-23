@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Navbar } from "@/components/navbar"
 import { ProfileForm } from "@/components/profile/profile-form"
 import { ChangePasswordForm } from "@/components/profile/change-password-form"
 import { AccountStats } from "@/components/profile/account-stats"
@@ -43,10 +43,10 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader walletBalance={user.wallet_balance} userName={user.name} userEmail={user.email} />
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+      <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pt-32">
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground">Profile Settings</h1>

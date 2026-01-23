@@ -1,24 +1,23 @@
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+"use client"
+
+import { Navbar } from "@/components/navbar"
+import { PublicNavbar } from "@/components/public-navbar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Truck, Zap, Package, CheckCircle, Clock, CreditCard, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { SITE_CONTACTS } from "@/lib/site-config"
-
-export const metadata = {
-  title: "Shipping & Delivery Policy | CoupX",
-  description:
-    "Learn about our instant digital delivery process for coupon codes and vouchers. No shipping charges, immediate access to your purchases.",
-}
+import { useAuth } from "@/lib/auth-context"
 
 export default function ShippingDeliveryPage() {
+  const { isAuthenticated } = useAuth()
   const lastUpdated = "December 8, 2025"
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader />
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+      {isAuthenticated ? <Navbar /> : <PublicNavbar />}
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main className="max-w-4xl mx-auto px-6 py-12 pt-32">
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center p-3 rounded-lg bg-primary/10 mb-4">
             <Truck className="h-8 w-8 text-primary" />

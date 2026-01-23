@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swiggy Store - CodeX</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'var(--bg-color)',
+                        surface: 'var(--surface-color)',
+                        card: 'var(--card-bg)',
+                        border: 'var(--border-color)',
+                        text: 'var(--text-main)',
+                        'text-muted': 'var(--text-muted)',
+                        'brand-bg': 'var(--brand-bg)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Load -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 
+           DYNAMIC THEME ENGINE 
+        */
+        :root {
+            /* Swiggy Orange Theme Default Vars */
+            --brand-hue: 340;
+            --brand-sat: 95%;
+            --brand-light: 53%;
+            
+            --brand-color: hsl(var(--brand-hue), var(--brand-sat), var(--brand-light));
+            --brand-glow: hsla(var(--brand-hue), var(--brand-sat), var(--brand-light), 0.3);
+            --brand-dark: hsla(var(--brand-hue), var(--brand-sat), 15%, 1);
+
+            /* Light Theme Defaults */
+            --bg-color: #f3f4f6;
+            --surface-color: #ffffff;
+            --card-base: #ffffff;
+            --sidebar-bg: #ffffff;
+            --border-color: rgba(0,0,0,0.08);
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --nav-bg: rgba(255, 255, 255, 0.85);
+            --input-bg: #f9fafb;
+            --brand-bg: rgba(0,0,0,0.03); /* Light bg for icon boxes */
+            --modal-bg: rgba(255, 255, 255, 0.9);
+            /* Dark gradient for Light Theme for contrast */
+            --bg-gradient-1: hsla(var(--brand-hue), var(--brand-sat), 20%, 0.8); 
+            --bg-gradient-2: rgba(0,0,0,0.02);
+        }
+
+        .dark {
+            /* Dark Theme Overrides */
+            --bg-color: #0a0f14;
+            --surface-color: #12181f;
+            --card-base: linear-gradient(160deg, #161e25 0%, #0e1216 100%);
+            --sidebar-bg: linear-gradient(180deg, rgba(22, 30, 37, 0.8) 0%, rgba(10, 15, 20, 0.9) 100%);
+            --border-color: rgba(255,255,255,0.08);
+            --text-main: #ecf0f1;
+            --text-muted: #9ca3af;
+            --nav-bg: rgba(10, 15, 20, 0.8);
+            --input-bg: #161e25;
+            --brand-bg: rgba(255,255,255,0.03);
+            --modal-bg: rgba(0,0,0,0.85);
+            /* Dark Theme uses brand dark directly */
+            --bg-gradient-1: var(--brand-dark);
+            --bg-gradient-2: #12181f;
+        }
+
+        /* Base Styles */
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+            background-image: 
+                radial-gradient(circle at 10% 0%, var(--bg-gradient-1) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, var(--bg-gradient-2) 0%, transparent 40%);
+        }
+
+        /* Glassmorphism Util */
+        .glass-panel {
+            background: var(--surface-color);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+        }
+
+        /* --- Creative Card Design --- */
+        .product-card {
+            background: var(--card-base);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .product-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--brand-color), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            border-color: var(--brand-glow);
+            box-shadow: 0 15px 40px -10px rgba(0,0,0,0.15);
+        }
+        .dark .product-card:hover {
+            box-shadow: 0 15px 40px -10px rgba(0,0,0,0.6);
+        }
+
+        .product-card:hover::before {
+            opacity: 1;
+        }
+
+        /* Brand Icon Box */
+        .icon-box {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: var(--brand-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--brand-color);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .product-card:hover .icon-box {
+            background: var(--brand-color);
+            color: #fff; /* Ensure contrast on brand color */
+            box-shadow: 0 0 20px var(--brand-glow);
+        }
+        
+        /* Pricing Badge */
+        .price-tag {
+            font-family: 'Outfit', sans-serif;
+            background: var(--brand-bg);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 12px;
+            display: inline-flex;
+            flex-direction: column;
+            width: 100%;
+            transition: border-color 0.3s;
+        }
+        
+        .product-card:hover .price-tag {
+            border-color: var(--brand-glow);
+        }
+
+        /* Action Button */
+        .btn-brand {
+            background-color: var(--brand-color);
+            color: white; /* Generally white text on brand color works best */
+            font-weight: 700;
+            border: none;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        .btn-brand::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(255,255,255,0.4), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .btn-brand:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 20px var(--brand-glow);
+        }
+
+        .btn-brand:hover::after {
+            opacity: 1;
+        }
+
+        .btn-glass {
+            background: var(--brand-bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+        .btn-glass:hover {
+            background: var(--border-color); /* Slightly darker/lighter */
+            color: var(--text-main);
+            border-color: var(--text-muted);
+        }
+
+        /* Labels */
+        .badge {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        
+        .badge-low-stock {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        
+        .badge-best-seller {
+            background: var(--brand-glow);
+            color: var(--brand-color);
+            border: 1px solid var(--brand-color);
+        }
+
+        /* --- Layout Grid Tweaks --- */
+        .sidebar-brand {
+            background: var(--sidebar-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px -5px rgba(0,0,0,0.1);
+        }
+
+        .nav-link {
+            transition: all 0.2s;
+            border-left: 2px solid transparent;
+            color: var(--text-muted);
+        }
+        .nav-link:hover, .nav-link.active {
+            background: linear-gradient(90deg, var(--brand-glow) 0%, transparent 100%);
+            border-left-color: var(--brand-color);
+            color: var(--text-main);
+        }
+
+        /* Modals */
+        .modal-bg { background: var(--modal-bg); backdrop-filter: blur(8px); }
+        .modal-panel { background: var(--surface-color); border: 1px solid var(--border-color); color: var(--text-main); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--brand-color); }
+
+        /* Animation utilities */
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 0 0 var(--brand-glow); }
+            70% { box-shadow: 0 0 0 10px transparent; }
+            100% { box-shadow: 0 0 0 0 transparent; }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <!-- Top Navigation Dock -->
+    <header class="sticky top-0 z-40 w-full border-b border-border bg-background/80 backdrop-blur-md transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <a href="store.html" class="flex items-center gap-3 group">
+                <div class="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center hover:bg-border transition-colors">
+                    <i class="fas fa-arrow-left text-text-muted group-hover:text-text text-sm"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-xs text-text-muted group-hover:text-text transition-colors font-medium">Return to</span>
+                    <span class="text-sm font-bold text-text group-hover:text-primary transition-colors">Store Directory</span>
+                </div>
+            </a>
+            
+            <div class="flex items-center gap-4">
+                <!-- Theme Toggle -->
+                <button onclick="toggleTheme()" class="w-9 h-9 rounded-full bg-surface border border-border flex items-center justify-center hover:bg-border transition-all text-text shadow-sm" title="Toggle Theme">
+                    <i class="fas fa-sun block dark:hidden text-yellow-500"></i>
+                    <i class="fas fa-moon hidden dark:block text-blue-400"></i>
+                </button>
+
+                <div class="px-3 py-1.5 rounded-full bg-surface border border-border flex items-center gap-2 shadow-sm">
+                    <div class="w-2 h-2 rounded-full" style="background-color: var(--brand-color); box-shadow: 0 0 8px var(--brand-color);"></div>
+                    <span class="text-xs font-medium text-text">Live Status: On</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- SIDEBAR: BRAND OVERVIEW -->
+        <aside class="lg:col-span-3 space-y-6">
+            
+            <!-- Brand Identity Card -->
+            <div class="sidebar-brand rounded-3xl p-6 text-center relative overflow-hidden group">
+                <!-- Dynamic Back Glow -->
+                <div class="absolute -top-20 -left-20 w-40 h-40 rounded-full blur-[60px]" style="background: var(--brand-color); opacity: 0.15;"></div>
+                
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="w-28 h-28 rounded-3xl bg-background border border-border flex items-center justify-center shadow-2xl mb-5 group-hover:scale-105 transition-transform duration-500">
+                        <!-- Use Brand Color for Logo -->
+                        <i class="fas fa-utensils text-5xl" style="color: var(--brand-color);"></i>
+                    </div>
+                    
+                    <h1 class="text-3xl font-display font-bold text-text mb-1">Swiggy</h1>
+                    <p class="text-sm text-text-muted mb-6">Food & Grocery Delivery</p>
+                    
+                    <div class="w-full grid grid-cols-2 gap-3 mb-6">
+                        <div class="bg-surface/50 rounded-xl p-2.5 border border-border">
+                            <div class="text-xs text-text-muted uppercase font-bold mb-1">Rating</div>
+                            <div class="flex items-center justify-center gap-1.5 text-text font-bold">
+                                4.8 <i class="fas fa-star text-yellow-500 text-xs"></i>
+                            </div>
+                        </div>
+                        <div class="bg-surface/50 rounded-xl p-2.5 border border-border">
+                            <div class="text-xs text-text-muted uppercase font-bold mb-1">Stock</div>
+                            <div class="text-text font-bold">128</div>
+                        </div>
+                    </div>
+
+                    <button class="w-full py-3 rounded-xl bg-surface hover:bg-border border border-border text-sm font-medium text-text-muted hover:text-text transition-all flex items-center justify-center gap-2 group/btn">
+                        <i class="far fa-heart group-hover/btn:text-red-500 transition-colors"></i> Add to Favourites
+                    </button>
+                </div>
+            </div>
+
+
+
+        </aside>
+
+        <!-- MAIN CONTENT: PRODUCT GRID -->
+        <section class="lg:col-span-9">
+            
+            <!-- Header Area -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                <div>
+                    <h2 class="text-2xl font-display font-bold text-text">Available Inventory</h2>
+                    <p class="text-text-muted text-sm mt-1">Select a coupon package to purchase instantly.</p>
+                </div>
+                <!-- Search / Sort Pill -->
+                <div class="flex items-center bg-surface rounded-full p-1 border border-border shadow-sm">
+                    <button class="px-4 py-1.5 rounded-full bg-border text-xs font-medium text-text shadow-sm transition-colors">Popular</button>
+                    <button class="px-4 py-1.5 rounded-full text-xs font-medium text-text-muted hover:text-text transition-colors">Lowest Price</button>
+                    <button class="px-4 py-1.5 rounded-full text-xs font-medium text-text-muted hover:text-text transition-colors">Most Stock</button>
+                </div>
+            </div>
+
+            <!-- Responsive Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Product 1 -->
+                <div class="product-card p-6 group">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="icon-box">
+                            <i class="fas fa-percent"></i>
+                        </div>
+                        <span class="badge badge-low-stock">Low Stock</span>
+                    </div>
+
+                    <div class="mb-auto">
+                        <h3 class="text-lg font-bold text-text mb-2 group-hover:text-[var(--brand-color)] transition-colors">Flat ₹100 Off</h3>
+                        <p class="text-sm text-text-muted leading-relaxed">Applicable on orders above ₹300. Valid for food delivery restaurants only.</p>
+                    </div>
+
+                    <div class="mt-8 space-y-4">
+                        <div class="price-tag">
+                            <span class="text-[10px] text-text-muted uppercase font-bold tracking-wider">Starting Price</span>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-2xl font-display font-bold text-text">₹15</span>
+                                <span class="text-sm text-text-muted">/ code</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-5 gap-3">
+                            <button onclick="openPurchaseModal('Swiggy Flat ₹100 Off', 15)" class="col-span-4 btn-brand py-3 rounded-xl text-sm uppercase tracking-wide">
+                                Buy Now
+                            </button>
+                            <button onclick="openInfoModal('Swiggy Flat ₹100 Off')" class="col-span-1 btn-glass rounded-xl flex items-center justify-center text-lg">
+                                <i class="fas fa-info"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product 2 -->
+                <div class="product-card p-6 group">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="icon-box">
+                            <i class="fas fa-gift"></i>
+                        </div>
+                        <span class="badge badge-best-seller">Best Seller</span>
+                    </div>
+
+                    <div class="mb-auto">
+                        <h3 class="text-lg font-bold text-text mb-2 group-hover:text-[var(--brand-color)] transition-colors">Swiggy Money ₹500</h3>
+                        <p class="text-sm text-text-muted leading-relaxed">Add money to your wallet. 1 Year validity from date of activation.</p>
+                    </div>
+
+                    <div class="mt-8 space-y-4">
+                        <div class="price-tag">
+                            <span class="text-[10px] text-text-muted uppercase font-bold tracking-wider">Starting Price</span>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-2xl font-display font-bold text-text">₹450</span>
+                                <span class="text-sm text-text-muted">/ code</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-5 gap-3">
+                            <button onclick="openPurchaseModal('Swiggy Money ₹500', 450)" class="col-span-4 btn-brand py-3 rounded-xl text-sm uppercase tracking-wide">
+                                Buy Now
+                            </button>
+                            <button onclick="openInfoModal('Swiggy Money ₹500')" class="col-span-1 btn-glass rounded-xl flex items-center justify-center text-lg">
+                                <i class="fas fa-info"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product 3 -->
+                <div class="product-card p-6 group">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="icon-box">
+                            <i class="fas fa-truck-fast"></i>
+                        </div>
+                    </div>
+
+                    <div class="mb-auto">
+                        <h3 class="text-lg font-bold text-text mb-2 group-hover:text-[var(--brand-color)] transition-colors">Free Delivery Pass</h3>
+                        <p class="text-sm text-text-muted leading-relaxed">Swiggy One Lite membership for 30 days. No delivery fee on orders > ₹149.</p>
+                    </div>
+
+                    <div class="mt-8 space-y-4">
+                        <div class="price-tag">
+                            <span class="text-[10px] text-text-muted uppercase font-bold tracking-wider">Starting Price</span>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-2xl font-display font-bold text-text">₹29</span>
+                                <span class="text-sm text-text-muted">/ code</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-5 gap-3">
+                            <button onclick="openPurchaseModal('Free Delivery Pass', 29)" class="col-span-4 btn-brand py-3 rounded-xl text-sm uppercase tracking-wide">
+                                Buy Now
+                            </button>
+                            <button onclick="openInfoModal('Free Delivery Pass')" class="col-span-1 btn-glass rounded-xl flex items-center justify-center text-lg">
+                                <i class="fas fa-info"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product 4 -->
+                <div class="product-card p-6 group">
+                    <div class="flex justify-between items-start mb-6">
+                        <div class="icon-box">
+                            <i class="fas fa-basket-shopping"></i>
+                        </div>
+                    </div>
+
+                    <div class="mb-auto">
+                        <h3 class="text-lg font-bold text-text mb-2 group-hover:text-[var(--brand-color)] transition-colors">Instamart ₹75 Off</h3>
+                        <p class="text-sm text-text-muted leading-relaxed">Grocery orders only. Minimum cart value ₹399 required.</p>
+                    </div>
+
+                    <div class="mt-8 space-y-4">
+                        <div class="price-tag">
+                            <span class="text-[10px] text-text-muted uppercase font-bold tracking-wider">Starting Price</span>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-2xl font-display font-bold text-text">₹8</span>
+                                <span class="text-sm text-text-muted">/ code</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-5 gap-3">
+                            <button onclick="openPurchaseModal('Instamart ₹75 Off', 8)" class="col-span-4 btn-brand py-3 rounded-xl text-sm uppercase tracking-wide">
+                                Buy Now
+                            </button>
+                            <button onclick="openInfoModal('Instamart ₹75 Off')" class="col-span-1 btn-glass rounded-xl flex items-center justify-center text-lg">
+                                <i class="fas fa-info"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+
+    <!-- PURCHASE MODAL -->
+    <div id="purchaseModal" class="modal fixed inset-0 z-50 flex items-center justify-center modal-bg opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="modal-panel w-full max-w-md mx-4 rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300">
+            <!-- Header -->
+            <div class="p-6 border-b border-border bg-surface flex justify-between items-center">
+                <h3 class="text-lg font-bold text-text flex items-center gap-2">
+                    <i class="fas fa-shopping-bag" style="color: var(--brand-color);"></i>
+                    <span id="modalTitle">Purchase</span>
+                </h3>
+                <button onclick="closeModals()" class="w-8 h-8 rounded-full bg-border flex items-center justify-center hover:bg-text-muted/20 transition-colors">
+                    <i class="fas fa-times text-text-muted"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-6">
+                <!-- Data Row -->
+                <div class="bg-input-bg rounded-xl p-4 border border-border flex justify-between items-center">
+                    <div>
+                        <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide">Current Rate</div>
+                        <div id="tierPrice" class="text-text font-bold font-display text-lg">₹15.00</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-[10px] text-text-muted uppercase font-bold tracking-wide">Stock</div>
+                        <div class="text-green-500 font-bold text-sm">Available</div>
+                    </div>
+                </div>
+
+                <!-- Quantity Control -->
+                <div>
+                    <label class="text-[10px] text-text-muted font-bold uppercase tracking-wider mb-3 block">Select Quantity</label>
+                    <div class="flex items-center justify-between p-1.5 bg-input-bg rounded-xl border border-border">
+                        <button onclick="updateQuantity(-1)" class="w-12 h-10 rounded-lg bg-border hover:bg-text-muted/20 text-text flex items-center justify-center transition-colors">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <input type="number" id="quantity" value="1" readonly class="bg-transparent text-center font-bold text-text text-xl w-20 focus:outline-none font-display">
+                        <button onclick="updateQuantity(1)" class="w-12 h-10 rounded-lg bg-border hover:bg-text-muted/20 text-text flex items-center justify-center transition-colors">
+                            <i class="fas fa-plus text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Total -->
+                <div class="border-t border-dashed border-border pt-4 mt-2">
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-text-muted font-medium">Total Payable</span>
+                        <span id="summaryTotal" class="text-2xl font-bold text-text font-display" style="color: var(--brand-color);">₹15.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Action -->
+            <div class="p-6 pt-0">
+                <button class="btn-brand w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20">
+                    Confirm Purchase <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO MODAL -->
+    <div id="infoModal" class="modal fixed inset-0 z-50 flex items-center justify-center modal-bg opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="modal-panel w-full max-w-lg mx-4 rounded-3xl shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300 flex flex-col max-h-[85vh]">
+            <div class="p-6 border-b border-border bg-surface flex justify-between items-center shrink-0">
+                <h3 class="text-xl font-bold text-text" id="infoModalTitle">Details</h3>
+                <button onclick="closeModals()" class="w-8 h-8 rounded-full bg-border flex items-center justify-center hover:bg-text-muted/20 transition-colors">
+                    <i class="fas fa-times text-text-muted"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-4">
+                <!-- Modern Accordion Item 1 -->
+                <details class="group bg-input-bg border border-border rounded-2xl overflow-hidden" open>
+                    <summary class="flex justify-between items-center p-4 cursor-pointer hover:bg-text-muted/5 transition-colors list-none">
+                        <span class="font-bold text-text">How to Redeem</span>
+                        <span class="w-6 h-6 rounded-full bg-border flex items-center justify-center group-open:rotate-180 transition-transform">
+                            <i class="fas fa-chevron-down text-xs text-text-muted"></i>
+                        </span>
+                    </summary>
+                    <div class="p-4 pt-0 text-sm text-text-muted border-t border-border mt-2">
+                        <ol class="space-y-4 pt-2">
+                            <li class="flex gap-3">
+                                <span class="w-6 h-6 rounded-full bg-[var(--brand-color)] text-black font-bold text-xs flex items-center justify-center shrink-0">1</span>
+                                <span>Copy the code received after purchase.</span>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="w-6 h-6 rounded-full bg-[var(--brand-color)] text-black font-bold text-xs flex items-center justify-center shrink-0">2</span>
+                                <div>
+                                    <span>Open the Swiggy App and go to Cart.</span>
+                                    <div class="mt-2">
+                                        <a href="#" class="text-[var(--brand-color)] text-xs font-bold hover:underline">Open App <i class="fas fa-external-link-alt ml-1"></i></a>
+                                    </div>
+                                </div>
+                            </li>
+                            <li class="flex gap-3">
+                                <span class="w-6 h-6 rounded-full bg-[var(--brand-color)] text-black font-bold text-xs flex items-center justify-center shrink-0">3</span>
+                                <span>Paste the code in "Apply Coupon" section.</span>
+                            </li>
+                        </ol>
+                    </div>
+                </details>
+
+                <!-- Modern Accordion Item 2 -->
+                <details class="group bg-input-bg border border-border rounded-2xl overflow-hidden">
+                    <summary class="flex justify-between items-center p-4 cursor-pointer hover:bg-text-muted/5 transition-colors list-none">
+                        <span class="font-bold text-text">Terms & Conditions</span>
+                        <span class="w-6 h-6 rounded-full bg-border flex items-center justify-center group-open:rotate-180 transition-transform">
+                            <i class="fas fa-chevron-down text-xs text-text-muted"></i>
+                        </span>
+                    </summary>
+                    <div class="p-4 pt-0 text-sm text-text-muted border-t border-border mt-2">
+                        <ul class="list-disc pl-4 space-y-2 pt-2 marker:text-[var(--brand-color)]">
+                            <li>Valid only on food delivery orders.</li>
+                            <li>Not applicable on instamart.</li>
+                            <li>Min cart value ₹300.</li>
+                            <li>One time use per user.</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Store Variable Handling
+        // Function to simulate admin changing theme
+        function setStoreTheme(colorHex) {
+            // This would normally calculate HSL values from Hex
+            // For demo, we are sticking to the CSS :root defaults for Swiggy Orange
+            // To test: document.documentElement.style.setProperty('--brand-hue', '220'); // Blue
+        }
+
+        /* --- Logic similar to previous version but adapted for new IDs --- */
+        let currentPrice = 0;
+        let currentQty = 1;
+
+        function openPurchaseModal(title, price) {
+            document.getElementById('modalTitle').innerText = title;
+            currentPrice = price;
+            currentQty = 1;
+            document.getElementById('quantity').value = 1;
+            document.getElementById('tierPrice').innerText = '₹' + price.toFixed(2);
+            updateSummary();
+            
+            toggleModal('purchaseModal', true);
+        }
+
+        function openInfoModal(title) {
+            document.getElementById('infoModalTitle').innerText = title || "Details";
+            toggleModal('infoModal', true);
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal').forEach(m => toggleModal(m.id, false));
+        }
+
+        function toggleModal(modalId, show) {
+            const modal = document.getElementById(modalId);
+            const panel = modal.querySelector('.modal-panel');
+            
+            if (show) {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                panel.classList.remove('scale-95');
+                panel.classList.add('scale-100');
+                document.body.style.overflow = 'hidden';
+            } else {
+                modal.classList.add('opacity-0', 'pointer-events-none');
+                panel.classList.remove('scale-100');
+                panel.classList.add('scale-95');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        function updateQuantity(change) {
+            let newQty = currentQty + change;
+            if (newQty < 1) newQty = 1;
+            currentQty = newQty;
+            document.getElementById('quantity').value = currentQty;
+            updateSummary();
+        }
+
+        function updateSummary() {
+            let total = currentPrice * currentQty;
+            document.getElementById('summaryTotal').innerText = '₹' + total.toFixed(2);
+        }
+
+        // Close on background click
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal-bg')) {
+                closeModals();
+            }
+        }
+
+        /* --- Theme Toggle System --- */
+        function toggleTheme() {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Initialize Theme Logic
+        (function() {
+            // Check local storage or system preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                // Default to dark mode if no preference or explicitly dark
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</body>
+</html>

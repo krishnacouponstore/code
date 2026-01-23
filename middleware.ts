@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-// Protected routes that require authentication
-const protectedRoutes = ["/dashboard", "/coupons", "/purchase-history", "/profile", "/add-balance"]
+// User-only routes that require authentication
+const userRoutes = ["/dashboard", "/store", "/history", "/add-balance"]
 
 // Admin routes
 const adminRoutes = ["/admin"]
 
-// Public routes that should redirect to dashboard if authenticated
+// Public routes that should redirect based on role
 const authRoutes = ["/login", "/signup"]
+
+// Shared routes accessible by both
+const sharedRoutes = ["/profile", "/store"]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -17,8 +20,8 @@ export function middleware(request: NextRequest) {
   const refreshToken = request.cookies.get("nhostRefreshToken")?.value
   const isAuthenticated = !!refreshToken
 
-  // Check if current path is a protected route
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
+  // Check if current path is a user route
+  const isUserRoute = userRoutes.some((route) => pathname.startsWith(route))
 
   // Check if current path is an admin route
   const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route))
@@ -26,19 +29,19 @@ export function middleware(request: NextRequest) {
   // Check if current path is an auth route (login/signup)
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
 
-  if ((isProtectedRoute || isAdminRoute) && !isAuthenticated) {
+  // Check if shared route
+  const isSharedRoute = sharedRoutes.some((route) => pathname.startsWith(route))
+
+  // Require authentication for protected routes
+  if ((isUserRoute || isAdminRoute || isSharedRoute) && !isAuthenticated) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("redirect", pathname)
     return NextResponse.redirect(loginUrl)
   }
 
-  if (isAuthRoute && isAuthenticated) {
-    const redirectTo = request.nextUrl.searchParams.get("redirect")
-    if (redirectTo && !redirectTo.startsWith("/login") && !redirectTo.startsWith("/signup")) {
-      return NextResponse.redirect(new URL(redirectTo, request.url))
-    }
-    return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
+  // Auth routes redirect handled by client-side in login-form
+  // We can't check role here as middleware doesn't have access to user data
+  // Role-based redirects are handled in the login form and individual pages
 
   return NextResponse.next()
 }
@@ -46,11 +49,12 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
-    "/coupons/:path*",
-    "/purchase-history/:path*",
+    "/store/:path*",
+    "/history/:path*",
     "/profile/:path*",
     "/add-balance/:path*",
     "/admin/:path*",
+    "/store/:path*",
     "/login",
     "/signup",
   ],

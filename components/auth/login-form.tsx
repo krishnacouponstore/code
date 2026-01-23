@@ -89,7 +89,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
             if (redirectTo) {
               router.replace(redirectTo)
             } else {
-              router.push("/dashboard")
+              router.push("/store")
             }
           }, 800)
           return
@@ -127,12 +127,12 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
         }
 
         setTimeout(() => {
-          if (redirectTo) {
-            router.replace(redirectTo)
-          } else if (isAdmin) {
+          if (isAdmin) {
             router.replace("/admin/dashboard")
+          } else if (redirectTo) {
+            router.replace(redirectTo)
           } else {
-            router.replace("/dashboard")
+            router.replace("/store")
           }
         }, 1000)
       } else if (result.needsEmailVerification) {

@@ -7,14 +7,19 @@ export const GET_ALL_SLOTS = gql`
       id
       name
       description
+      thumbnail
       is_published
       available_stock
       total_uploaded
       total_sold
-      thumbnail_url
       expiry_date
       created_at
       updated_at
+      store {
+        id
+        name
+        logo_url
+      }
       pricing_tiers: slot_pricing_tiers(order_by: { min_quantity: asc }) {
         id
         min_quantity
@@ -42,11 +47,11 @@ export const GET_SLOT_BY_ID = gql`
       id
       name
       description
+      thumbnail
       is_published
       available_stock
       total_uploaded
       total_sold
-      thumbnail_url
       expiry_date
       created_at
       updated_at
@@ -171,27 +176,29 @@ export const CREATE_SLOT = gql`
   mutation CreateSlot(
     $name: String!
     $description: String
-    $thumbnail_url: String
+    $thumbnail: String
     $expiry_date: timestamptz
     $is_published: Boolean!
+    $store_id: uuid
   ) {
     insert_slots_one(
       object: {
         name: $name
         description: $description
-        thumbnail_url: $thumbnail_url
+        thumbnail: $thumbnail
         expiry_date: $expiry_date
         is_published: $is_published
+        store_id: $store_id
       }
     ) {
       id
       name
       description
+      thumbnail
       is_published
       available_stock
       total_uploaded
       total_sold
-      thumbnail_url
       expiry_date
       created_at
     }
@@ -203,26 +210,28 @@ export const UPDATE_SLOT = gql`
     $id: uuid!
     $name: String!
     $description: String
-    $thumbnail_url: String
+    $thumbnail: String
     $expiry_date: timestamptz
     $is_published: Boolean!
+    $store_id: uuid
   ) {
     update_slots_by_pk(
       pk_columns: { id: $id }
       _set: {
         name: $name
         description: $description
-        thumbnail_url: $thumbnail_url
+        thumbnail: $thumbnail
         expiry_date: $expiry_date
         is_published: $is_published
+        store_id: $store_id
         updated_at: "now()"
       }
     ) {
       id
       name
       description
+      thumbnail
       is_published
-      thumbnail_url
       expiry_date
       updated_at
     }

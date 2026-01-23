@@ -49,8 +49,8 @@ export function DashboardHeader({ walletBalance = 0, userName = "", userEmail = 
 
   const navItems = [
     { name: "Dashboard", href: "/dashboard" },
-    { name: "Coupons", href: "/coupons" },
-    { name: "Purchase History", href: "/purchase-history" },
+    { name: "Store", href: "/store" },
+    { name: "History", href: "/history" },
   ]
 
   const moreItems = [

@@ -109,7 +109,7 @@ export function CTASection() {
               </Link>
             ) : (
               // Regular user logged in - show "Start Saving Now" linking to coupons
-              <Link href="/coupons">
+              <Link href="/store">
                 <Button
                   className="px-8 py-3 bg-secondary text-secondary-foreground rounded-full shadow-[0px_0px_0px_4px_rgba(255,255,255,0.13)] hover:bg-secondary/90 flex items-center gap-2"
                   size="lg"

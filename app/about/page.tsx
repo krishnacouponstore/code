@@ -1,6 +1,7 @@
 "use client"
 
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { Navbar } from "@/components/navbar"
+import { PublicNavbar } from "@/components/public-navbar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
@@ -23,11 +24,11 @@ import {
 } from "lucide-react"
 
 export default function AboutPage() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, isAuthenticated } = useAuth()
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     )
@@ -122,10 +123,10 @@ export default function AboutPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader />
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+      {isAuthenticated ? <Navbar /> : <PublicNavbar />}
 
-      <main className="max-w-6xl mx-auto px-6 py-12">
+      <main className="container mx-auto px-4 py-12 max-w-6xl pt-32">
         {/* Hero Section */}
         <section className="text-center mb-20">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">About CoupX</h1>

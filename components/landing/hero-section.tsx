@@ -192,7 +192,7 @@ export function HeroSection() {
               </Link>
             ) : (
               // Regular user logged in - show Start Saving Now linking to coupons
-              <Link href="/coupons">
+              <Link href="/store">
                 <Button className="bg-secondary text-secondary-foreground hover:bg-secondary/90 px-8 py-3 rounded-full font-medium text-base shadow-lg ring-1 ring-white/10 flex items-center gap-2">
                   Start Saving Now
                   <ArrowRight className="w-4 h-4" />

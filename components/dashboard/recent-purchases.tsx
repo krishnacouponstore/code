@@ -47,7 +47,7 @@ export function RecentPurchases({ purchases }: RecentPurchasesProps) {
             <p className="text-muted-foreground mb-6 max-w-sm">
               Start by browsing our available coupon slots and make your first purchase.
             </p>
-            <Link href="/coupons">
+            <Link href="/store">
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
                 Browse Coupons
               </Button>
@@ -68,7 +68,7 @@ export function RecentPurchases({ purchases }: RecentPurchasesProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-foreground">Recent Purchases</CardTitle>
         <Link
-          href="/purchase-history"
+          href="/history"
           className="text-sm text-primary hover:text-primary/80 font-medium transition-colors hover:underline"
         >
           View All

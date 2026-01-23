@@ -1,0 +1,1522 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+auth schema details 
+📌 Table Overview: users
+
+The users table stores authentication and identity data for application users.
+It is designed for login, authentication, MFA (multi-factor authentication), sessions, and user profile management.
+
+This table typically powers:
+
+Email / phone login
+
+Password & OTP authentication
+
+MFA (TOTP, WebAuthn)
+
+User profile data
+
+Role-based access
+
+It looks very similar to an Auth / Identity provider table (e.g., Supabase / Hasura Auth).
+
+📋 Columns Details (Structured Table)
+🔹 Core Identity
+Column Name	Data Type	Constraints / Default	Description
+id	uuid	PK, Unique, Default: gen_random_uuid()	Unique user identifier
+createdAt	timestamp with time zone	Default: now()	Account creation time
+updatedAt	timestamp with time zone	Default: now()	Last profile update time
+lastSeen	timestamp with time zone	Nullable	Last activity timestamp
+disabled	boolean	Default: false	Whether account is disabled
+👤 Profile Information
+Column Name	Data Type	Default	Description
+displayName	text	''	User display name
+avatarUrl	text	''	Profile image URL
+locale	varchar	—	User locale (e.g., en, en-IN)
+metadata	jsonb	Nullable	Custom user metadata
+📧 Email & 📱 Phone Authentication
+Column Name	Data Type	Constraints	Description
+email	citext	Unique, Nullable	User email (case-insensitive)
+phoneNumber	text	Unique, Nullable	User phone number
+passwordHash	text	Nullable	Encrypted password
+emailVerified	boolean	Default: false	Email verification status
+phoneNumberVerified	boolean	Default: false	Phone verification status
+newEmail	citext	Nullable	Pending email change
+🔐 OTP & MFA Security
+Column Name	Data Type	Description
+otpMethodLastUsed	text	Last OTP method used
+otpHash	text	OTP hash
+otpHashExpiresAt	timestamp with time zone	OTP expiry time
+totpSecret	text	TOTP secret key
+activeMfaType	text	Active MFA method
+currentChallenge	text	WebAuthn challenge
+🎫 Session & Ticketing
+Column Name	Data Type	Description
+ticket	text	Login/session ticket
+ticketExpiresAt	timestamp with time zone	Ticket expiry time
+🧩 Roles & Account Type
+Column Name	Data Type	Default	Description
+defaultRole	text	'user'	Default user role
+isAnonymous	boolean	false	Anonymous user flag
+🔑 Constraints & Keys
+✅ Primary Key
+Key Name	Column
+users_pkey	id
+🔒 Unique Constraints
+Column	Purpose
+email	Ensures unique email
+phoneNumber	Ensures unique phone number
+🔗 Foreign Keys
+Column	References	Purpose
+defaultRole	roles(role)	Role-based access control
+✔️ Check Constraints
+Constraint Name	Purpose
+active_mfa_types_check	Restricts valid MFA types
+⚡ Indexes
+Index Name	Column	Purpose
+users_pkey	id	Primary key lookup
+users_email_key	email	Email-based login
+users_phone_number_key	phoneNumber	Phone-based login
+🔁 Trigger
+Trigger Name	Timing	Purpose
+set_auth_users_updated_at	BEFORE UPDATE	Auto-updates updatedAt
+🔌 GraphQL API Mapping
+
+This table exposes custom GraphQL root fields:
+
+Operation	GraphQL Name
+Select all	users
+Select by PK	user
+Insert	insertUser
+Update	updateUser
+Delete	deleteUser
+Aggregate	usersAggregate
+
+
+
+
+
+
+
+
+📌 Table Overview: user_roles
+
+The user_roles table implements role-based access control (RBAC).
+It assigns one or more roles to a user, allowing flexible permission management.
+
+This table enables:
+
+Multiple roles per user
+
+Clean separation of users and roles
+
+Scalable authorization logic
+
+It acts as a junction (many-to-many) table between users and roles.
+
+📋 Columns Details (Structured Table)
+🔹 Core Fields
+Column Name	Data Type	Constraints / Default	Description
+id	uuid	Primary Key, Unique, Default: gen_random_uuid()	Unique user-role assignment
+createdAt	timestamp with time zone	Default: now()	When the role was assigned
+userId	uuid	FK → users.id	User who owns the role
+role	text	FK → roles.role	Assigned role name
+🔑 Constraints & Keys
+✅ Primary Key
+Key Name	Column
+user_roles_pkey	id
+🔒 Unique Constraint
+Columns	Purpose
+(userId, role)	Prevents assigning the same role twice to one user
+🔗 Foreign Keys
+Column	References	Purpose
+userId	users(id)	Links role to user
+role	roles(role)	Ensures valid role
+⚡ Indexes
+Index Name	Columns	Purpose
+user_roles_pkey	id	Primary key lookup
+user_roles_user_id_role_key	userId, role	Uniqueness & fast permission checks
+🔌 GraphQL API Mapping
+
+This table is exposed in GraphQL with custom root field names:
+
+Operation	GraphQL Name
+Select all	authUserRoles
+Select by PK	authUserRole
+Insert	insertAuthUserRole
+Update	updateAuthUserRole
+Delete	deleteAuthUserRole
+Aggregate	authUserRolesAggregate
+
+
+
+
+
+
+📌 Table Overview: roles
+
+The roles table defines all valid roles in the authentication/authorization system.
+It is the source of truth for role names used across the app and is referenced by user_roles and users.defaultRole.
+
+This table enables:
+
+Centralized role management
+
+Strong data integrity for RBAC
+
+Clean permission configuration (GraphQL / backend)
+
+📋 Columns Details (Structured Table)
+Column Name	Data Type	Constraints	Description
+role	text	Primary Key, Unique	Role identifier (e.g., user, admin, moderator)
+🔑 Constraints & Keys
+✅ Primary Key
+Key Name	Column
+roles_pkey	role
+
+Each role value must be globally unique
+
+Role names are human-readable identifiers
+
+🔗 Relationships
+Referenced By
+Table	Column	Purpose
+user_roles	role	Assigns roles to users
+users	defaultRole	Sets user’s default role
+⚡ Indexes
+Index Name	Column	Purpose
+roles_pkey	role	Fast role lookup & FK validation
+🔌 GraphQL API Mapping
+
+This table is exposed via custom GraphQL root fields:
+
+Operation	GraphQL Name
+Select all	authRoles
+Select by PK	authRole
+Insert	insertAuthRole
+Update	updateAuthRole
+Delete	deleteAuthRole
+Aggregate	authRolesAggregate
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+📌 Table Overview: refresh_tokens
+
+The refresh_tokens table manages long-lived authentication sessions.
+It stores refresh tokens that allow users to obtain new access tokens without logging in again.
+
+This table is critical for:
+
+Secure session management
+
+Token rotation
+
+Logout & session invalidation
+
+Multi-device login support
+
+📋 Columns Details (Structured Table)
+🔹 Core Identification
+Column Name	Data Type	Constraints / Default	Description
+id	uuid	Primary Key, Unique, Default: gen_random_uuid()	Unique refresh token record
+createdAt	timestamp with time zone	Default: now()	When the refresh token was created
+expiresAt	timestamp with time zone	—	When the refresh token expires
+👤 User Association
+Column Name	Data Type	Constraints	Description
+userId	uuid	FK → users.id	User owning this refresh token
+🔐 Token & Security Data
+Column Name	Data Type	Default / Nullable	Description
+refreshTokenHash	varchar	Nullable	Hashed refresh token (never store plain token)
+type	text	Default: 'regular'	Token type (e.g., regular, magic_link, oauth)
+metadata	jsonb	Nullable	Extra context (device, IP, user agent, etc.)
+🔑 Constraints & Keys
+✅ Primary Key
+Key Name	Column
+refresh_tokens_pkey	id
+🔗 Foreign Keys
+Column	References	Purpose
+userId	users(id)	Links token to user
+type	refresh_token_types(value)	Ensures valid token type
+⚡ Indexes
+Index Name	Columns	Purpose
+refresh_tokens_pkey	id	Primary key lookup
+refresh_tokens_refresh_token_hash_expires_at_user_id_idx	refreshTokenHash, expiresAt, userId	Fast token validation & cleanup
+🔌 GraphQL API Mapping
+
+This table is exposed via custom GraphQL root fields:
+
+Operation	GraphQL Name
+Select all	authRefreshTokens
+Select by PK	authRefreshToken
+Insert	insertAuthRefreshToken
+Update	updateAuthRefreshToken
+Delete	deleteAuthRefreshToken
+Aggregate	authRefreshTokensAggregate
+
+
+
+
+
+
+Columns
+
+Edit
+value → value- text, primary key, unique
+
+Edit
+comment → comment- text, nullable
+
+Add a new column
+Table Properties
+Primary Key
+
+Edit
+value - refresh_token_types_pkey
+Foreign Keys
+
+Add a foreign key
+Unique Keys
+
+Add a unique key
+Check Constraints
+
+Add a check constraint
+Indexes
+
+Remove
+refresh_token_types_pkeyPRIMARY KEY, UNIQUEbtreeon(value)
+
+Add a index
+Triggers
+(No triggers)
+GraphQL Features
+Computed Fields
+(Learn More)
+
+Add a computed field
+Custom GraphQL Root Fields
+
+Edit
+custom_table_name
+→
+authRefreshTokenTypes
+delete
+→
+deleteAuthRefreshTokenTypes
+delete_by_pk
+→
+deleteAuthRefreshTokenType
+insert
+→
+insertAuthRefreshTokenTypes
+insert_one
+→
+insertAuthRefreshTokenType
+select
+→
+authRefreshTokenTypes
+select_aggregate
+→
+authRefreshTokenTypesAggregate
+select_by_pk
+→
+authRefreshTokenType
+update
+→
+updateAuthRefreshTokenTypes
+update_by_pk
+→
+updateAuthRefreshTokenType
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+credentials
+nhostsubdomain: tiujfdwdudfhfoqnzhxl
+region :ap-south-1
+graphql endpoint: https://tiujfdwdudfhfoqnzhxl.hasura.ap-south-1.nhost.run/v1/graphql
+adminsecret key : b%$=u(i'FPeG9hGIhasTLkdcYz5c'7vr
+
+
+📚 CodeCrate - Complete Database Documentation
+Last Updated: December 5, 2025
+Database: PostgreSQL 15 on Nhost
+Region: ap-south-1 (Mumbai)
+Schema: public
+
+📊 Database Architecture Overview
+Tables Summary:
+#	Table Name	Purpose	Est. Records
+1	user_profiles	User wallet, stats, and blocking	1,000+
+2	slots	Coupon categories/slots	50-100
+3	slot_pricing_tiers	Bulk pricing configuration	150-300
+4	coupons	Actual coupon codes	100,000+
+5	purchases	User purchase orders	10,000+
+6	topups	Wallet balance additions	5,000+
+🔷 Table 1: user_profiles
+Purpose:
+Store user-specific data (wallet, stats, blocking status) that extends Nhost auth users.
+
+Columns:
+Column	Type	Nullable	Default	Description
+id	uuid	NO	-	Primary key, FK to auth.users.id
+wallet_balance	numeric	NO	0.00	Current wallet balance
+is_blocked	boolean	NO	false	Admin can block users
+total_spent	numeric	NO	0.00	Lifetime spending
+total_purchased	integer	NO	0	Total coupons purchased
+created_at	timestamptz	NO	now()	Account creation
+updated_at	timestamptz	NO	now()	Last update
+Keys & Constraints:
+Primary Key:
+
+id (user_profiles_pkey)
+
+Foreign Keys:
+
+id → auth.users.id (fk_auth_user)
+
+Indexes:
+
+user_profiles_pkey - PRIMARY KEY, UNIQUE, btree on (id)
+
+idx_user_profiles_is_blocked - btree on (is_blocked)
+
+Triggers:
+
+set_user_profiles_updated_at - BEFORE UPDATE (auto-update updated_at)
+
+Notes:
+Email and display name are in auth.users table (Nhost managed)
+
+Total stats updated via triggers when purchases happen
+
+.
+
+📌 Table Overview: slots
+
+The slots table represents coupon slots / offers that can be published to users.
+Each slot holds inventory information, publishing status, and optional store linkage.
+
+This table is used to:
+
+Manage coupon availability
+
+Control publishing (draft vs live)
+
+Track stock and sales
+
+Power storefront / offer listings
+
+📋 Columns Details (Structured Table)
+🔹 Core Identification
+Column Name	Data Type	Constraints / Default	Description
+id	uuid	PK, Unique, Default: gen_random_uuid()	Unique slot identifier
+name	text	—	Slot / offer name
+description	text	Nullable	Detailed description of the offer
+📢 Publishing & Visibility
+Column Name	Data Type	Default	Description
+is_published	boolean	false	Whether the slot is visible to users
+thumbnail	text	Nullable	Optional short condition/thumbnail text
+expiry_date	timestamp with time zone	Nullable	Optional expiry date of the coupon
+
+ℹ️ Only published slots are meant to be shown to users.
+
+📦 Inventory & Sales Tracking
+Column Name	Data Type	Default	Description
+available_stock	integer	0	Current unsold coupon count
+total_uploaded	integer	0	Total coupons ever uploaded
+total_sold	integer	0	Total coupons sold
+
+📊 These fields enable real-time stock control and sales analytics.
+
+🏬 Store Association
+Column Name	Data Type	Nullable	Description
+store_id	uuid	Yes	Linked store (FK → stores.id)
+🕒 Audit Timestamps
+Column Name	Data Type	Default
+created_at	timestamp with time zone	now()
+updated_at	timestamp with time zone	now()
+🔑 Constraints & Keys
+✅ Primary Key
+Key Name	Column
+slots_pkey	id
+🔗 Foreign Keys
+Column	References	Purpose
+store_id	stores(id)	Links slot to a store
+⚡ Indexes
+Index Name	Column	Purpose
+slots_pkey	id	Primary key lookup
+idx_slots_is_published	is_published	Fast filtering for live offers
+idx_slots_name	name	Search by slot name
+idx_slots_store_id	store_id	Store-wise listing
+🧠 How It Fits in the Coupon System
+stores
+   ⬇
+slots (offers)
+   ⬇
+coupons / redemptions / banners
+
+
+Slots define what offer exists
+
+Stock fields track availability
+
+Publishing controls who can see it
+
+Store link enables brand-wise offers
+
+🧠 Example Use Cases
+
+Draft an offer → is_published = false
+
+Launch offer → is_published = true
+
+Sell coupon → decrement available_stock, increment total_sold
+
+Upload more coupons → increment total_uploaded & available_stock
+
+Expired offer → set expiry_date
+
+
+📌 Table Overview: table 3-  redemption_steps
+
+The redemption_steps table stores step-by-step instructions for redeeming coupons for a specific slot.
+
+Each slot can have multiple ordered steps (Step 1, Step 2, Step 3, …), which are shown to users in sequence to guide them through the coupon redemption process.
+
+This table is mainly used for:
+
+User guidance (how to redeem a coupon)
+
+Slot-specific instructions
+
+UI step-by-step flows
+
+📋 Columns Details (Structured Table)
+🔹 Core Identification
+Column Name	Data Type	Constraints / Default	Description
+id	uuid	Primary Key, Unique, Default: gen_random_uuid()	Unique redemption step record
+slot_id	uuid	FK → slots.id	Slot to which this step belongs
+🧭 Step Content
+Column Name	Data Type	Description
+step_number	integer	Order of the step (1, 2, 3, …)
+step_text	text	Instruction text for this step
+🕒 Audit Timestamps
+Column Name	Data Type	Default
+created_at	timestamp with time zone	now()
+updated_at	timestamp with time zone	now()
+
+ℹ️ updated_at is automatically maintained via trigger.
+
+🔑 Constraints & Keys
+✅ Primary Key
+Key Name	Column
+redemption_steps_pkey	id
+🔒 Unique Constraint
+Columns	Purpose
+(slot_id, step_number)	Ensures no duplicate step numbers within the same slot
+
+This guarantees that each step order appears only once per slot.
+
+🔗 Foreign Keys
+Column	References	Purpose
+slot_id	slots(id)	Links redemption steps to a slot
+✔️ Check Constraints
+Constraint Name	Purpose
+redemption_steps_step_number_check	Ensures step_number is valid (e.g., > 0)
+⚡ Indexes
+Index Name	Columns	Purpose
+redemption_steps_pkey	id	Primary key lookup
+idx_redemption_steps_slot_id	slot_id	Fast lookup of steps by slot
+idx_redemption_steps_slot_step	slot_id, step_number	Ordered retrieval of steps
+🔁 Trigger
+Trigger Name	Timing	Purpose
+trigger_set_redemption_steps_updated_at	BEFORE UPDATE	Auto-updates updated_at
+🧠 How It Fits in the System
+slots
+  ⬇
+redemption_steps
+
+
+Each slot can define its own redemption instructions
+
+Steps are always displayed in ascending step_number order
+
+Easy to update instructions without code changes
+
+🧠 Example Data
+slot_id	step_number	step_text
+S1	1	Open the grocery app
+S1	2	Go to the coupon section
+S1	3	Enter the coupon code
+S1	4	Complete the checkout
+
+
+
+🔷 Table 4: slot_pricing_tiers
+Purpose:
+Define bulk pricing tiers for each slot (e.g., 1-49 codes = ₹12, 50-99 = ₹10).
+
+Columns:
+Column	Type	Nullable	Default	Description
+id	uuid	NO	gen_random_uuid()	Primary key
+slot_id	uuid	NO	-	Which slot this pricing belongs to
+min_quantity	integer	NO	-	Minimum quantity for this tier
+max_quantity	integer	YES	NULL	Max quantity (NULL = unlimited)
+unit_price	numeric	NO	-	Price per coupon at this tier
+label	text	YES	NULL	Marketing label (e.g., "Best value")
+created_at	timestamptz	NO	now()	Created timestamp
+updated_at	timestamptz	NO	now()	Updated timestamp
+Keys & Constraints:
+Primary Key:
+
+id (slot_pricing_tiers_pkey)
+
+Foreign Keys:
+
+slot_id → slots.id (slot_pricing_tiers_slot_id_fkey)
+
+Unique Keys:
+
+idx_slot_pricing_no_overlap - UNIQUE on (slot_id, min_quantity)
+
+Check Constraints:
+
+slot_pricing_tiers_unit_price_check - unit_price > 0
+
+slot_pricing_tiers_check - max_quantity IS NULL OR max_quantity >= min_quantity
+
+slot_pricing_tiers_min_quantity_check - min_quantity > 0
+
+Indexes:
+
+slot_pricing_tiers_pkey - PRIMARY KEY, UNIQUE, btree on (id)
+
+idx_slot_pricing_no_overlap - UNIQUE, btree on (slot_id, min_quantity)
+
+idx_slot_pricing_tiers_min_quantity - btree on (min_quantity)
+
+idx_slot_pricing_tiers_slot_id - btree on (slot_id)
+
+Triggers:
+
+set_slot_pricing_tiers_updated_at - BEFORE UPDATE
+
+Example Data:
+text
+Slot: Flipkart Grocery
+├─ Tier 1: 1-49 codes → ₹12.00 ("Perfect for small orders")
+├─ Tier 2: 50-99 codes → ₹10.00 ("Save ₹2 per code")
+└─ Tier 3: 100+ codes → ₹8.00 ("Best value")
+🔷 Table 5: coupons
+Purpose:
+Store actual coupon codes that users purchase.
+
+Columns:
+Column	Type	Nullable	Default	Description
+id	uuid	NO	gen_random_uuid()	Primary key
+slot_id	uuid	NO	-	Which slot this code belongs to
+code	text	NO	-	Actual coupon code (15-20 chars)
+is_sold	boolean	NO	false	Whether purchased
+sold_to	uuid	YES	NULL	User who purchased
+sold_at	timestamptz	YES	NULL	When purchased
+purchase_id	uuid	YES	NULL	Which purchase order
+created_at	timestamptz	NO	now()	When uploaded
+Keys & Constraints:
+Primary Key:
+
+id (coupons_pkey)
+
+Foreign Keys:
+
+slot_id → slots.id (coupons_slot_id_fkey)
+
+sold_to → user_profiles.id (coupons_sold_to_fkey)
+
+purchase_id → purchases.id (fk_coupons_purchase)
+
+Unique Keys:
+
+code (coupons_code_key) - Each code is unique globally
+
+Indexes:
+
+coupons_pkey - PRIMARY KEY, UNIQUE, btree on (id)
+
+coupons_code_key - UNIQUE, btree on (code)
+
+idx_coupons_code_unique - UNIQUE, btree on (code)
+
+idx_coupons_is_sold - btree on (is_sold)
+
+idx_coupons_purchase_id - btree on (purchase_id)
+
+idx_coupons_slot_available - btree on (slot_id, is_sold) WHERE (is_sold = false)
+
+idx_coupons_slot_id - btree on (slot_id)
+
+idx_coupons_sold_to - btree on (sold_to)
+
+Business Logic:
+Code format: 15-20 alphanumeric characters
+
+Example: FKG00000000000001, AMZ00000000000123
+
+When purchased: is_sold = true, sold_to and purchase_id set
+
+User can re-download codes via purchase_id
+
+🔷 Table 6: purchases
+Purpose:
+Track user purchase orders with order numbers.
+
+Columns:
+Column	Type	Nullable	Default	Description
+id	uuid	NO	gen_random_uuid()	Primary key
+user_id	uuid	NO	-	Who purchased
+slot_id	uuid	NO	-	Which coupon category
+quantity	integer	NO	-	Number of codes purchased
+unit_price	numeric	NO	-	Price per code at purchase time
+total_price	numeric	NO	-	Total amount (quantity × unit_price)
+status	text	NO	'completed'	completed, failed, refunded
+created_at	timestamptz	NO	now()	Purchase timestamp
+order_number	text	YES	NULL	Sequential order ID (e.g., ORD24121001)
+Keys & Constraints:
+Primary Key:
+
+id (purchases_pkey)
+
+Foreign Keys:
+
+slot_id → slots.id (purchases_slot_id_fkey)
+
+user_id → user_profiles.id (purchases_user_id_fkey)
+
+Unique Keys:
+
+order_number (purchases_order_number_key)
+
+Check Constraints:
+
+purchases_total_price_check - total_price > 0
+
+purchases_unit_price_check - unit_price > 0
+
+purchases_quantity_check - quantity > 0
+
+Indexes:
+
+purchases_pkey - PRIMARY KEY, UNIQUE, btree on (id)
+
+idx_purchases_created_at - btree on (created_at DESC)
+
+idx_purchases_order_number - btree on (order_number)
+
+idx_purchases_slot_id - btree on (slot_id)
+
+idx_purchases_user_created - btree on (user_id, created_at DESC)
+
+idx_purchases_user_id - btree on (user_id)
+
+purchases_order_number_key - UNIQUE, btree on (order_number)
+
+Triggers:
+
+set_order_number - BEFORE INSERT (auto-generates order_number)
+
+Order Number Format:
+Format: ORD + YYMM + Sequential
+
+Example: ORD24121001, ORD24121002
+
+Auto-generated by trigger on insert
+
+🔷 Table 7: topups
+Purpose:
+Track wallet balance additions (Razorpay payments or manual).
+
+Columns:
+Column	Type	Nullable	Default	Description
+id	uuid	NO	gen_random_uuid()	Primary key
+user_id	uuid	NO	-	Who topped up
+amount	numeric	NO	-	Amount added
+razorpay_order_id	text	YES	NULL	Razorpay order ID
+razorpay_payment_id	text	YES	NULL	Razorpay payment ID (UNIQUE)
+razorpay_signature	text	YES	NULL	Payment signature
+status	text	NO	'pending'	pending, success, failed
+payment_method	text	YES	NULL	UPI, Card, NetBanking
+verified_at	timestamptz	YES	NULL	When payment verified
+created_at	timestamptz	NO	now()	Request timestamp
+Keys & Constraints:
+Primary Key:
+
+id (topups_pkey)
+
+Foreign Keys:
+
+user_id → user_profiles.id (topups_user_id_fkey)
+
+Unique Keys:
+
+razorpay_payment_id (topups_razorpay_payment_id_key)
+
+Check Constraints:
+
+topups_amount_check - amount > 0
+
+Indexes:
+
+topups_pkey - PRIMARY KEY, UNIQUE, btree on (id)
+
+idx_topups_created_at - btree on (created_at DESC)
+
+idx_topups_payment_id_unique - UNIQUE, btree on (razorpay_payment_id) WHERE (razorpay_payment_id IS NOT NULL)
+
+idx_topups_status - btree on (status)
+
+idx_topups_user_created - btree on (user_id, created_at DESC)
+
+idx_topups_user_id - btree on (user_id)
+
+topups_razorpay_payment_id_key - UNIQUE, btree on (razorpay_payment_id)
+
+Payment Flow:
+User requests topup → Status: 'pending'
+
+Razorpay payment initiated → razorpay_order_id set
+
+Payment completed → razorpay_payment_id and razorpay_signature set
+
+Webhook verifies payment → Status: 'success', verified_at set
+
+Wallet credited → user_profiles.wallet_balance updated
+
+🔗 Relationships & Foreign Keys
+Visual Schema:
+text
+auth.users (Nhost)
+    ↓ (1:1)
+user_profiles
+    ↓ (1:many)
+    ├─ purchases
+    └─ topups
+
+slots
+    ↓ (1:many)
+    ├─ slot_pricing_tiers
+    ├─ coupons
+    └─ purchases
+
+purchases
+    ↓ (1:many)
+    └─ coupons (via purchase_id)
+Detailed Relationships:
+user_profiles:
+
+← auth.users.id (parent)
+
+→ purchases.user_id (children)
+
+→ topups.user_id (children)
+
+→ coupons.sold_to (children)
+
+slots:
+
+→ slot_pricing_tiers.slot_id (children)
+
+→ coupons.slot_id (children)
+
+→ purchases.slot_id (children)
+
+purchases:
+
+← user_profiles.id (parent)
+
+← slots.id (parent)
+
+→ coupons.purchase_id (children)
+
+coupons:
+
+← slots.id (parent)
+
+← user_profiles.id (parent, via sold_to)
+
+← purchases.id (parent, via purchase_id)
+
+
+
+
+
+📌 Table Overview: banners
+
+The banners table stores configurable UI banner cards used for promotions, offers, or announcements.
+
+It is designed to be:
+
+Fully CMS-driven
+
+Theme-aware (light/dark icons)
+
+Role-safe (public users can only view active banners)
+
+Sortable & toggleable
+
+This table is typically consumed by home pages, dashboards, or landing sections.
+
+📋 Columns Details (Structured Table)
+🎨 Branding & Visual Identity
+Column Name	Data Type	Default	Description
+brand_name	text	—	Brand or partner name
+primary_color	varchar	#E23744	Primary accent color
+background_image_url	text	Nullable	Background image for banner
+icon_mode	varchar	'icon'	Icon display mode (icon / image)
+card_icon_class	varchar	Nullable	CSS icon class
+icon_url_light	text	Nullable	Icon for light theme
+icon_url_dark	text	Nullable	Icon for dark theme
+🏷️ Badge Configuration
+Column Name	Data Type	Default	Description
+is_badge_visible	boolean	true	Show/hide badge
+badge_text	varchar	Nullable	Badge label (e.g., “NEW”)
+badge_icon	varchar	Nullable	Badge icon
+📝 Content & Text
+Column Name	Data Type	Description
+title_line_1	text	Primary title
+title_line_2	text	Secondary title
+description	text	Description text
+offer_main_text	varchar	Main offer text
+offer_sub_text	varchar	Sub-offer text
+🔘 CTA (Call-to-Action)
+Column Name	Data Type	Default	Description
+button_text	varchar	View Offer	CTA button text
+button_url	text	Nullable	Redirect URL
+⚙️ Control & Ordering
+Column Name	Data Type	Default	Description
+is_active	boolean	true	Banner visibility flag
+sort_order	integer	0	Display order (lower = first)
+🕒 Audit
+Column Name	Data Type	Default
+created_at	timestamp with time zone	now()
+updated_at	timestamp with time zone	now()
+
+updated_at is auto-maintained via triggers.
+
+🔑 Constraints & Keys
+✅ Primary Key
+Key	Column
+banners_pkey	id
+✔️ Check Constraint
+Constraint	Purpose
+banners_icon_mode_check	Restricts valid icon modes
+🔁 Triggers
+Trigger Name	Timing	Purpose
+set_banners_updated_at	BEFORE UPDATE	Auto-update timestamp
+tr_banners_update_timestamp	BEFORE UPDATE	Safety timestamp sync
+🔐 Role-Based Access Control (IMPORTANT)
+
+This table supports 3 roles:
+
+👑 Admin
+
+✅ ALL permissions
+
+select
+
+insert
+
+update
+
+delete
+
+Can manage all banners, active or inactive
+
+👤 User (Logged-in customer)
+🌐 Public (Guest user)
+
+Both roles have READ-ONLY access, with a strict filter:
+
+✅ Allowed
+
+select only
+
+Only active banners
+
+❌ Not Allowed
+
+Insert
+
+Update
+
+Delete
+
+View inactive banners
+
+🔍 Permission Filter (Select Rule)
+
+For user and public roles:
+
+{
+  "is_active": {
+    "_eq": true
+  }
+}
+
+
+This ensures:
+
+Only active banners are visible
+
+Same behavior for logged-in and guest users
+
+Safe public exposure
+
+🧠 How It’s Used in UI
+banners (filtered by is_active = true)
+   ⬇
+sorted by sort_order
+   ⬇
+rendered as cards
+
+
+Admin controls visibility via is_active
+
+UI automatically updates without redeploy
+
+Same API for public & authenticated users
+
+🧠 Summary (Simple Words)
+
+Stores promotional banner cards
+
+Fully CMS-driven
+
+Supports themes, icons, badges
+
+Admin has full control
+
+Users & guests can only view active banners
+
+Secure, scalable, and UI-friendly
+
+
+
+
+
+
+
+
+
+
+
+
+
+# **Complete Hasura Permissions Documentation**
+
+***
+
+## **Overview**
+
+This document contains all permission configurations for the Flipkart Coupon Selling Web App database.
+
+**Roles:**
+- `user` - Regular customers (restricted access to own data only)
+- `admin` - Administrator (full access to all tables)
+
+***
+
+## **Table 1: user_profiles**
+
+### **Role: user**
+
+#### **SELECT Permission**
+- **Row select permissions:**
+```json
+{
+  "id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+- **Column permissions:** `id`, `email`, `full_name`, `phone`, `wallet_balance`, `is_blocked`, `total_spent`, `total_purchased`, `created_at`, `updated_at`
+- **Excluded columns:** `is_admin`
+- **Aggregation queries:** No
+- **Logic:** Users can only view their own profile
+
+#### **UPDATE Permission**
+- **Row update permissions:**
+```json
+{
+  "id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+- **Column permissions:** `full_name`, `phone`
+- **Column presets:** `updated_at` = `now()`
+- **Logic:** Users can only update their name and phone
+
+#### **INSERT Permission:** ❌ None
+
+#### **DELETE Permission:** ❌ None
+
+***
+
+### **Role: admin**
+
+#### **All Permissions (SELECT, INSERT, UPDATE, DELETE)**
+- **Row permissions:** Without any checks (full access)
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Column presets (INSERT):** `created_at` = `now()`, `updated_at` = `now()`
+- **Column presets (UPDATE):** `updated_at` = `now()`
+
+***
+
+## **Table 2: slots**
+
+### **Role: user**
+
+#### **SELECT Permission**
+- **Row select permissions:**
+```json
+{
+  "is_published": {
+    "_eq": true
+  }
+}
+```
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Logic:** Users can only see published slots
+
+#### **INSERT Permission:** ❌ None
+
+#### **UPDATE Permission:** ❌ None
+
+#### **DELETE Permission:** ❌ None
+
+***
+
+### **Role: admin**
+
+#### **All Permissions (SELECT, INSERT, UPDATE, DELETE)**
+- **Row permissions:** Without any checks
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Column presets (INSERT):** `id` = `gen_random_uuid()`, `created_at` = `now()`, `updated_at` = `now()`
+- **Column presets (UPDATE):** `updated_at` = `now()`
+
+***
+
+
+same for redemption_steps table 
+
+
+
+## **Table 3: slot_pricing_tiers**
+
+### **Role: user**
+
+#### **SELECT Permission**
+- **Row select permissions:**
+```json
+{
+  "slot": {
+    "is_published": {
+      "_eq": true
+    }
+  }
+}
+```
+- **Column permissions:** All columns
+- **Aggregation queries:** No
+- **Logic:** Users can only see pricing for published slots (uses relationship to slots table)
+
+#### **INSERT Permission:** ❌ None
+
+#### **UPDATE Permission:** ❌ None
+
+#### **DELETE Permission:** ❌ None
+
+***
+
+### **Role: admin**
+
+#### **All Permissions (SELECT, INSERT, UPDATE, DELETE)**
+- **Row permissions:** Without any checks
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Column presets (INSERT):** `id` = `gen_random_uuid()`, `created_at` = `now()`, `updated_at` = `now()`
+- **Column presets (UPDATE):** `updated_at` = `now()`
+
+***
+
+## **Table 4: coupons**
+
+### **Role: user**
+
+#### **SELECT Permission**
+- **Row select permissions:**
+```json
+{
+  "sold_to": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+- **Column permissions:** All columns
+- **Aggregation queries:** No
+- **Logic:** Users can only see coupons they purchased (for download feature)
+
+#### **INSERT Permission:** ❌ None
+
+#### **UPDATE Permission:** ❌ None
+
+#### **DELETE Permission:** ❌ None
+
+***
+
+### **Role: admin**
+
+#### **All Permissions (SELECT, INSERT, UPDATE, DELETE)**
+- **Row permissions:** Without any checks
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Column presets (INSERT):** `id` = `gen_random_uuid()`, `created_at` = `now()`
+
+***
+
+## **Table 5: purchases**
+
+### **Role: user**
+
+#### **SELECT Permission**
+- **Row select permissions:**
+```json
+{
+  "user_id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Logic:** Users can only see their own purchase history
+
+#### **INSERT Permission**
+- **Row insert permissions:**
+```json
+{
+  "user_id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+- **Column permissions:** `slot_id`, `quantity`, `unit_price`, `total_price`, `status`
+- **Column presets:** `user_id` = `X-Hasura-User-Id`, `id` = `gen_random_uuid()`, `created_at` = `now()`
+- **Logic:** Users can create purchases for themselves
+
+#### **UPDATE Permission:** ❌ None
+
+#### **DELETE Permission:** ❌ None
+
+***
+
+### **Role: admin**
+
+#### **All Permissions (SELECT, INSERT, UPDATE, DELETE)**
+- **Row permissions:** Without any checks
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Column presets (INSERT):** `id` = `gen_random_uuid()`, `created_at` = `now()`
+
+***
+
+## **Table 6: purchase_items**
+
+### **Role: user**
+
+#### **SELECT Permission**
+- **Row select permissions:**
+```json
+{
+  "purchase": {
+    "user_id": {
+      "_eq": "X-Hasura-User-Id"
+    }
+  }
+}
+```
+- **Column permissions:** All columns
+- **Aggregation queries:** No
+- **Logic:** Users can see items only from their own purchases (uses relationship to purchases table)
+
+#### **INSERT Permission**
+- **Row insert permissions:**
+```json
+{
+  "purchase": {
+    "user_id": {
+      "_eq": "X-Hasura-User-Id"
+    }
+  }
+}
+```
+- **Column permissions:** `purchase_id`, `coupon_id`
+- **Column presets:** `id` = `gen_random_uuid()`, `created_at` = `now()`
+- **Logic:** Users can assign coupons only to their own purchases
+
+#### **UPDATE Permission:** ❌ None
+
+#### **DELETE Permission:** ❌ None
+
+***
+
+### **Role: admin**
+
+#### **All Permissions (SELECT, INSERT, UPDATE, DELETE)**
+- **Row permissions:** Without any checks
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Column presets (INSERT):** `id` = `gen_random_uuid()`, `created_at` = `now()`
+
+***
+
+## **Table 7: topups**
+
+### **Role: user**
+
+#### **SELECT Permission**
+- **Row select permissions:**
+```json
+{
+  "user_id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Logic:** Users can only see their own top-up history
+
+#### **INSERT Permission**
+- **Row insert permissions:**
+```json
+{
+  "user_id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+- **Column permissions:** `amount`, `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`, `status`, `payment_method`
+- **Column presets:** `user_id` = `X-Hasura-User-Id`, `id` = `gen_random_uuid()`, `created_at` = `now()`
+- **Logic:** Users can create top-up records for themselves
+
+#### **UPDATE Permission**
+- **Row update permissions:**
+```json
+{
+  "user_id": {
+    "_eq": "X-Hasura-User-Id"
+  }
+}
+```
+- **Column permissions:** `status`, `verified_at`
+- **Logic:** Users can update status (needed for Razorpay webhook to mark as verified)
+
+#### **DELETE Permission:** ❌ None
+
+***
+
+### **Role: admin**
+
+#### **All Permissions (SELECT, INSERT, UPDATE, DELETE)**
+- **Row permissions:** Without any checks
+- **Column permissions:** All columns
+- **Aggregation queries:** Yes
+- **Column presets (INSERT):** `id` = `gen_random_uuid()`, `created_at` = `now()`
+
+***
+
+## **Permission Summary Matrix**
+
+| Table | Role | SELECT | INSERT | UPDATE | DELETE |
+|-------|------|--------|--------|--------|--------|
+| **user_profiles** | user | ✅ Own only | ❌ | ✅ Limited | ❌ |
+| | admin | ✅ All | ✅ All | ✅ All | ✅ All |
+| **slots** | user | ✅ Published | ❌ | ❌ | ❌ |
+| | admin | ✅ All | ✅ All | ✅ All | ✅ All |
+| **slot_pricing_tiers** | user | ✅ Published | ❌ | ❌ | ❌ |
+| | admin | ✅ All | ✅ All | ✅ All | ✅ All |
+| **coupons** | user | ✅ Own only | ❌ | ❌ | ❌ |
+| | admin | ✅ All | ✅ All | ✅ All | ✅ All |
+| **purchases** | user | ✅ Own only | ✅ Own | ❌ | ❌ |
+| | admin | ✅ All | ✅ All | ✅ All | ✅ All |
+| **purchase_items** | user | ✅ Own only | ✅ Own | ❌ | ❌ |
+| | admin | ✅ All | ✅ All | ✅ All | ✅ All |
+| **topups** | user | ✅ Own only | ✅ Own | ✅ Limited | ❌ |
+| | admin | ✅ All | ✅ All | ✅ All | ✅ All |
+
+***
+
+## **Key Security Features**
+
+### **Row Level Security**
+- Users can ONLY access their own data via `X-Hasura-User-Id` check
+- Published content check prevents access to draft/unpublished slots
+- Relationship-based checks (e.g., purchase_items checking via purchase.user_id)
+
+### **Column Level Security**
+- Users cannot see `is_admin` field (prevents privilege escalation)
+- Users cannot modify `wallet_balance` directly (only via backend logic)
+- Users cannot modify financial fields (`total_spent`, `total_purchased`)
+
+### **Automatic Values**
+- `X-Hasura-User-Id` automatically fills `user_id` fields
+- Timestamps auto-set via `now()` presets
+- UUIDs auto-generated via `gen_random_uuid()`
+
+### **Webhook Security**
+- Topups UPDATE permission allows webhook to mark payments as verified
+- Limited to `status` and `verified_at` columns only
+
+***
+
+## **GraphQL Headers for Authentication**
+
+### **For Regular Users:**
+```
+x-hasura-role: user
+x-hasura-user-id: <uuid-from-nhost-auth>
+```
+
+### **For Admin:**
+```
+x-hasura-role: admin
+x-hasura-user-id: <admin-uuid>
+```
+
+### **For Backend/Webhooks:**
+```
+x-hasura-admin-secret: <your-admin-secret>
+```
+
+***
+
+***
+
+## **Table 8: stores**
+
+Table Overview: stores
+The stores table defines the brand entities (e.g., Netflix, Flipkart) that group inventory slots.
+
+Column NameData TypeDefaultDescription
+iduuidgen_random_uuid()Primary Key
+nametextStore Name
+slugtextURL slug (unique)
+descriptiontextStore Description
+logo_urltextImage URL
+theme_colorvarchar(50)Brand Hex Color (accents)
+categoryvarchar(100)Category (Groceries, etc.)
+statusvarchar(20)'active'active, inactive, maintenance
+created_attimestamptznow()Creation time
+updated_attimestamptznow()Update time
+
+Permissions:
+- Public/User: SELECT (status = 'active')
+- Admin: ALL
+
+***
+
+## **Table 9: store_tags**
+
+Table Overview: store_tags
+Dynamic tags displayed on store cards (e.g., "60% OFF").
+
+Column NameData TypeDefaultDescription
+iduuidgen_random_uuid()Primary Key
+store_iduuidFK -> stores.id
+valuetextTag text (e.g., "100 Cashback")
+colorvarchar(50)Tag color
+tag_iconvarchar(100)FontAwesome class
+created_attimestamptznow()Creation time
+
+Permissions:
+- Public/User: SELECT
+- Admin: ALL
+
+***
+
+## **Table 10: user_favorite_stores**
+
+Table Overview: user_favorite_stores
+Tracks users' favorite stores.
+
+Column NameData TypeDefaultDescription
+iduuidgen_random_uuid()Primary Key
+user_iduuidFK -> user_profiles.id
+store_iduuidFK -> stores.id
+created_attimestamptznow()Creation time
+
+Unique Constraint: (user_id, store_id)
+
+Permissions:
+- User: SELECT (own), INSERT (own), DELETE (own)
+- Admin: ALL
+
+***
+
+## **Table 2: slots (Updated)**
+
+Added Column: store_id (UUID, FK -> stores.id)
+Permissions Updated: Users/Public can SELECT store_id.
+
+***
+

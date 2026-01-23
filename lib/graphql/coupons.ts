@@ -13,7 +13,7 @@ export const GET_AVAILABLE_COUPONS = gql`
       id
       name
       description
-      thumbnail_url
+      thumbnail
       expiry_date
       available_stock
       created_at
@@ -36,7 +36,7 @@ export const GET_SLOT_PRICING = gql`
       id
       name
       description
-      thumbnail_url
+      thumbnail
       expiry_date
       available_stock
       pricing_tiers: slot_pricing_tiers(order_by: { min_quantity: asc }) {
@@ -177,7 +177,7 @@ export interface AvailableCoupon {
   id: string
   name: string
   description: string | null
-  thumbnail_url: string | null
+  thumbnail: string | null
   expiry_date: string | null
   available_stock: number
   created_at: string
@@ -191,7 +191,7 @@ export interface SlotPricing {
   id: string
   name: string
   description: string | null
-  thumbnail_url: string | null
+  thumbnail: string | null
   expiry_date: string | null
   available_stock: number
   pricing_tiers: Array<{

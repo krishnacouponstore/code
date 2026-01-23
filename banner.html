@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banner Studio - CoupX Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: 'var(--bg-color)',
+                        surface: 'var(--surface-color)',
+                        card: 'var(--card-bg)',
+                        border: 'var(--border-color)',
+                        text: 'var(--text-main)',
+                        'text-muted': 'var(--text-muted)'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            /* theme-current is injected by JS, generic default here */
+            --theme-current: #E23744;
+
+            /* Light Theme Variables */
+            --bg-color: #f2f7f8;
+            --surface-color: #ffffff;
+            --card-bg: rgba(255, 255, 255, 0.95); 
+            --border-color: rgba(0, 0, 0, 0.08); 
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --glass-shadow: 0 8px 32px 0 rgba(100, 100, 111, 0.05);
+            --nav-bg: #ffffff;
+            --icon-bg: rgba(0,0,0,0.05);
+            --input-bg: #ffffff;
+            
+            --bg-gradient-1: rgba(120, 252, 214, 0.15); 
+            --bg-gradient-2: rgba(59, 130, 246, 0.08);  
+        }
+
+        .dark {
+            /* Dark Theme Variables */
+            --bg-color: #0a0f14;
+            --surface-color: #12181f;
+            --card-bg: #161e25;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #e7eceb;
+            --text-muted: #9ca3af; 
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            --nav-bg: #0a0f14;
+            --icon-bg: rgba(255,255,255,0.05);
+            --input-bg: #161e25;
+
+            --bg-gradient-1: rgba(120, 252, 214, 0.05);
+            --bg-gradient-2: rgba(59, 130, 246, 0.05);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            background-image: 
+                radial-gradient(circle at 15% 50%, var(--bg-gradient-1) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, var(--bg-gradient-2) 0%, transparent 25%);
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        .glass-panel {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--glass-shadow);
+        }
+
+        /* Form Styling */
+        .form-input {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            transition: all 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--theme-current);
+        }
+        
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
+        <div class="max-w-[1920px] mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <a href="#" class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-800 to-black flex items-center justify-center text-white font-bold shadow-lg">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <span class="font-display font-bold text-xl text-text">Banner Studio</span>
+                </a>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-surface border border-border flex items-center justify-center hover:bg-[var(--icon-bg)] transition-all">
+                    <i class="fas fa-sun hidden dark:block text-yellow-400"></i>
+                    <i class="fas fa-moon block dark:hidden text-slate-600"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-[1920px] mx-auto px-6 py-8">
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+            
+            <!-- CONTROLS -->
+            <div class="xl:col-span-4 space-y-6">
+                <!-- Theme & Brand -->
+                <div class="glass-panel rounded-3xl p-6 space-y-6">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-display font-bold text-text flex items-center gap-2">
+                            <i class="fas fa-sliders-h text-muted"></i> Configuration
+                        </h2>
+                        <button onclick="addToActiveBanners()" class="px-4 py-1.5 rounded-full bg-text text-background font-bold hover:opacity-90 transition-all text-xs flex items-center gap-2">
+                            <i class="fas fa-plus"></i> Add to List
+                        </button>
+                    </div>
+
+                    <!-- Trending Themes Dropdown -->
+                    <div class="space-y-3">
+                         <label class="text-xs font-bold text-text-muted uppercase tracking-wider">Theme & Color</label>
+                         <div class="grid grid-cols-2 gap-3 mb-2">
+                             <select id="trendingTheme" onchange="applyTrendingTheme(this.value)" class="form-input w-full px-3 py-2 rounded-lg text-sm bg-transparent">
+                                 <option value="">Select Preset...</option>
+                                 <option value="#E23744">Zomato Red</option>
+                                 <option value="#FF9900">Amazon Orange</option>
+                                 <option value="#006AFF">Flipkart Blue</option>
+                                 <option value="#10b981">Fresh Green</option>
+                                 <option value="#8b5cf6">Royal Violet</option>
+                                 <option value="#ec4899">Hot Pink</option>
+                             </select>
+                             <div class="relative h-10">
+                                <input type="color" id="customColorPicker" class="w-full h-full opacity-0 absolute inset-0 cursor-pointer z-10" oninput="setTheme(this.value)">
+                                <div class="w-full h-full rounded-lg bg-[var(--surface-color)] border border-border flex items-center justify-center gap-2 text-text-muted transition-colors">
+                                    <div id="colorPreviewDot" class="w-4 h-4 rounded-full bg-red-500 shadow-sm"></div>
+                                    <span class="text-xs font-mono" id="colorCodeDisplay">Color</span>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+
+                    <!-- Brand & Badge -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">Brand Name</label>
+                            <input type="text" id="brandInput" value="Zomato" class="form-input w-full px-4 py-2 rounded-xl text-sm font-medium" oninput="updatePreview()">
+                        </div>
+
+                         <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs font-bold text-text-muted uppercase tracking-wider">Badge Configuration</label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="badgeToggle" checked onchange="updatePreview()" class="w-4 h-4 rounded text-blue-500 focus:ring-blue-500 border-gray-300">
+                                    <span class="text-[10px] font-bold uppercase text-text-muted">Active</span>
+                                </label>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="badgeInput" value="Foodie Special" placeholder="Text" class="form-input w-full px-4 py-2 rounded-xl text-sm font-medium" oninput="updatePreview()">
+                                <div class="relative">
+                                    <select id="badgeIconSelect" class="form-input w-full px-4 py-2 rounded-xl text-sm appearance-none" onchange="updateBadgeIcon()">
+                                        <option value="fas fa-utensils">Utensils</option>
+                                        <option value="fas fa-crown">Crown</option>
+                                        <option value="fas fa-bolt">Bolt</option>
+                                        <option value="fas fa-star">Star</option>
+                                        <option value="fas fa-tag">Tag</option>
+                                        <option value="fas fa-fire">Fire</option>
+                                        <option value="fab fa-amazon">Amazon</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-text-muted">
+                                        <i class="fas fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Custom Badge Icon Input URL (Hidden power feature if needed later, simplified for now to just select as requested) -->
+                        </div>
+
+                        <!-- Title Split -->
+                        <div>
+                            <label class="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">Title (White + Highlight)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="titleLine1" value="Zomato" class="form-input w-full px-4 py-2 rounded-xl text-sm font-bold" placeholder="First Part" oninput="updatePreview()">
+                                <input type="text" id="titleLine2" value="Gold" class="form-input w-full px-4 py-2 rounded-xl text-sm font-bold" placeholder="Highlighted" oninput="updatePreview()">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">Description</label>
+                            <textarea id="descInput" rows="2" class="form-input w-full px-4 py-2 rounded-xl text-sm resize-none" oninput="updatePreview()">Flat 60% OFF on your first dining experience. Grab the deal before it expires!</textarea>
+                        </div>
+                        
+                        <!-- CTA -->
+                        <div class="grid grid-cols-2 gap-4">
+                             <div>
+                                <label class="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">Button Text</label>
+                                <input type="text" id="btnTextInput" value="Order Now" class="form-input w-full px-4 py-2 rounded-xl text-sm font-medium" oninput="updatePreview()">
+                             </div>
+                             <div>
+                                <label class="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">Button URL</label>
+                                <input type="text" placeholder="/store/zomato" class="form-input w-full px-4 py-2 rounded-xl text-sm font-medium">
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Card Logic -->
+                    <div class="border-t border-border pt-6 mt-6">
+                         <h3 class="text-sm font-bold text-text mb-4">Floating Card Content</h3>
+                         <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">Offer Main</label>
+                                <input type="text" id="offerValInput" value="60% OFF" class="form-input w-full px-4 py-2 rounded-xl text-sm font-bold" oninput="updatePreview()">
+                            </div>
+                             <div>
+                                <label class="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">Offer Detail</label>
+                                <input type="text" id="offerSubInput" value="Max Discount ₹120" class="form-input w-full px-4 py-2 rounded-xl text-sm" oninput="updatePreview()">
+                            </div>
+                         </div>
+
+                         <!-- Icons Logic -->
+                         <div class="space-y-3">
+                            <label class="text-xs font-bold text-text-muted uppercase tracking-wider block">Right Icon Source</label>
+                            
+                            <!-- Tab Switcher -->
+                            <div class="flex gap-4 text-xs font-bold mb-2">
+                                <button onclick="toggleIconMode('icon')" id="tabIcon" class="text-text border-b-2 border-text pb-1">Font Icon</button>
+                                <button onclick="toggleIconMode('url')" id="tabUrl" class="text-text-muted pb-1">Custom Logos (Light/Dark)</button>
+                            </div>
+
+                            <!-- Icon Selector -->
+                            <div id="iconSelectorContainer">
+                                <div class="relative">
+                                    <select id="cardIconSelect" class="form-input w-full px-4 py-2 rounded-xl text-sm appearance-none" onchange="updatePreview()">
+                                        <option value="fas fa-hamburger">Hamburger (Food)</option>
+                                        <option value="fas fa-utensils">Utensils (Food)</option>
+                                        <option value="fas fa-pizza-slice">Pizza (Food)</option>
+                                        <option value="fas fa-shopping-cart">Cart (Retail)</option>
+                                        <option value="fas fa-tshirt">Apparel (Fashion)</option>
+                                        <option value="fas fa-mobile-alt">Mobile (Tech)</option>
+                                        <option value="fas fa-gamepad">Gamepad (Gaming)</option>
+                                        <option value="fab fa-amazon">Amazon Brand</option>
+                                        <option value="fab fa-apple">Apple Brand</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-text-muted">
+                                        <i class="fas fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- URL Inputs -->
+                            <div id="iconUrlContainer" class="hidden space-y-3">
+                                <div>
+                                    <label class="text-[10px] uppercase font-bold text-text-muted block mb-1">Light Mode Logo</label>
+                                    <div class="flex gap-2 items-center">
+                                         <input type="file" id="iconUrlLightInput" accept="image/*" class="form-input w-full px-3 py-2 rounded-lg text-xs" onchange="updatePreview()">
+                                         <div class="w-8 h-8 rounded bg-white border border-border flex items-center justify-center shrink-0">
+                                             <img id="thumbLight" class="w-5 h-5 object-contain opacity-50">
+                                         </div>
+                                    </div>
+                                    <p class="text-[10px] text-text-muted mt-1">Rec: 200x200px (PNG Transp)</p>
+                                </div>
+                                 <div>
+                                    <label class="text-[10px] uppercase font-bold text-text-muted block mb-1">Dark Mode Logo</label>
+                                    <div class="flex gap-2 items-center">
+                                         <input type="file" id="iconUrlDarkInput" accept="image/*" class="form-input w-full px-3 py-2 rounded-lg text-xs" onchange="updatePreview()">
+                                          <div class="w-8 h-8 rounded bg-gray-900 border border-border flex items-center justify-center shrink-0">
+                                              <img id="thumbDark" class="w-5 h-5 object-contain opacity-50">
+                                         </div>
+                                    </div>
+                                    <p class="text-[10px] text-text-muted mt-1">Rec: 200x200px (PNG White)</p>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                    
+                    <div>
+                        <label class="text-xs font-bold text-text-muted uppercase tracking-wider block mb-2">Background Image</label>
+                        <input type="file" id="bgImageInput" accept="image/*" class="form-input w-full px-4 py-2 rounded-xl text-xs" onchange="updatePreview()">
+                        <p class="text-[10px] text-text-muted mt-1">Size: 1920x500px (Aspect 4:1) - Max 2MB</p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: Preview & List -->
+            <div class="xl:col-span-8 space-y-8">
+                
+                <!-- PREVIEW WRAPPER -->
+                <div>
+                     <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-display font-bold text-text">Live Preview</h2>
+                        <span class="px-3 py-1 bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg text-xs font-bold">420px Exact Height</span>
+                    </div>
+
+                    <!-- PREVIEW CONTAINER START -->
+                    <!-- Used 'bg-background' (var --bg-color) to match store's root variable context -->
+                    <div id="previewWrapper" class="relative rounded-[2rem] overflow-hidden border border-border shadow-2xl bg-[var(--bg-color)]">
+                        <div class="carousel-track">
+                                <div class="carousel-slide w-full">
+                                
+                                <!-- Exact Inner Structure -->
+                                <div class="relative w-full h-[500px] md:h-[420px] rounded-[2rem] overflow-hidden group">
+                                    
+                                    <!-- 1. Background Config -->
+                                    <!-- Theme Tint Background (Opacity layer) -->
+                                    <div id="previewThemeTint" class="absolute inset-0 transition-colors duration-500"></div>
+                                    
+                                    <!-- Gradient Overlay: EXACTLY from store.html -->
+                                    <div class="absolute inset-0 bg-gradient-to-r from-[var(--bg-color)] via-[var(--bg-color)]/60 to-transparent z-10"></div>
+                                    
+                                    <!-- Image: EXACTLY from store.html -->
+                                    <img id="previewBgImage" src="" class="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay group-hover:scale-105 transition-transform duration-[2s]">
+
+                                    <!-- 2. Content Container -->
+                                    <div class="relative z-20 h-full flex flex-col md:flex-row items-center justify-between p-8 md:p-16 gap-8">
+
+                                        <!-- 3. Left Text Block -->
+                                        <div class="max-w-xl space-y-6 md:translate-x-0 transition-transform duration-700">
+                                            
+                                            <!-- Badge -->
+                                            <span id="previewBadge" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider border backdrop-blur-md transition-all duration-300">
+                                                <i id="previewBadgeIcon" class=""></i>
+                                                <span id="previewBadgeTextSpan"></span>
+                                            </span>
+
+                                            <!-- H1 Title -->
+                                            <h1 class="text-5xl md:text-6xl font-black text-text leading-tight drop-shadow-sm">
+                                                <span id="previewTitle1"></span> <br>
+                                                <!-- Dynamic Color Span -->
+                                                <span id="previewTitle2" class="transition-colors duration-300"></span>
+                                            </h1>
+
+                                            <!-- Paragraph -->
+                                            <p id="previewDesc" class="text-lg text-text-muted max-w-md font-medium"></p>
+
+                                            <!-- Button -->
+                                            <div class="flex gap-4 pt-4">
+                                                <button id="previewBtn" class="px-8 py-4 rounded-2xl font-bold transition-all flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95">
+                                                    <span id="previewBtnTextSpan"></span> 
+                                                    <i class="fas fa-arrow-right"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- 4. Right 3D Card Block -->
+                                        <div class="hidden md:flex relative group-hover:animate-float" style="animation-delay: 1s;">
+                                            
+                                            <!-- Glow Behind (Dynamic Color) -->
+                                            <div id="previewCardGlow" class="absolute inset-0 blur-[60px] rounded-full transition-colors duration-300 opacity-60"></div>
+
+                                            <!-- The Card -->
+                                            <div id="previewCardBody" class="relative w-80 h-96 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-2xl transform rotate-[-3deg] group-hover:rotate-0 transition-all duration-500 bg-white/80 dark:bg-black/40">
+                                                
+                                                <!-- Icon Circle -->
+                                                <div id="previewCardIconCircle" class="w-32 h-32 rounded-full flex items-center justify-center mb-6 transition-colors duration-300">
+                                                    
+                                                    <!-- Font Icon Mode -->
+                                                    <i class="text-6xl transition-colors duration-300" id="previewCardIcon"></i>
+                                                    
+                                                    <!-- Image Icon Mode -->
+                                                    <img id="previewCardImg" src="" class="w-16 h-16 object-contain hidden transition-opacity" alt="Brand Icon">
+                                                </div>
+
+                                                <!-- Text -->
+                                                <div id="previewOfferVal" class="text-3xl font-bold text-text dark:text-white mb-2 font-display"></div>
+                                                <div id="previewOfferSub" class="text-sm text-text-muted dark:text-gray-400 font-medium"></div>
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                                </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NEW LIST SECTION -->
+                <div class="glass-panel rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                             <h3 class="text-lg font-bold text-text">Active Banners</h3>
+                             <span id="bannerTotalBadge" class="px-2 py-0.5 rounded-full bg-[var(--icon-bg)] text-xs font-bold text-text-muted border border-border">Total: 3</span>
+                        </div>
+                    </div>
+
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-xs text-text-muted uppercase border-b border-border">
+                                <th class="pb-3 pl-2 font-bold tracking-wider">Preview</th>
+                                <th class="pb-3 font-bold tracking-wider">Brand Details</th>
+                                <th class="pb-3 text-center font-bold tracking-wider">Theme</th>
+                                <th class="pb-3 text-center font-bold tracking-wider">Type</th>
+                                <th class="pb-3 text-center font-bold tracking-wider">Published</th>
+                                <th class="pb-3 text-right pr-2 font-bold tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bannersListBody" class="text-sm">
+                            <!-- Row 1 -->
+                            <tr class="group hover:bg-[var(--icon-bg)] transition-colors border-b border-border/50">
+                                <td class="py-4 pl-2">
+                                    <div class="w-16 h-10 rounded-lg bg-cover bg-center shadow-sm border border-border" style="background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=200');"></div>
+                                </td>
+                                <td class="py-4">
+                                    <div class="font-bold text-text">Zomato Gold</div>
+                                    <div class="text-xs text-text-muted">60% OFF Offer</div>
+                                </td>
+                                <td class="py-4 text-center">
+                                    <div class="w-3 h-3 rounded-full bg-[#E23744] mx-auto shadow-sm ring-2 ring-white/10"></div>
+                                </td>
+                                <td class="py-4 text-center text-xs text-text-muted">
+                                    <i class="fas fa-utensils"></i> Food
+                                </td>
+                                <td class="py-4 text-center">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </td>
+                                <td class="py-4 text-right pr-2">
+                                    <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button class="w-8 h-8 rounded bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all"><i class="fas fa-pen text-xs"></i></button>
+                                        <button class="w-8 h-8 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><i class="fas fa-trash text-xs"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                             <!-- Row 2 -->
+                            <tr class="group hover:bg-[var(--icon-bg)] transition-colors border-b border-border/50">
+                                <td class="py-4 pl-2">
+                                    <div class="w-16 h-10 rounded-lg bg-cover bg-center shadow-sm border border-border" style="background-image: url('https://images.unsplash.com/photo-1523474253046-8cd2748b5fd2?q=80&w=200');"></div>
+                                </td>
+                                <td class="py-4">
+                                    <div class="font-bold text-text">Amazon Pay</div>
+                                    <div class="text-xs text-text-muted">Bill Cashback</div>
+                                </td>
+                                <td class="py-4 text-center">
+                                    <div class="w-3 h-3 rounded-full bg-[#FF9900] mx-auto shadow-sm ring-2 ring-white/10"></div>
+                                </td>
+                                <td class="py-4 text-center text-xs text-text-muted">
+                                    <i class="fas fa-bolt"></i> Util
+                                </td>
+                                <td class="py-4 text-center">
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" checked class="sr-only peer">
+                                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                    </label>
+                                </td>
+                                <td class="py-4 text-right pr-2">
+                                    <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button class="w-8 h-8 rounded bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all"><i class="fas fa-pen text-xs"></i></button>
+                                        <button class="w-8 h-8 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><i class="fas fa-trash text-xs"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+             if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+            
+            // Set Default
+            updateBadgeIcon();
+            updatePreview();
+            setTheme('#E23744');
+            updateTotal();
+        });
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            
+            // Re-apply preview updates (needed for dual icon logic)
+            updatePreview();
+            
+            // Re-apply styling logic for dark mode gradients in cards
+            const currentColor = document.getElementById('customColorPicker').value || '#E23744';
+            setTheme(currentColor);
+        }
+
+        function toggleIconMode(mode) {
+            const tabIcon = document.getElementById('tabIcon');
+            const tabUrl = document.getElementById('tabUrl');
+
+            if (mode === 'icon') {
+                document.getElementById('iconSelectorContainer').classList.remove('hidden');
+                document.getElementById('iconUrlContainer').classList.add('hidden');
+                tabIcon.className = "text-text border-b-2 border-text pb-1";
+                tabUrl.className = "text-text-muted pb-1";
+            } else {
+                document.getElementById('iconSelectorContainer').classList.add('hidden');
+                document.getElementById('iconUrlContainer').classList.remove('hidden');
+                tabUrl.className = "text-text border-b-2 border-text pb-1";
+                tabIcon.className = "text-text-muted pb-1";
+            }
+            updatePreview();
+        }
+
+        function updateBadgeIcon() {
+            const selectedClass = document.getElementById('badgeIconSelect').value;
+            document.getElementById('previewBadgeIcon').className = selectedClass;
+        }
+
+        // Apply drop down choice
+        function applyTrendingTheme(color) {
+            if(!color) return;
+            setTheme(color);
+        }
+
+        // Helper: Hex to RGB
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function setTheme(color) {
+            const rgb = hexToRgb(color);
+            if (!rgb) return;
+
+            // Sync Inputs
+            document.getElementById('customColorPicker').value = color; // sync picker
+            document.getElementById('colorCodeDisplay').textContent = color;
+            document.getElementById('colorPreviewDot').style.backgroundColor = color;
+            document.body.style.setProperty('--theme-current', color);
+
+            // 1. Theme Tint Background (bg-[color]/10)
+            document.getElementById('previewThemeTint').style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
+
+            // 2. Badge Styles
+            const badge = document.getElementById('previewBadge');
+            badge.style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)`;
+            badge.style.color = color;
+            badge.style.borderColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)`;
+
+            // 3. Title Highlight
+            document.getElementById('previewTitle2').style.color = color;
+
+            // 4. Button
+            const btn = document.getElementById('previewBtn');
+            btn.style.backgroundColor = color;
+            btn.style.color = '#ffffff'; 
+            btn.style.boxShadow = `0 0 20px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
+            
+            // 5. Card Glow
+            document.getElementById('previewCardGlow').style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.4)`;
+
+            // 6. Card Icon Circle
+            document.getElementById('previewCardIconCircle').style.backgroundColor = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`;
+            
+            // 7. Card Icon Color
+            document.getElementById('previewCardIcon').style.color = color;
+
+            // 8. Dark Mode Card Background Gradient Logic
+            // Formula: Mix Theme color (15%) + Black (85%)
+            const darkR = Math.floor(rgb.r * 0.15); 
+            const darkG = Math.floor(rgb.g * 0.15);
+            const darkB = Math.floor(rgb.b * 0.15);
+            const darkColor = `rgb(${darkR}, ${darkG}, ${darkB})`;
+            
+            const styleId = 'dynamic-card-style';
+            let dynamicStyle = document.getElementById(styleId);
+            if (!dynamicStyle) {
+                dynamicStyle = document.createElement('style');
+                dynamicStyle.id = styleId;
+                document.head.appendChild(dynamicStyle);
+            }
+
+            dynamicStyle.textContent = `
+                .dark #previewCardBody {
+                    background-image: linear-gradient(to bottom right, ${darkColor}, #0d1218) !important;
+                    background-color: transparent !important;
+                }
+                #previewCardBody {
+                    background-color: rgba(255, 255, 255, 0.85);
+                }
+            `;
+        }
+
+        function updatePreview() {
+            // Validations / Visibility
+            const showBadge = document.getElementById('badgeToggle').checked;
+            document.getElementById('previewBadge').style.display = showBadge ? 'inline-flex' : 'none';
+
+            // Text
+            document.getElementById('previewBadgeTextSpan').textContent = document.getElementById('badgeInput').value;
+            
+            document.getElementById('previewTitle1').textContent = document.getElementById('titleLine1').value;
+            document.getElementById('previewTitle2').textContent = document.getElementById('titleLine2').value;
+            
+            document.getElementById('previewDesc').textContent = document.getElementById('descInput').value;
+            document.getElementById('previewBtnTextSpan').textContent = document.getElementById('btnTextInput').value;
+            
+            document.getElementById('previewOfferVal').textContent = document.getElementById('offerValInput').value;
+            document.getElementById('previewOfferSub').textContent = document.getElementById('offerSubInput').value;
+            
+            // Image
+            const bgInput = document.getElementById('bgImageInput');
+            if(bgInput.files && bgInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('previewBgImage').src = e.target.result;
+                }
+                reader.readAsDataURL(bgInput.files[0]);
+            } else if (bgInput.type === 'text') {
+                 // Fallback for old way if needed or initialization
+                 if(bgInput.value) document.getElementById('previewBgImage').src = bgInput.value;
+            }
+
+            // Icon Logic
+            const iconMode = document.getElementById('iconSelectorContainer').classList.contains('hidden') ? 'url' : 'icon';
+            const iconEl = document.getElementById('previewCardIcon');
+            const imgEl = document.getElementById('previewCardImg');
+
+            if (iconMode === 'url') {
+                const isDark = document.documentElement.classList.contains('dark');
+                
+                // File Inputs
+                const lightInput = document.getElementById('iconUrlLightInput');
+                const darkInput = document.getElementById('iconUrlDarkInput');
+                
+                // Determine which input is active based on theme
+                const activeInput = isDark ? darkInput : lightInput;
+                
+                if (activeInput.files && activeInput.files[0]) {
+                     iconEl.classList.add('hidden');
+                     imgEl.classList.remove('hidden');
+                     
+                     const reader = new FileReader();
+                     reader.onload = function(e) {
+                         imgEl.src = e.target.result;
+                     }
+                     reader.readAsDataURL(activeInput.files[0]);
+                     
+                     // Also handle thumbnails
+                     if(lightInput.files && lightInput.files[0]) {
+                        const rL = new FileReader();
+                        rL.onload = (e) => document.getElementById('thumbLight').src = e.target.result;
+                        rL.readAsDataURL(lightInput.files[0]);
+                     }
+                     if(darkInput.files && darkInput.files[0]) {
+                        const rD = new FileReader();
+                        rD.onload = (e) => document.getElementById('thumbDark').src = e.target.result;
+                        rD.readAsDataURL(darkInput.files[0]);
+                     }
+                     
+                } else {
+                    // Fallback if no file selected yet for this mode
+                    // Just hide or keep previous
+                }
+
+            } else {
+                imgEl.classList.add('hidden');
+                iconEl.classList.remove('hidden');
+                
+                // Get value from select
+                const selectedIcon = document.getElementById('cardIconSelect').value;
+                iconEl.className = `${selectedIcon} text-6xl transition-colors duration-300`;
+                
+                // Ensure correct color application
+                const currentColor = document.getElementById('customColorPicker').value;
+                iconEl.style.color = currentColor;
+            }
+        }
+
+        function addToActiveBanners() {
+            // Get current state
+            const brand = document.getElementById('brandInput').value;
+            const offer = document.getElementById('offerValInput').value;
+            const color = document.getElementById('customColorPicker').value || '#E23744';
+            
+            // For List BG, use the actual Preview src (Data URL)
+            const bgUrl = document.getElementById('previewBgImage').src;
+            const typeClass = document.getElementById('badgeIconSelect').value; 
+            
+            // Generate Row
+            const row = document.createElement('tr');
+            row.className = "group hover:bg-[var(--icon-bg)] transition-colors border-b border-border/50";
+            
+            row.innerHTML = `
+                <td class="py-4 pl-2">
+                    <div class="w-16 h-10 rounded-lg bg-cover bg-center shadow-sm border border-border" style="background-image: url('${bgUrl}');"></div>
+                </td>
+                <td class="py-4">
+                    <div class="font-bold text-text">${brand}</div>
+                    <div class="text-xs text-text-muted">${offer}</div>
+                </td>
+                <td class="py-4 text-center">
+                    <div class="w-3 h-3 rounded-full mx-auto shadow-sm ring-2 ring-white/10" style="background-color: ${color}"></div>
+                </td>
+                <td class="py-4 text-center text-xs text-text-muted">
+                    <i class="${typeClass}"></i>
+                </td>
+                <td class="py-4 text-center">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                    </label>
+                </td>
+                <td class="py-4 text-right pr-2">
+                    <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="w-8 h-8 rounded bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white transition-all"><i class="fas fa-pen text-xs"></i></button>
+                        <button onclick="this.closest('tr').remove(); updateTotal();" class="w-8 h-8 rounded bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"><i class="fas fa-trash text-xs"></i></button>
+                    </div>
+                </td>
+            `;
+            
+            // Prepend so it appears at top
+            const body = document.getElementById('bannersListBody');
+            body.insertBefore(row, body.firstChild);
+            
+            updateTotal();
+            
+            // Pulse animation to indicate success
+            const btn = document.querySelector('button[onclick="addToActiveBanners()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Added';
+            btn.classList.add('bg-green-500', 'text-white');
+            btn.classList.remove('bg-text', 'text-background');
+            
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.classList.remove('bg-green-500', 'text-white');
+                btn.classList.add('bg-text', 'text-background');
+            }, 1500);
+        }
+
+        function updateTotal() {
+             const count = document.getElementById('bannersListBody').children.length;
+             document.getElementById('bannerTotalBadge').textContent = `Total: ${count}`;
+        }
+    </script>
+</body>
+</html>

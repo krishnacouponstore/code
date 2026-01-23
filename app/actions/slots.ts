@@ -31,23 +31,25 @@ type RedemptionStep = {
 type CreateSlotInput = {
   name: string
   description: string
-  thumbnail_url?: string
+  thumbnail?: string
   expiry_date?: string
   is_published: boolean
   pricing_tiers: PricingTier[]
   redemption_steps?: RedemptionStep[]
   codes_to_upload?: string[]
+  store_id?: string
 }
 
 type UpdateSlotInput = {
   id: string
   name: string
   description: string
-  thumbnail_url?: string
+  thumbnail?: string
   expiry_date?: string
   is_published: boolean
   pricing_tiers: PricingTier[]
   redemption_steps?: RedemptionStep[]
+  store_id?: string
 }
 
 export async function createSlot(input: CreateSlotInput) {
@@ -58,9 +60,10 @@ export async function createSlot(input: CreateSlotInput) {
     const slotResult: any = await client.request(CREATE_SLOT, {
       name: input.name,
       description: input.description,
-      thumbnail_url: input.thumbnail_url || null,
+      thumbnail: input.thumbnail || null,
       expiry_date: input.expiry_date || null,
       is_published: input.is_published,
+      store_id: input.store_id || null
     })
 
     const slotId = slotResult.insert_slots_one.id
@@ -131,8 +134,9 @@ export async function updateSlot(input: UpdateSlotInput) {
       id: input.id,
       name: input.name,
       description: input.description,
-      thumbnail_url: input.thumbnail_url || null,
+      thumbnail: input.thumbnail || null,
       expiry_date: input.expiry_date || null,
+      store_id: input.store_id || null,
       is_published: input.is_published,
     })
 

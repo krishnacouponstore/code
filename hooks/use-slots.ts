@@ -29,16 +29,21 @@ export type Slot = {
   id: string
   name: string
   description: string
+  thumbnail?: string | null
   is_published: boolean
   available_stock: number
   total_uploaded: number
   total_sold: number
-  thumbnail_url?: string | null
   expiry_date?: string | null
   created_at: string
   updated_at: string
   pricing_tiers: PricingTier[]
   redemption_steps?: RedemptionStep[]
+  store?: {
+    id: string
+    name: string
+    logo_url?: string
+  }
   coupons_aggregate?: {
     aggregate: {
       count: number

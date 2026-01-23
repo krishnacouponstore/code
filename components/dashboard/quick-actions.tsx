@@ -21,7 +21,7 @@ export function QuickActions() {
           </div>
           <h3 className="text-xl font-semibold text-foreground mt-4">Buy Coupons</h3>
           <p className="text-muted-foreground mt-2 mb-6">Browse available coupon slots and purchase codes instantly.</p>
-          <Link href="/coupons">
+          <Link href="/store">
             <Button className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
               Browse Now
             </Button>

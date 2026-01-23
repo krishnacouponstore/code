@@ -53,6 +53,13 @@ export const GET_USER_PURCHASES = gql`
         id
         name
         description
+        store {
+          id
+          name
+          slug
+          logo_url
+          theme_color
+        }
       }
     }
   }
@@ -98,6 +105,13 @@ export interface Purchase {
     id: string
     name: string
     description: string | null
+    store: {
+      id: string
+      name: string
+      slug: string
+      logo_url: string | null
+      theme_color: string
+    } | null
   }
 }
 

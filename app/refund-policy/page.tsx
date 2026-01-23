@@ -1,22 +1,22 @@
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+"use client"
+
+import { Navbar } from "@/components/navbar"
+import { PublicNavbar } from "@/components/public-navbar"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import { AlertTriangle, CheckCircle, XCircle } from "lucide-react"
 import { SITE_CONTACTS } from "@/lib/site-config"
-
-export const metadata = {
-  title: "Refund Policy | CoupX",
-  description: "Refund Policy for CoupX - Your Trusted Coupon Marketplace",
-}
+import { useAuth } from "@/lib/auth-context"
 
 export default function RefundPolicyPage() {
+  const { isAuthenticated } = useAuth()
   const lastUpdated = "December 8, 2025"
 
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardHeader />
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+      {isAuthenticated ? <Navbar /> : <PublicNavbar />}
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
+      <main className="max-w-4xl mx-auto px-6 py-12 pt-32">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-foreground mb-4">Refund Policy</h1>
           <p className="text-muted-foreground">Last updated: {lastUpdated}</p>

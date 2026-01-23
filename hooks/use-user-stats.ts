@@ -31,6 +31,13 @@ const GET_RECENT_PURCHASES = gql`
       created_at
       slot {
         name
+        store {
+          id
+          name
+          slug
+          logo_url
+          theme_color
+        }
       }
     }
   }
@@ -50,6 +57,13 @@ export type RecentPurchase = {
   created_at: string
   slot: {
     name: string
+    store: {
+      id: string
+      name: string
+      slug: string
+      logo_url: string | null
+      theme_color: string
+    } | null
   }
 }
 
