@@ -28,10 +28,18 @@ export async function checkPaymentStatus(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId }),
+      cache: "no-store",
     })
 
     const data = await response.json()
-    return data
+
+    // The API returns { success, data: { status, amount, utr, message } }
+    // Extract status from nested data to match our return type
+    return {
+      success: data.success,
+      status: data.data?.status || data.status,
+      error: data.error,
+    }
   } catch (error: any) {
     console.error("Error checking payment status:", error)
     return { success: false, error: error.message }
