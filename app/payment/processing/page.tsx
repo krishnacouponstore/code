@@ -37,26 +37,15 @@ function PaymentProcessingContent() {
 
         if (result.success && result.status) {
           if (result.status === "success") {
-            // Get transaction details
-            const detailsResult = await getTopupByTransactionId(orderId)
-            if (detailsResult.success) {
-              setTransactionDetails(detailsResult.data)
-            }
-            setStatus("success")
             clearInterval(interval)
             clearTimeout(timeoutId)
-            // Redirect to success page after 2 seconds
-            setTimeout(() => {
-              router.push(`/payment/success?order_id=${orderId}`)
-            }, 2000)
+            // Redirect to success page immediately
+            router.push(`/payment/success?order_id=${orderId}`)
           } else if (result.status === "failed") {
-            setStatus("failed")
             clearInterval(interval)
             clearTimeout(timeoutId)
-            // Redirect to failed page after 2 seconds
-            setTimeout(() => {
-              router.push(`/payment/failed?order_id=${orderId}`)
-            }, 2000)
+            // Redirect to failed page immediately
+            router.push(`/payment/failed?order_id=${orderId}`)
           }
           // If still pending, continue checking
         }
