@@ -514,7 +514,7 @@ export default function AdminRevenuePage() {
                     <TableHead className="text-muted-foreground">User</TableHead>
                     <TableHead className="text-muted-foreground">Amount</TableHead>
                     <TableHead className="text-muted-foreground">Method</TableHead>
-                    <TableHead className="text-muted-foreground">Razorpay ID</TableHead>
+                    <TableHead className="text-muted-foreground">IMB Order ID</TableHead>
                     <TableHead className="text-muted-foreground">Status</TableHead>
                     <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                   </TableRow>

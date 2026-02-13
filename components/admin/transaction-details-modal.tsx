@@ -190,7 +190,7 @@ export function TransactionDetailsModal({
               <div className="bg-secondary/30 rounded-lg p-3 space-y-2">
                 {transaction.razorpay_order_id && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Order ID</span>
+                    <span className="text-sm text-muted-foreground">IMB Order ID</span>
                     <div className="flex items-center gap-2">
                       <code className="text-xs text-foreground bg-background px-2 py-1 rounded">
                         {transaction.razorpay_order_id}
@@ -199,9 +199,9 @@ export function TransactionDetailsModal({
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => copyToClipboard(transaction.razorpay_order_id!, "Order ID")}
+                        onClick={() => copyToClipboard(transaction.razorpay_order_id!, "IMB Order ID")}
                       >
-                        {copiedField === "Order ID" ? (
+                        {copiedField === "IMB Order ID" ? (
                           <Check className="h-3 w-3 text-green-500" />
                         ) : (
                           <Copy className="h-3 w-3" />
@@ -212,7 +212,7 @@ export function TransactionDetailsModal({
                 )}
                 {transaction.razorpay_payment_id && (
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Payment ID</span>
+                    <span className="text-sm text-muted-foreground">IMB UTR</span>
                     <div className="flex items-center gap-2">
                       <code className="text-xs text-foreground bg-background px-2 py-1 rounded">
                         {transaction.razorpay_payment_id}
@@ -221,9 +221,9 @@ export function TransactionDetailsModal({
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6"
-                        onClick={() => copyToClipboard(transaction.razorpay_payment_id!, "Payment ID")}
+                        onClick={() => copyToClipboard(transaction.razorpay_payment_id!, "IMB UTR")}
                       >
-                        {copiedField === "Payment ID" ? (
+                        {copiedField === "IMB UTR" ? (
                           <Check className="h-3 w-3 text-green-500" />
                         ) : (
                           <Copy className="h-3 w-3" />

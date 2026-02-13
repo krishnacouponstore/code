@@ -8,34 +8,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Wallet, QrCode, Copy, Check, Mail, MessageCircle, AlertTriangle, ExternalLink, Download } from "lucide-react"
-import Image from "next/image"
-import { SITE_CONTACTS } from "@/lib/site-config"
-import { useTheme } from "next-themes"
+import { useUserTopups } from "@/hooks/use-user-topups"
+import { Wallet, Loader2, Copy, Check, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { hasAuthCookie } from "@/lib/check-auth-cookie"
+import { validateAmount } from "@/lib/imb-utils"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { ScrollArea } from "@/components/ui/scroll-area"
+
+const QUICK_AMOUNTS = [100, 200, 500, 1000, 2000, 5000]
 
 export default function AddBalancePage() {
   const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
-  const { resolvedTheme } = useTheme()
+  const { data: topups = [], isLoading: topupsLoading } = useUserTopups(10)
 
-  const [copiedUpi, setCopiedUpi] = useState(false)
-  const [copiedEmail, setCopiedEmail] = useState(false)
+  const [amount, setAmount] = useState("")
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [copiedTxnId, setCopiedTxnId] = useState<string | null>(null)
 
   useEffect(() => {
     if (isLoggingOut) return
 
-    //Don't redirect if auth cookie exists (session is being restored)
     if (!isLoading && !isAuthenticated && !hasAuthCookie()) {
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
     }
 
-    // Redirect admin to admin dashboard with toast
     if (!isLoading && user?.is_admin) {
       toast({
         title: "Access Restricted",
@@ -47,7 +49,6 @@ export default function AddBalancePage() {
     }
   }, [isLoading, isAuthenticated, router, pathname, isLoggingOut, user, toast])
 
-  // Block rendering if admin (before showing user content)
   if (!isLoading && user?.is_admin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -75,62 +76,106 @@ export default function AddBalancePage() {
     }).format(value)
   }
 
-  const handleCopyUpi = async () => {
-    await navigator.clipboard.writeText(SITE_CONTACTS.upiId)
-    setCopiedUpi(true)
-    toast({
-      title: "Copied!",
-      description: "UPI ID copied to clipboard",
-    })
-    setTimeout(() => setCopiedUpi(false), 2000)
+  const handleQuickAmount = (value: number) => {
+    setAmount(value.toString())
   }
 
-  const handleCopyEmail = async () => {
-    await navigator.clipboard.writeText(SITE_CONTACTS.email)
-    setCopiedEmail(true)
-    toast({
-      title: "Copied!",
-      description: "Email copied to clipboard",
-    })
-    setTimeout(() => setCopiedEmail(false), 2000)
-  }
-
-  const handleDownloadQR = async () => {
-    try {
-      const qrCodeUrl = resolvedTheme === "dark" ? "/images/blackqr.jpg" : "/images/lightqr.jpg"
-
-      const response = await fetch(qrCodeUrl)
-      const blob = await response.blob()
-
-      // Create object URL from blob
-      const blobUrl = URL.createObjectURL(blob)
-
-      const link = document.createElement("a")
-      link.href = blobUrl
-      link.download = "coupx-upi-qrcode.png"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-
-      // Cleanup blob URL
-      URL.revokeObjectURL(blobUrl)
-
+  const handleProceedToPay = async () => {
+    // Validate amount
+    const amountNum = parseFloat(amount)
+    if (isNaN(amountNum)) {
       toast({
-        title: "Downloaded!",
-        description: "QR code saved to your device",
-      })
-    } catch (error) {
-      toast({
-        title: "Download failed",
-        description: "Please try again or screenshot the QR code",
+        title: "Invalid Amount",
+        description: "Please enter a valid amount",
         variant: "destructive",
       })
+      return
+    }
+
+    const amountValidation = validateAmount(amountNum)
+    if (!amountValidation.valid) {
+      toast({
+        title: "Invalid Amount",
+        description: amountValidation.error,
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsProcessing(true)
+
+    try {
+      // Use user's phone from profile or default fallback
+      const customerMobile = user.phone || "9876543210"
+      
+      // Call create-order API
+      const response = await fetch("/api/imb/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          amount: amountNum,
+          customerMobile,
+          customerEmail: user.email,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!data.success) {
+        toast({
+          title: "Payment Failed",
+          description: data.error || "Failed to create payment order",
+          variant: "destructive",
+        })
+        setIsProcessing(false)
+        return
+      }
+
+      // Redirect to IMB payment page
+      window.location.href = data.data.paymentUrl
+    } catch (error: any) {
+      console.error("Payment error:", error)
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred. Please try again.",
+        variant: "destructive",
+      })
+      setIsProcessing(false)
     }
   }
 
-  const handleOpenTelegram = () => {
-    const message = encodeURIComponent(`Hi, I want to add balance to my CoupX account.\n\nEmail: ${user.email}`)
-    window.open(`https://t.me/${SITE_CONTACTS.telegram.support.replace("@", "")}?text=${message}`, "_blank")
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "success":
+        return (
+          <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
+            Success
+          </Badge>
+        )
+      case "pending":
+        return (
+          <Badge className="bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20">
+            Pending
+          </Badge>
+        )
+      case "failed":
+        return (
+          <Badge className="bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20">Failed</Badge>
+        )
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  const copyTransactionId = (txnId: string) => {
+    navigator.clipboard.writeText(txnId)
+    setCopiedTxnId(txnId)
+    setTimeout(() => setCopiedTxnId(null), 2000)
+    toast({
+      title: "Copied!",
+      description: "Transaction ID copied to clipboard",
+    })
   }
 
   return (
@@ -147,11 +192,13 @@ export default function AddBalancePage() {
         </div>
 
         {/* Current Balance */}
-        <Card className={cn(
-          "mb-8 border-none shadow-xl overflow-hidden",
-          "bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl",
-          "hover:shadow-2xl transition-all duration-300"
-        )}>
+        <Card
+          className={cn(
+            "mb-8 border-none shadow-xl overflow-hidden",
+            "bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl",
+            "hover:shadow-2xl transition-all duration-300"
+          )}
+        >
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
           <CardContent className="relative flex items-center justify-center p-8">
             <div className="flex items-center gap-4">
@@ -168,147 +215,143 @@ export default function AddBalancePage() {
           </CardContent>
         </Card>
 
-        {/* QR Code Card */}
-        <Card className={cn(
-          "mb-8 border-none shadow-xl",
-          "bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl"
-        )}>
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="flex items-center justify-center gap-2 text-2xl">
-              <QrCode className="h-6 w-6 text-primary" />
-              Scan & Pay
-            </CardTitle>
-            <CardDescription className="text-base">Scan QR code with any UPI app to pay</CardDescription>
+        {/* Add Balance Form */}
+        <Card className={cn("mb-8 border-none shadow-xl", "bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl")}>
+          <CardHeader>
+            <CardTitle className="text-2xl">Add Money to Wallet</CardTitle>
+            <CardDescription>Enter amount and proceed to payment</CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center">
-            {/* QR Code Image - Theme Based */}
-            <div className="relative w-full max-w-[300px] aspect-square rounded-2xl p-6 mb-6 shadow-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
-              <Image
-                src="/images/lightqr.jpg"
-                alt="UPI QR Code"
-                fill
-                className="object-contain p-2 dark:hidden rounded-xl"
-                priority
-              />
-              <Image
-                src="/images/blackqr.jpg"
-                alt="UPI QR Code"
-                fill
-                className="object-contain p-2 hidden dark:block rounded-xl"
-                priority
-              />
-            </div>
-
-            {/* Download QR Button */}
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={handleDownloadQR}
-              className="mb-8 border-primary/30 hover:bg-primary/10 hover:border-primary transition-all"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download QR Code
-            </Button>
-
-            {/* UPI ID with Copy */}
-            <div className="w-full max-w-md space-y-3">
-              <Label className="text-center block text-gray-600 dark:text-gray-400 font-medium">Or pay using UPI ID</Label>
-              <div className="flex gap-2">
+          <CardContent className="space-y-6">
+            {/* Amount Input */}
+            <div className="space-y-3">
+              <Label htmlFor="amount" className="text-base font-semibold">
+                Amount
+              </Label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-lg">₹</span>
                 <Input
-                  value={SITE_CONTACTS.upiId}
-                  readOnly
-                  className="font-mono bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-center text-lg h-12"
+                  id="amount"
+                  type="number"
+                  placeholder="Enter amount"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="pl-8 h-14 text-lg"
+                  min="1"
                 />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopyUpi}
-                  className="h-12 w-12 border-primary/30 hover:bg-primary/10 hover:border-primary transition-all"
-                >
-                  {copiedUpi ? <Check className="h-5 w-5 text-primary" /> : <Copy className="h-5 w-5" />}
-                </Button>
               </div>
             </div>
 
-            {/* Minimum Amount Warning */}
-            <Alert className="mt-8 border-yellow-500/50 bg-yellow-500/10 max-w-md backdrop-blur-sm">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
-              <AlertDescription className="text-sm text-yellow-600 dark:text-yellow-400 font-medium">
-                <strong>Minimum amount: ₹100</strong>
-                <br />
-                Payments below ₹100 will not be processed.
-              </AlertDescription>
-            </Alert>
+            {/* Quick Amount Buttons */}
+            <div className="space-y-2">
+              <Label className="text-sm text-muted-foreground">Quick Select</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {QUICK_AMOUNTS.map((quickAmount) => (
+                  <Button
+                    key={quickAmount}
+                    variant="outline"
+                    onClick={() => handleQuickAmount(quickAmount)}
+                    className={cn(
+                      "h-12",
+                      amount === quickAmount.toString() && "border-primary bg-primary/10 text-primary"
+                    )}
+                  >
+                    ₹{quickAmount.toLocaleString("en-IN")}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Proceed Button */}
+            <Button
+              onClick={handleProceedToPay}
+              disabled={isProcessing || !amount}
+              className="w-full h-14 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+              size="lg"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Proceed to Pay
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Send Payment Proof */}
-        <Card className={cn(
-          "border-none shadow-xl",
-          "bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl"
-        )}>
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none rounded-xl" />
-          <CardHeader className="text-center relative">
-            <CardTitle className="flex items-center justify-center gap-2 text-primary text-2xl">
-              <MessageCircle className="h-6 w-6" />
-              Send Payment Screenshot
-            </CardTitle>
-            <CardDescription className="text-base">After payment, send screenshot with your email to add balance</CardDescription>
+        {/* Transaction History */}
+        <Card className={cn("border-none shadow-xl", "bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl")}>
+          <CardHeader>
+            <CardTitle className="text-2xl">Transaction History</CardTitle>
+            <CardDescription>Your recent wallet topups</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6 relative">
-            {/* Telegram */}
-            <div className="space-y-3">
-              <Label className="flex items-center gap-2 text-base font-semibold">
-                <MessageCircle className="h-5 w-5 text-primary" />
-                Telegram (Recommended - Fastest)
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  value={SITE_CONTACTS.telegram.support}
-                  readOnly
-                  className="font-mono bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 h-12"
-                />
-                <Button
-                  onClick={handleOpenTelegram}
-                  className="shrink-0 h-12 bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Open
-                </Button>
+          <CardContent>
+            {topupsLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            </div>
-
-            {/* Email */}
-            <div className="space-y-3">
-              <Label className="flex items-center gap-2 text-base font-semibold">
-                <Mail className="h-5 w-5 text-primary" />
-                Email (Alternative)
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  value={SITE_CONTACTS.email}
-                  readOnly
-                  className="font-mono bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-sm h-12"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopyEmail}
-                  className="h-12 w-12 border-primary/30 hover:bg-primary/10 hover:border-primary transition-all"
-                >
-                  {copiedEmail ? <Check className="h-5 w-5 text-primary" /> : <Copy className="h-5 w-5" />}
-                </Button>
+            ) : topups.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Wallet className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No transactions yet</p>
               </div>
-            </div>
-
-            {/* Balance Update Notice */}
-            <div className="pt-4 pb-2">
-              <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
-                <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-                  Balance will be added within <strong className="text-primary">5-10 minutes</strong> after verification
-                </p>
-              </div>
-            </div>
+            ) : (
+              <ScrollArea className="h-[400px] pr-4">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Transaction ID</TableHead>
+                      <TableHead>Method</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topups.map((topup, index) => (
+                      <TableRow key={topup.id}>
+                        <TableCell className="font-semibold">{formatCurrency(topup.amount)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm truncate max-w-[150px]">
+                              {topup.transaction_id || topup.id.slice(0, 12)}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => copyTransactionId(topup.transaction_id || topup.id)}
+                            >
+                              {copiedTxnId === (topup.transaction_id || topup.id) ? (
+                                <Check className="h-3 w-3 text-green-600" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{topup.payment_method || "UPI"}</span>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(topup.status)}</TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">
+                          {new Date(topup.created_at).toLocaleString("en-IN", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            )}
           </CardContent>
         </Card>
       </main>

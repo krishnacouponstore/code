@@ -11,7 +11,6 @@ export const SITE_CONTACTS = {
 
 export const SITE_CONFIG = {
   name: "CoupX",
-  minTopup: 100,
-  maxTopup: 50000,
+  minTopup: 1,
   quickAmounts: [100, 200, 500, 1000, 2000, 5000],
 }
