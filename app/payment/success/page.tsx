@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { getTopupByTransactionId } from "@/app/actions/imb-payments"
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import confetti from "canvas-confetti"
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -176,5 +176,19 @@ export default function PaymentSuccessPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
+        </div>
+      }
+    >
+      <PaymentSuccessContent />
+    </Suspense>
   )
 }

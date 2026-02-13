@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
 import { checkPaymentStatus, getTopupByTransactionId } from "@/app/actions/imb-payments"
@@ -8,7 +8,7 @@ import { Loader2, AlertCircle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
-export default function PaymentProcessingPage() {
+function PaymentProcessingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -163,5 +163,19 @@ export default function PaymentProcessingPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function PaymentProcessingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <PaymentProcessingContent />
+    </Suspense>
   )
 }

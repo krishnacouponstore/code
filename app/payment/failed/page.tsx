@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getTopupByTransactionId } from "@/app/actions/imb-payments"
 import { XCircle, RefreshCw, Mail, MessageCircle } from "lucide-react"
@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SITE_CONTACTS } from "@/lib/site-config"
 
-export default function PaymentFailedPage() {
+function PaymentFailedContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [transaction, setTransaction] = useState<any>(null)
@@ -165,5 +165,19 @@ export default function PaymentFailedPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function PaymentFailedPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-slate-950 dark:to-slate-900 flex items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">Loading...</div>
+        </div>
+      }
+    >
+      <PaymentFailedContent />
+    </Suspense>
   )
 }
