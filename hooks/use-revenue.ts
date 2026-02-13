@@ -8,29 +8,46 @@ export type RevenueFilters = {
     from?: string
     to?: string
   }
-  timeRange?: "today" | "7days" | "30days" | "all"
+  timeRange?: "today" | "week" | "month" | "year" | "7days" | "30days" | "all"
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: string
+  method?: string
+  sortBy?: string
+}
+
+function mapTimeRange(timeRange?: string): string {
+  const map: Record<string, string> = {
+    today: "today",
+    week: "7days",
+    month: "30days",
+    year: "all",
+  }
+  return map[timeRange || ""] || timeRange || "all"
 }
 
 export function useRecentTransactions(filters: RevenueFilters) {
   return useQuery({
     queryKey: ["recent-transactions", filters],
     queryFn: async () => {
-      // Determine which date range to use
-      let dateRange = filters.timeRange || "all"
+      let dateRange = mapTimeRange(filters.timeRange)
 
-      // If custom date range is provided, use "all" and filter on server
       if (filters.dateRange?.from || filters.dateRange?.to) {
         dateRange = "all"
       }
 
-      const result = await getTransactions({
-        page: 0,
-        pageSize: 10,
+      return await getTransactions({
+        page: filters.page || 0,
+        pageSize: filters.pageSize || 50,
+        search: filters.search,
+        status: filters.status,
+        method: filters.method,
+        sortBy: filters.sortBy,
         dateRange,
       })
-      return result.transactions
     },
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000,
   })
 }
 
@@ -38,10 +55,10 @@ export function useRevenueStats(filters: RevenueFilters) {
   return useQuery({
     queryKey: ["revenue-stats", filters],
     queryFn: async () => {
-      const dateRange = filters.timeRange || "all"
+      const dateRange = mapTimeRange(filters.timeRange)
       return await getRevenueStats(dateRange)
     },
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 30 * 1000,
   })
 }
 

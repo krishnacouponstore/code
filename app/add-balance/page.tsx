@@ -312,9 +312,14 @@ export default function AddBalancePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {topups.map((topup, index) => (
+                    {topups.map((topup, index) => {
+                      const isDebit = topup.payment_method === "admin_debit" || topup.amount < 0
+                      const displayAmount = Math.abs(topup.amount)
+                      return (
                       <TableRow key={topup.id}>
-                        <TableCell className="font-semibold">{formatCurrency(topup.amount)}</TableCell>
+                        <TableCell className={cn("font-semibold", isDebit ? "text-red-500" : "text-green-500")}>
+                          {isDebit ? "-" : "+"}{formatCurrency(displayAmount)}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-sm truncate max-w-[150px]">
@@ -335,7 +340,9 @@ export default function AddBalancePage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm">{topup.payment_method || "UPI"}</span>
+                          <span className="text-sm">
+                            {topup.payment_method?.startsWith("admin") ? "Admin" : (topup.payment_method || "UPI")}
+                          </span>
                         </TableCell>
                         <TableCell>{getStatusBadge(topup.status)}</TableCell>
                         <TableCell className="text-right text-sm text-muted-foreground">
@@ -347,7 +354,8 @@ export default function AddBalancePage() {
                           })}
                         </TableCell>
                       </TableRow>
-                    ))}
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </ScrollArea>

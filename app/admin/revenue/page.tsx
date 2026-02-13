@@ -78,10 +78,16 @@ export default function AdminRevenuePage() {
         }
       : undefined,
     timeRange: !dateRange ? timeRange : undefined,
+    page,
+    pageSize,
+    search: debouncedSearch || undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    method: methodFilter !== "all" ? methodFilter : undefined,
+    sortBy,
   }
 
   const { data: stats, isLoading: statsLoading } = useRevenueStats(filters)
-  const { data: transactionsData = [], isLoading: transactionsLoading } = useRecentTransactions(filters)
+  const { data: transactionsData, isLoading: transactionsLoading } = useRecentTransactions(filters)
 
   const updateStatusMutation = useUpdateTransactionStatus()
   const refundMutation = useRefundTransaction()
