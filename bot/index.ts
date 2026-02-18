@@ -1956,7 +1956,7 @@ bot.on(message("text"), async (ctx) => {
           `❓ *Help & Support*\n\n` +
             `🌐 Website: ${SITE_URL}\n` +
             `📧 Email Support: coupxofficial@gmail.com\n` +
-            `💬 Telegram Support: @coupx\_support\n` +
+            `💬 Telegram Support: @coupx\\_support\n` +
             `📢 Updates Channel: @coupxofficial\n\n` +
             `*Available Commands:*\n` +
             `/start - Restart the bot\n\n` +
