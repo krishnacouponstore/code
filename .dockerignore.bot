@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+npm-debug.log
+pnpm-lock.yaml
+package-lock.json
+
+# Next.js (not needed for bot)
+.next/
+out/
+app/
+pages/
+components/
+public/
+styles/
+
+# Development
+.env.local
+.env.development
+*.log
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+dist/
+build/
+
+# Testing
+coverage/
+.nyc_output/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.md
+!README.md
+migrations/
+DEPLOYMENT.md

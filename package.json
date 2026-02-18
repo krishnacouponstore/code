@@ -6,7 +6,10 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "bot:dev": "npx tsx watch bot/index.ts",
+    "bot:start": "npx tsx bot/index.ts",
+    "bot:build": "npx tsc bot/index.ts --outDir dist/bot"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
@@ -41,6 +44,7 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@tanstack/react-query": "latest",
+    "@types/express": "^5.0.6",
     "@vercel/analytics": "latest",
     "autoprefixer": "^10.4.20",
     "canvas-confetti": "^1.9.3",
@@ -48,7 +52,9 @@
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "latest",
+    "dotenv": "^16.4.7",
     "embla-carousel-react": "8.5.1",
+    "express": "^5.2.1",
     "framer-motion": "latest",
     "graphql": "^16.8.0",
     "graphql-request": "latest",
@@ -62,12 +68,14 @@
     "react-day-picker": "9.8.0",
     "react-dom": "^18.3.0",
     "react-hook-form": "^7.60.0",
+    "react-qr-code": "^2.0.15",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.4",
     "sonner": "^1.7.4",
     "swr": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "telegraf": "^4.16.3",
     "vaul": "^1.1.2",
     "zod": "3.25.76"
   },
@@ -78,6 +86,7 @@
     "@types/react-dom": "^18",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   },
   "trustedDependencies": [
