@@ -595,4 +595,29 @@ export class DatabaseService {
       return false
     }
   }
+
+  async getTopupHistory(userId: string, limit: number = 10): Promise<any[]> {
+    const query = gql`
+      query GetTopupHistory($userId: uuid!, $limit: Int!) {
+        topups(
+          where: { user_id: { _eq: $userId } }
+          order_by: { created_at: desc }
+          limit: $limit
+        ) {
+          transaction_id
+          amount
+          status
+          created_at
+        }
+      }
+    `
+
+    try {
+      const data: any = await this.client.request(query, { userId, limit })
+      return data.topups || []
+    } catch (error) {
+      console.error("Error fetching topup history:", error)
+      return []
+    }
+  }
 }

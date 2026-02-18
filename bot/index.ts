@@ -6,6 +6,7 @@ import { Telegraf, Markup } from "telegraf"
 import { message } from "telegraf/filters"
 import { DatabaseService } from "./services/database"
 import { AuthService } from "./services/auth"
+import { PaymentService } from "./services/payment"
 import { UserSession, BotContext } from "./types"
 
 // Environment variables
@@ -29,6 +30,7 @@ const sessions = new Map<number, UserSession>()
 // Initialize services
 const db = new DatabaseService()
 const auth = new AuthService()
+const payment = new PaymentService()
 
 // Helper to get or create session
 function getSession(userId: number): UserSession {
@@ -66,12 +68,78 @@ bot.command("start", async (ctx) => {
   console.log(" /start command from user:", telegramId)
 
   try {
+    // Check for deep link payload (e.g. /start paid_COUPXBOT...)
+    const payload = ctx.payload?.trim() || ""
+
     const user = await db.getUserByTelegramId(telegramId)
 
     if (user) {
       ctx.session!.isAuthenticated = true
       ctx.session!.userId = user.id
       ctx.session!.email = user.email
+
+      const session = ctx.session!
+
+      // Deep link payment return: /start paid_<orderId>
+      const paymentPayload = payload.startsWith("paid_") ? payload.slice(5) : null
+
+      // SECURITY: only process if the order ID matches THIS user's own pending order in session.
+      // Prevents anyone crafting a fake ?start=paid_<orderId> link to trigger a payment check.
+      const pendingOrderId = paymentPayload
+        ? (paymentPayload === session.pendingOrderId ? paymentPayload : null)
+        : session.pendingOrderId
+
+      if (
+        pendingOrderId &&
+        session.pendingPaymentMessageId &&
+        session.pendingPaymentChatId
+      ) {
+        const msgId = session.pendingPaymentMessageId
+        const pendingChatId = session.pendingPaymentChatId
+        const staticMsgId = session.pendingStaticMessageId
+
+        // Stop the countdown timer immediately
+        if (session.pendingBalanceTimer) {
+          clearInterval(session.pendingBalanceTimer)
+          session.pendingBalanceTimer = undefined
+        }
+        session.pendingOrderId = undefined
+        session.pendingPaymentMessageId = undefined
+        session.pendingPaymentChatId = undefined
+        session.pendingStaticMessageId = undefined
+
+        try {
+          const statusResult = await payment.checkPaymentStatus(pendingOrderId)
+          if (statusResult.success && statusResult.status === "success") {
+            const updatedUser = await db.getUserById(user.id)
+            const newBalance = updatedUser?.wallet_balance ?? user.wallet_balance
+
+            // Delete the static "Pay Here" message
+            if (staticMsgId) {
+              try { await ctx.telegram.deleteMessage(pendingChatId, staticMsgId) } catch {}
+            }
+
+            // Edit timer message → success
+            try {
+              await ctx.telegram.editMessageText(
+                pendingChatId,
+                msgId,
+                undefined,
+                `✅ *Payment Successful!*\n\n` +
+                  `₹${session.pendingBalanceAmount ?? ""} has been added to your wallet.\n` +
+                  (statusResult.utr ? `🔖 UTR: \`${statusResult.utr}\`\n` : "") +
+                  `💰 New Balance: *₹${newBalance.toFixed(2)}*`,
+                {
+                  parse_mode: "Markdown",
+                  ...Markup.inlineKeyboard([
+                    [Markup.button.callback("🏠 Back to Menu", "back_to_menu_keep")],
+                  ]),
+                }
+              )
+            } catch {}
+          }
+        } catch {}
+      }
 
       await ctx.reply(
         " *Welcome back, " + user.name + "!*\n\n Balance: " + user.wallet_balance.toFixed(2) + "\n\nChoose an option from the menu below:",
@@ -490,13 +558,14 @@ bot.action("skip_linking", async (ctx) => {
 bot.action("credentials_saved", async (ctx) => {
   try {
     await ctx.answerCbQuery()
-    await ctx.editMessageText(
+    // Delete the credentials message so password isn't permanently in chat history
+    try { await ctx.deleteMessage() } catch {}
+    await ctx.reply(
       `🎉 *Welcome to CoupX!*\n\n` +
         `Your account is now linked to this Telegram bot.\n\n` +
         `Use the menu below to browse coupons, check balance, and more!`,
-      { parse_mode: "Markdown" }
+      { parse_mode: "Markdown", ...mainMenuKeyboard }
     )
-    await ctx.reply("Choose an option:", mainMenuKeyboard)
   } catch (error: any) {
     console.error(" Error in credentials_saved:", error)
   }
@@ -581,6 +650,21 @@ bot.action("back_to_menu", async (ctx) => {
     await ctx.reply("Choose an option:", mainMenuKeyboard)
   } catch (error: any) {
     console.error(" Error in back_to_menu:", error)
+  }
+})
+
+// CALLBACK: back_to_menu_keep — like back_to_menu but does NOT delete the message (used for success messages)
+bot.action("back_to_menu_keep", async (ctx) => {
+  try {
+    await ctx.answerCbQuery()
+    if (ctx.session) {
+      ctx.session.awaitingInput = undefined
+    }
+    // Remove the inline keyboard from the success message without deleting it
+    try { await ctx.editMessageReplyMarkup(undefined) } catch {}
+    await ctx.reply("Choose an option:", mainMenuKeyboard)
+  } catch (error: any) {
+    console.error(" Error in back_to_menu_keep:", error)
   }
 })
 
@@ -907,21 +991,94 @@ bot.action("show_purchases", async (ctx) => {
   }
 })
 
-// CALLBACK: add_balance - Show balance addition info (placeholder for now)
+// CALLBACK: add_balance - Start the payment flow
 bot.action("add_balance", async (ctx) => {
   try {
     await ctx.answerCbQuery()
+    const session = ctx.session!
+
+    if (!session.isAuthenticated || !session.userId) {
+      await ctx.editMessageText(
+        `❌ Please login first to add balance.`,
+        { ...Markup.inlineKeyboard([[Markup.button.callback("🔙 Back", "back_to_menu")]]) }
+      )
+      return
+    }
+
+    session.awaitingInput = "add_balance_amount"
+
     await ctx.editMessageText(
       `💰 *Add Balance*\n\n` +
-        `To add balance to your wallet, please visit:\n${SITE_URL}/add-balance\n\n` +
-        `_Telegram bot payment integration coming soon!_`,
+        `Enter the amount you want to add to your wallet:\n\n` +
+        `• Minimum: ₹1\n` +
+        `• Maximum: ₹10,000\n\n` +
+        `_Type the amount and press send (e.g. 100)_`,
       {
         parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([[Markup.button.callback("🔙 Back", "back_to_menu")]]),
+        ...Markup.inlineKeyboard([[Markup.button.callback("❌ Cancel", "back_to_menu")]]),
       }
     )
   } catch (error: any) {
     console.error(" Error in add_balance:", error)
+  }
+})
+
+// CALLBACK: topup_history - Show recent wallet topup transactions
+bot.action("topup_history", async (ctx) => {
+  try {
+    await ctx.answerCbQuery()
+    const session = ctx.session!
+
+    if (!session.isAuthenticated || !session.userId) {
+      await ctx.editMessageText(
+        `❌ Please login first.`,
+        { ...Markup.inlineKeyboard([[Markup.button.callback("🔙 Back", "back_to_menu")]]) }
+      )
+      return
+    }
+
+    const topups = await db.getTopupHistory(session.userId, 10)
+
+    if (topups.length === 0) {
+      await ctx.editMessageText(
+        `📋 *Topup History*\n\nNo topup transactions found.\nAdd balance to get started!`,
+        {
+          parse_mode: "Markdown",
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback("➕ Add Balance", "add_balance")],
+            [Markup.button.callback("🏠 Back to Menu", "back_to_menu")],
+          ]),
+        }
+      )
+      return
+    }
+
+    const statusEmoji: Record<string, string> = {
+      success: "✅",
+      pending: "⏳",
+      failed: "❌",
+    }
+
+    const historyLines = topups.map((t: any) => {
+      const emoji = statusEmoji[t.status] || "🔄"
+      const date = new Date(t.created_at).toLocaleDateString("en-IN", {
+        day: "2-digit", month: "short", year: "numeric",
+      })
+      return `${emoji} ₹${Number(t.amount).toFixed(2)} — ${t.status.toUpperCase()} — ${date}`
+    })
+
+    await ctx.editMessageText(
+      `📋 *Topup History* _(last 10)_\n\n${historyLines.join("\n")}`,
+      {
+        parse_mode: "Markdown",
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback("➕ Add Balance", "add_balance")],
+          [Markup.button.callback("🏠 Back to Menu", "back_to_menu")],
+        ]),
+      }
+    )
+  } catch (error: any) {
+    console.error(" Error in topup_history:", error)
   }
 })
 
@@ -1466,6 +1623,204 @@ bot.on(message("text"), async (ctx) => {
         }
       )
     }
+    // Handle add balance amount input
+    else if (session.awaitingInput === "add_balance_amount") {
+      const amountText = text.trim()
+      const amount = parseFloat(amountText)
+
+      if (isNaN(amount) || amount < 1 || amount > 10000 || !/^\d+(\.\d{1,2})?$/.test(amountText)) {
+        await ctx.reply(
+          `❌ *Invalid amount*\n\nPlease enter a valid amount between ₹1 and ₹10,000.\n\n_Example: 100 or 250.50_`,
+          {
+            parse_mode: "Markdown",
+            ...Markup.inlineKeyboard([[Markup.button.callback("❌ Cancel", "back_to_menu")]]),
+          }
+        )
+        return
+      }
+
+      session.awaitingInput = null
+      session.pendingBalanceAmount = amount
+
+      const loadingMsg = await ctx.reply(`⏳ Creating payment order for ₹${amount}...`)
+
+      try {
+        const user = await db.getUserById(session.userId!)
+        if (!user) {
+          await ctx.telegram.deleteMessage(ctx.chat!.id, loadingMsg.message_id)
+          await ctx.reply("❌ User not found. Please try again.")
+          return
+        }
+
+        const result = await payment.createPaymentOrder(
+          session.userId!,
+          amount,
+          "9999999999", // placeholder mobile - IMB needs it but wallet credit uses order_id
+          user.email
+        )
+
+        await ctx.telegram.deleteMessage(ctx.chat!.id, loadingMsg.message_id)
+
+        if (!result.success || !result.data) {
+          await ctx.reply(
+            `❌ *Failed to create payment order*\n\n${result.error || "Please try again."}\n\nIf this keeps happening, use the website to add balance.`,
+            {
+              parse_mode: "Markdown",
+              ...Markup.inlineKeyboard([
+                [Markup.button.url("🌐 Add Balance on Website", `${SITE_URL}/add-balance`)],
+                [Markup.button.callback("🏠 Back to Menu", "back_to_menu")],
+              ]),
+            }
+          )
+          return
+        }
+
+        session.pendingOrderId = result.data.orderId
+
+        const PAYMENT_TIMEOUT_SECS = 300
+        let remainingSeconds = PAYMENT_TIMEOUT_SECS
+        const chatId = ctx.chat!.id
+        const userId = session.userId!
+        const { orderId, paymentUrl } = result.data
+
+        // Clear any pre-existing timer
+        if (session.pendingBalanceTimer) {
+          clearInterval(session.pendingBalanceTimer)
+          session.pendingBalanceTimer = undefined
+        }
+
+        // MESSAGE 1: Static payment info with URL (never edited, deleted on success)
+        const staticMsg = await ctx.reply(
+          `💳 *Payment Order Created!*\n\n` +
+            `Amount: *₹${amount}*\n` +
+            `Order ID: \`${orderId}\`\n\n` +
+            `👇 Tap the link below to pay:\n` +
+            `${paymentUrl}`,
+          {
+            parse_mode: "Markdown",
+            ...Markup.inlineKeyboard([
+              [Markup.button.url("💳 Pay Here", paymentUrl)],
+              [Markup.button.callback("🏠 Back to Menu", "back_to_menu")],
+            ]),
+          }
+        )
+
+        // MESSAGE 2: Live timer (edited every 3s — safe within Telegram rate limits)
+        const timerMsg = await ctx.reply(
+          `⏱ *Time remaining: 5:00*\n_Waiting for payment..._`,
+          { parse_mode: "Markdown" }
+        )
+
+        session.pendingPaymentMessageId = timerMsg.message_id
+        session.pendingPaymentChatId = chatId
+        session.pendingStaticMessageId = staticMsg.message_id
+
+        const formatCountdown = (secs: number) => {
+          const m = Math.floor(secs / 60)
+          const s = secs % 60
+          return `${m}:${s.toString().padStart(2, "0")}`
+        }
+
+        // Runs every 1 second. Edits Telegram every 3s. Polls payment every 30s.
+        session.pendingBalanceTimer = setInterval(async () => {
+          remainingSeconds -= 1
+
+          // --- payment poll every 30s ---
+          if (remainingSeconds > 0 && remainingSeconds % 30 === 0) {
+            try {
+              const statusResult = await payment.checkPaymentStatus(orderId)
+              if (statusResult.success && statusResult.status === "success") {
+                clearInterval(session.pendingBalanceTimer!)
+                session.pendingBalanceTimer = undefined
+                session.pendingOrderId = undefined
+                session.pendingPaymentMessageId = undefined
+                session.pendingPaymentChatId = undefined
+                const staticMsgId = session.pendingStaticMessageId
+                session.pendingStaticMessageId = undefined
+
+                const updatedUser = await db.getUserById(userId)
+                const newBalance = updatedUser?.wallet_balance ?? amount
+
+                if (staticMsgId) {
+                  try { await bot.telegram.deleteMessage(chatId, staticMsgId) } catch {}
+                }
+                try {
+                  await bot.telegram.editMessageText(
+                    chatId,
+                    timerMsg.message_id,
+                    undefined,
+                    `✅ *Payment Successful!*\n\n` +
+                      `₹${amount} has been added to your wallet.\n` +
+                      (statusResult.utr ? `🔖 UTR: \`${statusResult.utr}\`\n` : "") +
+                      `💰 New Balance: *₹${newBalance.toFixed(2)}*`,
+                    {
+                      parse_mode: "Markdown",
+                      ...Markup.inlineKeyboard([
+                        [Markup.button.callback("🏠 Back to Menu", "back_to_menu_keep")],
+                      ]),
+                    }
+                  )
+                } catch {}
+                return
+              }
+            } catch {}
+          }
+
+          // --- timer expired ---
+          if (remainingSeconds <= 0) {
+            clearInterval(session.pendingBalanceTimer!)
+            session.pendingBalanceTimer = undefined
+            session.pendingOrderId = undefined
+            session.pendingPaymentMessageId = undefined
+            session.pendingPaymentChatId = undefined
+            try {
+              await bot.telegram.editMessageText(
+                chatId,
+                timerMsg.message_id,
+                undefined,
+                `⏰ *Payment Session Expired*\n\n` +
+                  `Your payment link has expired.\n` +
+                  `Tap *Add Balance* again to create a new payment.`,
+                {
+                  parse_mode: "Markdown",
+                  ...Markup.inlineKeyboard([
+                    [Markup.button.callback("➕ Add Balance Again", "add_balance")],
+                    [Markup.button.callback("🏠 Back to Menu", "back_to_menu")],
+                  ]),
+                }
+              )
+            } catch {}
+            return
+          }
+
+          // --- update display every 3s (Telegram rate limit: ~1 edit/3s) ---
+          if (remainingSeconds % 3 === 0) {
+            try {
+              await bot.telegram.editMessageText(
+                chatId,
+                timerMsg.message_id,
+                undefined,
+                `⏱ *Time remaining: ${formatCountdown(remainingSeconds)}*\n_Waiting for payment..._`,
+                { parse_mode: "Markdown" }
+              )
+            } catch {}
+          }
+        }, 1000)
+      } catch (err: any) {
+        console.error(" Error creating payment order:", err)
+        try { await ctx.telegram.deleteMessage(ctx.chat!.id, loadingMsg.message_id) } catch {}
+        await ctx.reply(
+          `❌ *Payment Error*\n\nSomething went wrong. Please try again later or add balance on the website.`,
+          {
+            parse_mode: "Markdown",
+            ...Markup.inlineKeyboard([
+              [Markup.button.url("🌐 Add Balance on Website", `${SITE_URL}/add-balance`)],
+              [Markup.button.callback("🏠 Back to Menu", "back_to_menu")],
+            ]),
+          }
+        )
+      }
+    }
     // Handle main menu buttons
     else if (session.isAuthenticated) {
       // COUPONS MENU
@@ -1517,6 +1872,7 @@ bot.on(message("text"), async (ctx) => {
             "Choose an option:",
             Markup.inlineKeyboard([
               [Markup.button.callback("➕ Add Balance", "add_balance")],
+              [Markup.button.callback("📋 Topup History", "topup_history")],
               [Markup.button.callback("🏠 Back to Menu", "back_to_menu")],
             ])
           )
@@ -1599,8 +1955,8 @@ bot.on(message("text"), async (ctx) => {
         await ctx.reply(
           `❓ *Help & Support*\n\n` +
             `🌐 Website: ${SITE_URL}\n` +
-            `📧 Email Support: support@coupx.in\n` +
-            `💬 Telegram Support: @coupxsupport\n` +
+            `📧 Email Support: coupxofficial@gmail.com\n` +
+            `💬 Telegram Support: @coupx_support\n` +
             `📢 Updates Channel: @coupxofficial\n\n` +
             `*Available Commands:*\n` +
             `/start - Restart the bot\n\n` +

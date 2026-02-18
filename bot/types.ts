@@ -5,7 +5,7 @@ export interface UserSession {
   email?: string
   isAuthenticated: boolean
   pendingUserId?: string
-  awaitingInput: "email" | "password" | "quantity" | "edit_name" | "edit_email" | "change_password_old" | "change_password_new" | null
+  awaitingInput?: "email" | "password" | "quantity" | "edit_name" | "edit_email" | "change_password_old" | "change_password_new" | "add_balance_amount" | null
   tempEmail?: string
   // Shopping cart state
   selectedStoreId?: string
@@ -16,7 +16,11 @@ export interface UserSession {
   calculatedPrice?: number
   // Add balance state
   pendingBalanceAmount?: number
+  pendingOrderId?: string
   pendingBalanceTimer?: NodeJS.Timeout
+  pendingPaymentMessageId?: number
+  pendingPaymentChatId?: number
+  pendingStaticMessageId?: number
   // Password change state
   tempNewPassword?: string
   // Account creation temp state

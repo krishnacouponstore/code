@@ -1,0 +1,123 @@
+Introduction
+IMB Payment Gateway API Documentation
+
+IMB Payment Gateway Overview:
+The IMB Payment Gateway is a comprehensive solution designed to help businesses and developers easily integrate secure payment processing into their applications or websites. With a focus on flexibility, security, and reliability, the IMB Payment Gateway offers a wide range of features to facilitate seamless transactions, allowing merchants to accept payments from customers through multiple channels.
+
+Key Features:
+Multi-Channel Payment Support: IMB Payment Gateway allows businesses to accept payments from various methods, including credit cards, debit cards, net banking, UPI, electronic wallets, and more. This gives customers the flexibility to choose their preferred payment method, enhancing user satisfaction and conversion rates. Secure Transactions: Security is at the forefront of IMB's services. The payment gateway uses advanced encryption techniques, two-factor authentication, and industry-standard protocols such as PCI-DSS compliance to safeguard customer data and ensure secure transaction processing. Fraud detection mechanisms are also in place to protect both merchants and customers from potential risks. Real-Time Payment Tracking: Merchants can easily track the status of payments in real-time, enabling better transaction management and customer support. Detailed reports are available, offering insights into transaction history, refunds, and failed payments. Global Payment Capabilities: IMB Payment Gateway supports international payments, enabling businesses to reach a global audience and accept payments in multiple currencies. This feature is particularly beneficial for businesses looking to expand their reach beyond local markets. Seamless Integration: The IMB Payment Gateway offers developers easy integration options with various platforms, such as e-commerce websites, mobile apps, and point-of-sale systems. The API is well-documented with clear instructions and code samples, allowing for quick setup and customization. Customizable Checkout Experience: The payment gateway offers a customizable checkout page that can be tailored to match the branding and design of the business, providing a seamless and familiar experience for customers during the payment process. Dedicated Support: IMB provides robust support to its users, with a dedicated team available to help resolve any technical issues or questions. Their developer resources, forums, and support channels ensure a smooth integration process and reliable ongoing service.
+
+Integration Examples:
+E-Commerce Stores: IMB Payment Gateway can be easily integrated into online stores, allowing businesses to accept payments from customers worldwide and manage transactions efficiently. Subscription Services: Businesses that offer subscription-based services can use the payment gateway to handle recurring payments securely and efficiently, ensuring seamless operations for both the provider and the customer. Mobile Applications: Developers building mobile apps can integrate IMB Payment Gateway to provide users with a fast, reliable, and secure way to make payments within the app, whether for purchasing goods or accessing premium features. Non-Profit Organizations: Charitable organizations can leverage IMB Payment Gateway to accept donations from across the globe, ensuring that all transactions are securely processed and tracked. With the IMB Payment Gateway, businesses can enhance their payment processing capabilities, providing customers with a seamless and secure experience while ensuring smooth financial transactions.
+Features of the IMB Payment Gateway API:
+Register easily with IMB Payment Gateway and activate your account instantly
+You can accept payments by linking any UPI merchant to IMB Payment Gateway
+If you want to accept payments through IMB Payment Gateway without linking it to any merchant, you can do so.
+You can accept payments through IMB Payment Gateway with zero transaction and instant settlement
+Accept payment from IMB Payment Gateway without any worry as it is 100% secure
+IMB does not provide any branding of the payment gateway, hence use it by integrating it on your website.
+Create Order API
+The order is created through this API. Once the order is created, you will get a payment link. You can accept the payment very easily by redirecting to the same payment link.
+
+URL: https://secure-stage.imb.org.in/api/create-order
+Form-Encoded Payload (application/x-www-form-urlencoded)
+Request Parameters:
+customer_mobile	Your customer's mobile number will be here
+user_token	Here you will find the API token of Imb payment gateway
+amount	Your transaction amount here
+order_id	Enter the unique transaction ID here.
+redirect_url	Enter your redirect URL here, on payment success or faild it will redirect you to this URL
+remark1	Enter your customer's email address so they can receive notification of their payment
+remark2	Here you can send any details or data as per your requirement.
+Request:
+{
+  "customer_mobile": "9876543210",
+  "user_token": "940149cb99886d8885f314476a994b6",
+  "amount": "1",
+  "order_id": "8787772321800",
+  "redirect_url": "https://yourdomain.com",
+  "remark1" : "your-customer@gmail.com",
+  "remark2" : "Hello",
+}
+Success Response:
+ {
+  "status": true,
+  "message": "Order Created Successfully",
+  "result": {
+    "orderId": "8787772321800",
+    "payment_url": "https://ekqr.live/d57e63cdf7a39afe018da74207f6ed7c553d05b6e5eb855b2190ffb6a7d0e523237fc3d",
+    "paytm_link": "paytmmp://cash_wallet?pa=yespay.qtosno9krs6nrb@yesbankltd&pn=Imb%20Payment%20Collection&am=10.00&cu=INR&tn=UPIx5lns1765635326&tr=UPIx5lns1765635326&mc=4722&&sign=AAuN7izDWN5cb8A5scnUiNME+LkZqI2DWgkXlN1McoP6WZABa/KkFTiLvuPRP6/nWK8BPg/rPhb+u4QMrUEX10UsANTDbJaALcSM9b8Wk218X+55T/zOzb7xoiB+BcX8yYuYayELImXJHIgL/c7nkAnHrwUCmbM97nRbCVVRvU0ku3Tr&featuretype=money_transfer",
+    "bhim_link": "upi://pay?pa=yespay.qtosno9krs6nrb@yesbankltd&am=10.00&pn=Imb%20Payment%20Collection&tn=UPIx5lns1765635326&tr=UPIx5lns1765635326",
+    "check_link": "https://check.imb.org.in/quintustech_status/UPIx5lns1765635326"
+  }
+}
+
+Failed Response:
+{
+    "status": "false",
+    "message": "Order_id Already Exist"
+}
+Webhook URL Setup For Imb Payment Gateway API.
+Dear Partners, you need to add an endpoint for the Callback API. This endpoint will be used to update the status of the transaction through IMB Payment Gateway. We will assume that the update request has been accepted when you receive a successful response from the endpoint.
+
+Note that only static URL structures are supported.
+
+URL STRUCTURE: https://domain.in/path
+Form-Encoded Payload (application/x-www-form-urlencoded)
+We will send the following payload when we hit your API:
+Response	SUCCESS, FAILD, TRUE, FALSE
+
+{
+	"status": "SUCCESS",
+	"order_id": "TXN00743264723",
+	"message": "Transaction Successfully",
+	"result":
+	{
+		"txnStatus": "COMPLETED",
+		"resultInfo": "Transaction Success",
+		"orderId": "TXN00743264723",
+		"amount": 100,
+		"date": "2021-01-01 12:00:00",
+		"utr": 435644746487,
+		"customer_mobile": 9876543210,
+		"remark1": "your-customer@gmail.com",
+		"remark2": "Your Data"
+	}
+}
+
+Check Status API
+This is the transaction check status API of Imb Payment Gateway, through this you can check your transaction very easily
+
+URL: https://secure-stage.imb.org.in/api/check-order-status
+Form-Encoded Payload (application/x-www-form-urlencoded)
+Request Parameters:
+user_token	your Imb Payment Gateway Api Token
+order_id	your reference id of transaction
+Request:
+{
+    "user_token": "2048f66bef68633fa3262d7a398ab577",
+    "order_id": "9876543210"
+}
+Success Response
+{
+    "status": "COMPLETED",
+    "message": "Transaction Successfully",
+    "result": {
+        "txnStatus": "COMPLETED",
+        "resultInfo": "Transaction Success",
+        "orderId": "871868513",
+        "status": "SUCCESS",
+        "amount": 1,
+        "date": "2024-08-24 20:06:20",
+        "utr": "423776207603",
+        "customer_mobile": "1234567890",
+        "remark1": "test1",
+        "remark2": "test2"
+    }
+}
+Failed Response
+{
+    "status": ERROR,
+    "message": "Error Massege",
+    
+}

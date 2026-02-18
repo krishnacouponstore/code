@@ -385,6 +385,7 @@ Columns:
 Column	Type	Nullable	Default	Description
 id	uuid	NO	-	Primary key, FK to auth.users.id
 wallet_balance	numeric	NO	0.00	Current wallet balance
+telegram_id - used to link with telegram account to use coupx bot
 is_blocked	boolean	NO	false	Admin can block users
 total_spent	numeric	NO	0.00	Lifetime spending
 total_purchased	integer	NO	0	Total coupons purchased
@@ -399,11 +400,17 @@ Foreign Keys:
 
 id → auth.users.id (fk_auth_user)
 
+unique keys 
+telegram_id - user_profiles_telegram_id_key
+
 Indexes:
 
 user_profiles_pkey - PRIMARY KEY, UNIQUE, btree on (id)
-
+idx_user_profiles_telegram_idbtreeon(telegram_id)
 idx_user_profiles_is_blocked - btree on (is_blocked)
+user_profiles_telegram_id_keyUNIQUEbtreeon(telegram_id)
+
+
 
 Triggers:
 
