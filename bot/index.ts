@@ -169,6 +169,10 @@ console.log(" /start command registered")
 bot.action("register_new", async (ctx) => {
   try {
     await ctx.answerCbQuery()
+    // Immediately edit to loading state — prevents webhook duplicate-delivery from running
+    // the full handler twice (Telegram retries if no ack within ~5s, but slow Nhost signup
+    // can take longer). Second attempt to edit to the same loading text is silently ignored.
+    try { await ctx.editMessageText("⏳ _Checking your account..._", { parse_mode: "Markdown" }) } catch {}
     const telegramId = ctx.from.id
     const username = ctx.from.username || `user${telegramId}`
     const primaryEmail = `${username}@yopmail.com`
@@ -229,29 +233,39 @@ bot.action("register_new", async (ctx) => {
       ctx.session!.userId = userId
       ctx.session!.email = createdEmail
 
-      await ctx.editMessageText(
-        `✅ *Account Created Successfully!*\n\n` +
-          `📧 Email: \`${createdEmail}\`\n` +
-          `🔑 Password: \`${password}\`\n\n` +
-          `⚠️ *IMPORTANT:* Save these credentials! You'll need them to login on ${SITE_URL}\n\n` +
-          `Have you saved your credentials?`,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([[Markup.button.callback("✅ Yes, I've Saved Them", "credentials_saved")]]),
-        }
-      )
+      try {
+        await ctx.editMessageText(
+          `✅ *Account Created Successfully!*\n\n` +
+            `📧 Email: \`${createdEmail}\`\n` +
+            `🔑 Password: \`${password}\`\n\n` +
+            `⚠️ *IMPORTANT:* Save these credentials! You'll need them to login on ${SITE_URL}\n\n` +
+            `Have you saved your credentials?`,
+          {
+            parse_mode: "Markdown",
+            ...Markup.inlineKeyboard([[Markup.button.callback("✅ Yes, I've Saved Them", "credentials_saved")]]),
+          }
+        )
+      } catch (e: any) {
+        if (!e.message?.includes("message is not modified")) throw e
+      }
     } else {
-      await ctx.editMessageText(
-        `❌ Failed to create account: ${result.error}\n\nPlease try again or contact support.`,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([[Markup.button.callback("🔄 Try Again", "register_new")]]),
-        }
-      )
+      try {
+        await ctx.editMessageText(
+          `❌ Failed to create account: ${result.error}\n\nPlease try again or contact support.`,
+          {
+            parse_mode: "Markdown",
+            ...Markup.inlineKeyboard([[Markup.button.callback("🔄 Try Again", "register_new")]]),
+          }
+        )
+      } catch (e: any) {
+        if (!e.message?.includes("message is not modified")) throw e
+      }
     }
   } catch (error: any) {
     console.error("⚠️ Error in register_new:", error)
-    await ctx.reply("❌ An error occurred. Please try /start again.")
+    if (!error.message?.includes("message is not modified")) {
+      await ctx.reply("❌ An error occurred. Please try /start again.")
+    }
   }
 })
 
@@ -1344,6 +1358,19 @@ bot.on(message("text"), async (ctx) => {
 
   // Skip if it's a command
   if (text.startsWith("/")) return
+
+  // Main menu keyboard buttons ALWAYS take priority over any pending input state.
+  // Without this, pressing "🎟️ Coupons" while awaitingInput === "add_balance_amount"
+  // would be treated as an invalid balance amount.
+  const MENU_BUTTONS = ["🎟️ Coupons", "📢 CoupX Updates", "💰 Balance", "📦 Recent Purchases", "👤 CoupX Profile", "❓ Help"]
+  if (session.isAuthenticated && MENU_BUTTONS.includes(text)) {
+    // Cancel any running payment timer
+    if (session.pendingBalanceTimer) {
+      clearInterval(session.pendingBalanceTimer)
+      session.pendingBalanceTimer = undefined
+    }
+    session.awaitingInput = undefined
+  }
 
   try {
     // Handle email input
