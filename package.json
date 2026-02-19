@@ -9,7 +9,7 @@
     "start": "next start",
     "bot:dev": "npx tsx watch bot/index.ts",
     "bot:start": "npx tsx bot/index.ts",
-    "bot:build": "npx tsc bot/index.ts --outDir dist/bot"
+    "bot:build": "npx tsc --project bot/tsconfig.json"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
