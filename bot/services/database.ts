@@ -5,6 +5,15 @@ const NHOST_SUBDOMAIN = process.env.NEXT_PUBLIC_NHOST_SUBDOMAIN || "tiujfdwdudfh
 const NHOST_REGION = process.env.NEXT_PUBLIC_NHOST_REGION || "ap-south-1"
 const GRAPHQL_ENDPOINT = `https://${NHOST_SUBDOMAIN}.hasura.${NHOST_REGION}.nhost.run/v1/graphql`
 
+// Fetch wrapper that aborts requests after 10 seconds
+function fetchWithTimeout(url: RequestInfo | URL, options?: RequestInit): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 10_000)
+  return fetch(url as string, { ...options, signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  )
+}
+
 export class DatabaseService {
   private client: GraphQLClient
 
@@ -18,6 +27,7 @@ export class DatabaseService {
       headers: {
         "x-hasura-admin-secret": adminSecret,
       },
+      fetch: fetchWithTimeout,
     })
   }
 
@@ -191,6 +201,46 @@ export class DatabaseService {
     } catch (error) {
       console.error("❌ Error creating user profile:", error)
       return false
+    }
+  }
+
+  /**
+   * Look up a Nhost auth user's UUID by email address.
+   * Uses Hasura's run_sql endpoint because auth.users is not tracked in GraphQL.
+   */
+  async getUserIdByEmail(email: string): Promise<string | null> {
+    const HASURA_ENDPOINT = `https://${NHOST_SUBDOMAIN}.hasura.${NHOST_REGION}.nhost.run`
+    const adminSecret = process.env.NHOST_ADMIN_SECRET!
+    try {
+      const response = await fetchWithTimeout(`${HASURA_ENDPOINT}/v2/query`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-hasura-admin-secret": adminSecret,
+        },
+        body: JSON.stringify({
+          type: "run_sql",
+          args: {
+            source: "default",
+            // Parameterised-style: escape single quotes manually (safe — email is from our own data)
+            sql: `SELECT id FROM auth.users WHERE email = '${email.replace(/'/g, "''")}'`,
+            read_only: true,
+          },
+        }),
+      })
+      if (!response.ok) {
+        console.error("❌ run_sql failed:", response.status)
+        return null
+      }
+      const data = await response.json()
+      // result is [["id"], ["<uuid>"]] when found, [["id"]] when not found
+      if (data.result && data.result.length > 1) {
+        return data.result[1][0] as string
+      }
+      return null
+    } catch (error) {
+      console.error("❌ Error in getUserIdByEmail:", error)
+      return null
     }
   }
 

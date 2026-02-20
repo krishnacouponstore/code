@@ -165,465 +165,170 @@ bot.command("start", async (ctx) => {
 
 console.log(" /start command registered")
 
-// CALLBACK: register_new - Create new account
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH FLOW
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Helper: resolve to main menu after successful auth ───────────────────────
+async function goToMenu(ctx: BotContext, user: { name: string; wallet_balance: number }) {
+  await ctx.reply(
+    `🎉 *Welcome${user.name ? ", " + user.name : ""}!*\n\n` +
+      `💰 Balance: ₹${user.wallet_balance.toFixed(2)}\n\n` +
+      `Use the menu below to get started.`,
+    { parse_mode: "Markdown", ...mainMenuKeyboard }
+  )
+}
+
+// ── CALLBACK: register_new ────────────────────────────────────────────────────
+// Simply ask the user to type their email address. All logic is in the text handler.
 bot.action("register_new", async (ctx) => {
   try {
     await ctx.answerCbQuery()
-    // Immediately edit to loading state — prevents webhook duplicate-delivery from running
-    // the full handler twice (Telegram retries if no ack within ~5s, but slow Nhost signup
-    // can take longer). Second attempt to edit to the same loading text is silently ignored.
-    try { await ctx.editMessageText("⏳ _Checking your account..._", { parse_mode: "Markdown" }) } catch {}
-    const telegramId = ctx.from.id
-    const username = ctx.from.username || `user${telegramId}`
-    const primaryEmail = `${username}@yopmail.com`
-    const secondaryEmail = `${username}-2@yopmail.com`
-
-    console.log("🆕 Checking accounts for:", username)
-
-    // Check both possible emails
-    const existingPrimary = await db.getUserByEmail(primaryEmail)
-    const existingSecondary = await db.getUserByEmail(secondaryEmail)
-
-    // If primary email exists
-    if (existingPrimary) {
-      // Check if it's linked to a different telegram account
-      if (existingPrimary.telegram_id && existingPrimary.telegram_id !== telegramId.toString()) {
-        await ctx.editMessageText(
-          `⚠️ *Account Already Linked*\n\n` +
-            `An account with email \`${primaryEmail}\` exists and is linked to a different Telegram account.\n\n` +
-            `If this is your account, please unlink it first from that Telegram account.`,
-          {
-            parse_mode: "Markdown",
-            ...Markup.inlineKeyboard([[Markup.button.callback("🔙 Back", "back_to_menu")]]),
-          }
-        )
-        return
-      }
-
-      // Account exists and is unlinked or was created by this telegram - show options
-      ctx.session!.tempExistingUserId = existingPrimary.id
-      ctx.session!.tempExistingEmail = existingPrimary.email
-
+    ctx.session!.awaitingInput = "new_email"
+    try {
       await ctx.editMessageText(
-        `🔍 *Existing Account Found*\n\n` +
-          `We found an account that was previously created from this Telegram:\n` +
-          `📧 Email: \`${primaryEmail}\`\n` +
-          `💰 Balance: ₹${existingPrimary.wallet_balance.toFixed(2)}\n\n` +
-          `What would you like to do?`,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([
-            [Markup.button.callback("✅ Use This Account", "use_existing_account")],
-            [Markup.button.callback("🆕 Create New Account", "create_secondary_account")],
-            [Markup.button.callback("🔑 Login to Different Account", "register_existing")],
-          ]),
-        }
+        `📧 *Create Your CoupX Account*\n\n` +
+          `Please enter your email address:\n\n` +
+          `_Type your email and send it as a message_`,
+        { parse_mode: "Markdown" }
       )
-      return
-    }
-
-    // Primary doesn't exist, create it directly
-    const result = await auth.createAccount(primaryEmail, ctx.from.first_name || username, telegramId.toString())
-
-    if (result.success && result.credentials) {
-      const { email: createdEmail, password } = result.credentials
-      const { userId } = result
-
-      ctx.session!.isAuthenticated = true
-      ctx.session!.userId = userId
-      ctx.session!.email = createdEmail
-
-      try {
-        await ctx.editMessageText(
-          `✅ *Account Created Successfully!*\n\n` +
-            `📧 Email: \`${createdEmail}\`\n` +
-            `🔑 Password: \`${password}\`\n\n` +
-            `⚠️ *IMPORTANT:* Save these credentials! You'll need them to login on ${SITE_URL}\n\n` +
-            `Have you saved your credentials?`,
-          {
-            parse_mode: "Markdown",
-            ...Markup.inlineKeyboard([[Markup.button.callback("✅ Yes, I've Saved Them", "credentials_saved")]]),
-          }
-        )
-      } catch (e: any) {
-        if (!e.message?.includes("message is not modified")) throw e
-      }
-    } else {
-      try {
-        await ctx.editMessageText(
-          `❌ Failed to create account: ${result.error}\n\nPlease try again or contact support.`,
-          {
-            parse_mode: "Markdown",
-            ...Markup.inlineKeyboard([[Markup.button.callback("🔄 Try Again", "register_new")]]),
-          }
-        )
-      } catch (e: any) {
-        if (!e.message?.includes("message is not modified")) throw e
-      }
+    } catch {
+      await ctx.reply(
+        `📧 *Create Your CoupX Account*\n\nPlease enter your email address:`,
+        { parse_mode: "Markdown" }
+      )
     }
   } catch (error: any) {
-    console.error("⚠️ Error in register_new:", error)
-    if (!error.message?.includes("message is not modified")) {
-      await ctx.reply("❌ An error occurred. Please try /start again.")
-    }
+    console.error("Error in register_new:", error)
   }
 })
 
-// CALLBACK: use_existing_account - Re-link existing account
-bot.action("use_existing_account", async (ctx) => {
+// ── CALLBACK: found_login ─────────────────────────────────────────────────────
+// Email was found in auth.users — user wants to log in with it.
+bot.action("found_login", async (ctx) => {
   try {
     await ctx.answerCbQuery()
-    const telegramId = ctx.from.id
-    const userId = ctx.session!.tempExistingUserId
-    const email = ctx.session!.tempExistingEmail
-
-    const linkSuccess = await db.linkTelegramAccount(userId!, telegramId.toString())
-
-    if (linkSuccess) {
-      const user = await db.getUserById(userId!)
-
-      ctx.session!.isAuthenticated = true
-      ctx.session!.userId = userId
-      ctx.session!.email = email
-      delete ctx.session!.tempExistingUserId
-      delete ctx.session!.tempExistingEmail
-      delete ctx.session!.tempSecondaryUserId
-      delete ctx.session!.tempSecondaryEmail
-
+    ctx.session!.awaitingInput = "existing_account_password"
+    try {
       await ctx.editMessageText(
-        `✅ *Account Re-linked Successfully!*\n\n` +
-          `📧 Email: \`${email!}\`\n` +
-          `💰 Balance: ₹${user?.wallet_balance.toFixed(2) || '0.00'}\n\n` +
-          `Your existing CoupX account has been linked to this Telegram account.\n\n` +
-          `You can now access all your previous purchases and balance!`,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([[Markup.button.callback("🏠 Continue to Menu", "credentials_saved")]]),
-        }
+        `🔑 *Enter Password*\n\n` +
+          `📧 Email: \`${ctx.session!.tempEmail}\`\n\n` +
+          `Please enter your password:`,
+        { parse_mode: "Markdown" }
       )
-    } else {
-      await ctx.editMessageText("❌ Failed to link account. Please try again.", {
-        parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([[Markup.button.callback("🔄 Try Again", "register_new")]]),
-      })
+    } catch {
+      await ctx.reply(
+        `🔑 Please enter your password for \`${ctx.session!.tempEmail}\`:`,
+        { parse_mode: "Markdown" }
+      )
     }
   } catch (error: any) {
-    console.error("⚠️ Error in use_existing_account:", error)
-    await ctx.reply("❌ An error occurred.")
+    console.error("Error in found_login:", error)
   }
 })
 
-// CALLBACK: use_secondary_account - Re-link secondary account
-bot.action("use_secondary_account", async (ctx) => {
+// ── CALLBACK: found_other ─────────────────────────────────────────────────────
+// User wants to enter a different email instead.
+bot.action("found_other", async (ctx) => {
   try {
     await ctx.answerCbQuery()
-    const telegramId = ctx.from.id
-    const userId = ctx.session!.tempSecondaryUserId
-    const email = ctx.session!.tempSecondaryEmail
-
-    const linkSuccess = await db.linkTelegramAccount(userId!, telegramId.toString())
-
-    if (linkSuccess) {
-      const user = await db.getUserById(userId!)
-
-      ctx.session!.isAuthenticated = true
-      ctx.session!.userId = userId
-      ctx.session!.email = email
-      delete ctx.session!.tempExistingUserId
-      delete ctx.session!.tempExistingEmail
-      delete ctx.session!.tempSecondaryUserId
-      delete ctx.session!.tempSecondaryEmail
-
+    ctx.session!.awaitingInput = "new_email"
+    ctx.session!.tempEmail = undefined
+    try {
       await ctx.editMessageText(
-        `✅ *Account Re-linked Successfully!*\n\n` +
-          `📧 Email: \`${email!}\`\n` +
-          `💰 Balance: ₹${user?.wallet_balance.toFixed(2) || '0.00'}\n\n` +
-          `Your second CoupX account has been linked to this Telegram account.\n\n` +
-          `You can now access all your previous purchases and balance!`,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([[Markup.button.callback("🏠 Continue to Menu", "credentials_saved")]]),
-        }
+        `📧 *Enter a Different Email*\n\n` +
+          `Please enter the email you'd like to use for your new CoupX account:`,
+        { parse_mode: "Markdown" }
       )
-    } else {
-      await ctx.editMessageText("❌ Failed to link account. Please try again.", {
-        parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([[Markup.button.callback("🔄 Try Again", "register_new")]]),
-      })
-    }
-  } catch (error: any) {
-    console.error("⚠️ Error in use_secondary_account:", error)
-    await ctx.reply("❌ An error occurred.")
-  }
-})
-
-// CALLBACK: create_secondary_account - Create second account
-bot.action("create_secondary_account", async (ctx) => {
-  try {
-    await ctx.answerCbQuery()
-    const telegramId = ctx.from.id
-    const username = ctx.from.username || `user${telegramId}`
-    const secondaryEmail = `${username}-2@yopmail.com`
-
-    // Check if secondary account already exists
-    const existingSecondary = await db.getUserByEmail(secondaryEmail)
-
-    if (existingSecondary) {
-      const existingSecondaryUser = await db.getUserById(existingSecondary.id)
-      
-      // Store secondary account info in session too
-      ctx.session!.tempSecondaryUserId = existingSecondary.id
-      ctx.session!.tempSecondaryEmail = existingSecondary.email
-      
-      await ctx.editMessageText(
-        `⚠️ *Account Limit Reached*\n\n` +
-          `You already have 2 accounts created from this Telegram:\n\n` +
-          `1️⃣ \`${ctx.session!.tempExistingEmail!}\` - Balance: ₹${(await db.getUserById(ctx.session!.tempExistingUserId!))?.wallet_balance.toFixed(2) || '0.00'}\n` +
-          `2️⃣ \`${secondaryEmail}\` - Balance: ₹${existingSecondaryUser?.wallet_balance.toFixed(2) || '0.00'}\n\n` +
-          `Maximum 2 accounts per Telegram ID allowed.\n\n` +
-          `Please use one of the existing accounts or login to a different CoupX account.`,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([
-            [Markup.button.callback("✅ Use First Account", "use_existing_account")],
-            [Markup.button.callback("✅ Use Second Account", "use_secondary_account")],
-            [Markup.button.callback("🔑 Login to Different Account", "register_existing")],
-            [Markup.button.callback("🔙 Back", "back_to_menu")],
-          ]),
-        }
-      )
-      return
-    }
-
-    // Create secondary account
-    const result = await auth.createAccount(secondaryEmail, ctx.from.first_name || username, "")
-
-    if (result.success && result.credentials) {
-      const { email: createdEmail, password } = result.credentials
-      const { userId } = result
-
-      // Store in session, ask for linking confirmation
-      ctx.session!.tempNewUserId = userId
-      ctx.session!.tempNewEmail = createdEmail
-      ctx.session!.tempNewPassword = password
-
-      await ctx.editMessageText(
-        `✅ *New Account Created Successfully!*\n\n` +
-          `📧 Email: \`${createdEmail}\`\n` +
-          `🔑 Password: \`${password}\`\n\n` +
-          `⚠️ *IMPORTANT:* Save these credentials!\n\n` +
-          `Do you want to link this account to your Telegram?`,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([
-            [Markup.button.callback("✅ Yes, Link Account", "link_new_secondary_account")],
-            [Markup.button.callback("❌ No, Just Show Credentials", "skip_linking")],
-          ]),
-        }
-      )
-    } else {
-      await ctx.editMessageText(
-        `❌ Failed to create account: ${result.error}\n\nPlease try again.`,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([[Markup.button.callback("🔄 Try Again", "register_new")]]),
-        }
+    } catch {
+      await ctx.reply(
+        `📧 Please enter a different email address:`,
+        { parse_mode: "Markdown" }
       )
     }
   } catch (error: any) {
-    console.error("⚠️ Error in create_secondary_account:", error)
-    await ctx.reply("❌ An error occurred.")
+    console.error("Error in found_other:", error)
   }
 })
 
-// CALLBACK: link_new_secondary_account - Link the newly created secondary account
-bot.action("link_new_secondary_account", async (ctx) => {
-  try {
-    await ctx.answerCbQuery()
-    await ctx.editMessageText("⏳ Linking account to Telegram...\n_Please wait, this may take a few moments..._", {
-      parse_mode: "Markdown"
-    })
-    
-    const telegramId = ctx.from.id
-    const userId = ctx.session!.tempNewUserId
-    const email = ctx.session!.tempNewEmail
-
-    console.log("🔗 Attempting to link secondary account:", { userId, email, telegramId })
-
-    // Wait and poll for user_profile to be created (max 20 seconds)
-    let profileExists = false
-    let attempts = 0
-    const maxAttempts = 20
-    let manualCreateAttempted = false
-
-    while (!profileExists && attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      attempts++
-      
-      console.log(`📊 Polling attempt ${attempts}/${maxAttempts} for user profile...`)
-      
-      try {
-        const user = await db.getUserById(userId!)
-        if (user) {
-          console.log("✅ User profile found:", user.email)
-          profileExists = true
-          break
-        }
-      } catch (error) {
-        console.log(`⚠️ Error checking user profile (attempt ${attempts}):`, error)
-      }
-
-      // After 5 attempts (5 seconds), try to manually create the profile
-      if (attempts === 5 && !manualCreateAttempted) {
-        console.log("⚙️ Attempting to manually create user profile...")
-        manualCreateAttempted = true
-        await db.createUserProfile(userId!)
-      }
-    }
-
-    if (!profileExists) {
-      console.error("❌ User profile not created after", maxAttempts, "seconds")
-      await ctx.editMessageText(
-        "❌ *Account Creation Error*\n\n" +
-          "User profile was not created properly. Please try again or contact support.\n\n" +
-          `📧 Email: \`${email}\`\n` +
-          `🔑 Password: \`${ctx.session!.tempNewPassword}\`\n\n` +
-          "You can use these credentials to login at the website.",
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([[Markup.button.callback("🔙 Back", "back_to_menu")]]),
-        }
-      )
-      return
-    }
-
-    // Now link the telegram account
-    console.log("🔗 User profile exists, attempting to link telegram_id...")
-    const linkSuccess = await db.linkTelegramAccount(userId!, telegramId.toString())
-
-    if (linkSuccess) {
-      console.log("✅ Successfully linked telegram account")
-      ctx.session!.isAuthenticated = true
-      ctx.session!.userId = userId
-      ctx.session!.email = email
-      delete ctx.session!.tempNewUserId
-      delete ctx.session!.tempNewEmail
-      delete ctx.session!.tempNewPassword
-      delete ctx.session!.tempExistingUserId
-      delete ctx.session!.tempExistingEmail
-      delete ctx.session!.tempSecondaryUserId
-      delete ctx.session!.tempSecondaryEmail
-
-      await ctx.editMessageText(
-        `✅ *Account Linked Successfully!*\n\n` +
-          `You can now use this bot with your new account.\n\n` +
-          `📧 Email: \`${email!}\``,
-        {
-          parse_mode: "Markdown",
-          ...Markup.inlineKeyboard([[Markup.button.callback("🏠 Continue to Menu", "credentials_saved")]]),
-        }
-      )
-    } else {
-      console.error("❌ Failed to link telegram account")
-      await ctx.editMessageText("❌ Failed to link account. Please try again.", {
-        parse_mode: "Markdown",
-        ...Markup.inlineKeyboard([[Markup.button.callback("🔙 Back", "back_to_menu")]]),
-      })
-    }
-  } catch (error: any) {
-    console.error("⚠️ Error in link_new_secondary_account:", error)
-    await ctx.reply("❌ An error occurred.")
-  }
-})
-
-// CALLBACK: skip_linking - Don't link new account, just show credentials
-bot.action("skip_linking", async (ctx) => {
-  try {
-    await ctx.answerCbQuery()
-    const email = ctx.session!.tempNewEmail
-    const password = ctx.session!.tempNewPassword
-
-    delete ctx.session!.tempNewUserId
-    delete ctx.session!.tempNewEmail
-    delete ctx.session!.tempNewPassword
-    delete ctx.session!.tempExistingUserId
-    delete ctx.session!.tempExistingEmail
-    delete ctx.session!.tempSecondaryUserId
-    delete ctx.session!.tempSecondaryEmail
-
-    await ctx.editMessageText(
-      `✅ *Account Created (Not Linked)*\n\n` +
-        `📧 Email: \`${email!}\`\n` +
-        `🔑 Password: \`${password}\`\n\n` +
-        `⚠️ This account is NOT linked to Telegram.\n` +
-        `You can use these credentials to login at ${SITE_URL}\n\n` +
-        `To use the bot, please send /start again.`,
-      {
-        parse_mode: "Markdown",
-      }
-    )
-  } catch (error: any) {
-    console.error("⚠️ Error in skip_linking:", error)
-    await ctx.reply("❌ An error occurred.")
-  }
-})
-
-// CALLBACK: credentials_saved - Show main menu
+// ── CALLBACK: credentials_saved ───────────────────────────────────────────────
+// New account was already auto-linked. Just delete the credentials message and show menu.
 bot.action("credentials_saved", async (ctx) => {
   try {
     await ctx.answerCbQuery()
-    // Delete the credentials message so password isn't permanently in chat history
     try { await ctx.deleteMessage() } catch {}
-    await ctx.reply(
-      `🎉 *Welcome to CoupX!*\n\n` +
-        `Your account is now linked to this Telegram bot.\n\n` +
-        `Use the menu below to browse coupons, check balance, and more!`,
-      { parse_mode: "Markdown", ...mainMenuKeyboard }
-    )
+    const userId = ctx.session!.userId
+    if (!userId) {
+      await ctx.reply("❌ Session expired. Please /start again.")
+      return
+    }
+    const user = await db.getUserById(userId)
+    if (!user) {
+      await ctx.reply("❌ Could not load your profile. Please /start again.")
+      return
+    }
+    await goToMenu(ctx, user)
   } catch (error: any) {
-    console.error(" Error in credentials_saved:", error)
+    console.error("Error in credentials_saved:", error)
   }
 })
 
-// CALLBACK: register_existing - Start login flow
+// ── CALLBACK: register_existing ───────────────────────────────────────────────
+// Existing CoupX user — ask for email + password (link_email / link_password states).
 bot.action("register_existing", async (ctx) => {
   try {
     await ctx.answerCbQuery()
-    ctx.session!.awaitingInput = "email"
-
-    await ctx.editMessageText(
-      `📧 *Existing User Login*\n\n` +
-        `Please enter your email address:\n\n` +
-        `_Type your email and send it as a message_`,
-      { parse_mode: "Markdown" }
-    )
+    ctx.session!.awaitingInput = "link_email"
+    try {
+      await ctx.editMessageText(
+        `📧 *Existing User Login*\n\n` +
+          `Please enter your CoupX email address:\n\n` +
+          `_Type your email and send it as a message_`,
+        { parse_mode: "Markdown" }
+      )
+    } catch {
+      await ctx.reply(
+        `📧 *Existing User Login*\n\nPlease enter your CoupX email address:`,
+        { parse_mode: "Markdown" }
+      )
+    }
   } catch (error: any) {
-    console.error(" Error in register_existing:", error)
+    console.error("Error in register_existing:", error)
   }
 })
 
-// CALLBACK: link_account_yes - Link Telegram to existing account
+// ── CALLBACK: link_account_yes ────────────────────────────────────────────────
+// User confirmed they want to link their CoupX account to this Telegram.
 bot.action("link_account_yes", async (ctx) => {
   try {
     await ctx.answerCbQuery()
     const session = ctx.session!
     const telegramId = ctx.from.id
+    const userId = session.tempLinkUserId || session.userId
 
-    if (!session.userId) {
+    if (!userId) {
       await ctx.reply("❌ Session expired. Please /start again.")
       return
     }
 
-    const linked = await db.linkTelegramAccount(session.userId, telegramId.toString())
+    // Ensure user_profile row exists
+    let profile = await db.getUserById(userId)
+    if (!profile) {
+      console.log("🔧 No profile found before linking — creating for:", userId)
+      await db.createUserProfile(userId)
+      profile = await db.getUserById(userId)
+    }
 
+    const linked = await db.linkTelegramAccount(userId, telegramId.toString())
     if (linked) {
       session.isAuthenticated = true
-      await ctx.editMessageText(
-        `✅ *Account Linked Successfully!*\n\n` +
-          `Your CoupX account is now linked to this Telegram bot.`,
-        { parse_mode: "Markdown" }
-      )
-      await ctx.reply("Choose an option:", mainMenuKeyboard)
+      session.userId = userId
+      session.email = session.tempLinkEmail || session.email
+      session.tempLinkUserId = undefined
+      session.tempLinkEmail = undefined
+
+      try { await ctx.deleteMessage() } catch {}
+      await goToMenu(ctx, profile!)
     } else {
       await ctx.editMessageText(
         `❌ Failed to link account. Please try /start again or contact support.`,
@@ -631,24 +336,29 @@ bot.action("link_account_yes", async (ctx) => {
       )
     }
   } catch (error: any) {
-    console.error(" Error in link_account_yes:", error)
+    console.error("Error in link_account_yes:", error)
   }
 })
 
-// CALLBACK: link_account_no - Don't link account
+// ── CALLBACK: link_account_no ─────────────────────────────────────────────────
+// User chose not to link. Clear temp state and prompt to /start again.
 bot.action("link_account_no", async (ctx) => {
   try {
     await ctx.answerCbQuery()
-    ctx.session!.isAuthenticated = false
-    ctx.session!.userId = undefined
-    ctx.session!.email = undefined
+    const session = ctx.session!
+    session.isAuthenticated = false
+    session.userId = undefined
+    session.email = undefined
+    session.tempLinkUserId = undefined
+    session.tempLinkEmail = undefined
 
-    await ctx.editMessageText(
-      `❌ *Login Cancelled*\n\n` + `You can try again anytime by sending /start`,
+    try { await ctx.deleteMessage() } catch {}
+    await ctx.reply(
+      `ℹ️ *Account not linked.*\n\nYou can /start again at any time to link your account.`,
       { parse_mode: "Markdown" }
     )
   } catch (error: any) {
-    console.error(" Error in link_account_no:", error)
+    console.error("Error in link_account_no:", error)
   }
 })
 
@@ -1373,25 +1083,87 @@ bot.on(message("text"), async (ctx) => {
   }
 
   try {
-    // Handle email input
-    if (session.awaitingInput === "email") {
-      const email = text.trim()
+    // ── New user registration: email collection ───────────────────────────────
+    if (session.awaitingInput === "new_email") {
+      const email = text.trim().toLowerCase()
 
-      // Basic email validation
       if (!email.includes("@") || !email.includes(".")) {
         await ctx.reply("❌ Please enter a valid email address.")
         return
       }
 
-      session.tempEmail = email
-      session.awaitingInput = "password"
+      session.awaitingInput = undefined
 
-      await ctx.reply(`📧 Email: ${email}\n\n🔑 Now enter your password:`, {
-        reply_markup: { force_reply: true },
-      })
+      await ctx.reply("⏳ Checking email...")
+
+      // Check if this email already exists in auth.users
+      const existingAuthId = await db.getUserIdByEmail(email)
+
+      if (existingAuthId) {
+        // Email already registered — show options
+        session.tempEmail = email
+        await ctx.reply(
+          `⚠️ *Account Already Exists*\n\n` +
+            `An account is already registered with:\n📧 \`${email}\`\n\n` +
+            `What would you like to do?`,
+          {
+            parse_mode: "Markdown",
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback("🔑 Login with this account", "found_login")],
+              [Markup.button.callback("📧 Enter a different email", "found_other")],
+            ]),
+          }
+        )
+      } else {
+        // Email is free — create the account and auto-link telegram
+        console.log("🆕 Creating new account for:", email)
+        const telegramId = ctx.from.id
+        const displayName = ctx.from.first_name || ctx.from.username || `User${telegramId}`
+
+        const result = await auth.createAccount(email, displayName)
+
+        if (result.success && result.credentials) {
+          const { password } = result.credentials
+          const { userId } = result
+
+          // Ensure user_profile row exists (trigger may be slow)
+          let profile = await db.getUserById(userId!)
+          if (!profile) {
+            console.log("⚙️ Creating user_profile manually for:", userId)
+            await db.createUserProfile(userId!)
+            profile = await db.getUserById(userId!)
+          }
+
+          // Auto-link telegram — no need to ask
+          await db.linkTelegramAccount(userId!, telegramId.toString())
+
+          session.isAuthenticated = true
+          session.userId = userId
+          session.email = email
+
+          await ctx.reply(
+            `✅ *Account Created Successfully!*\n\n` +
+              `📧 Email: \`${email}\`\n` +
+              `🔑 Password: \`${password}\`\n\n` +
+              `⚠️ *IMPORTANT:* Save these credentials! You'll need them to login at ${SITE_URL}\n\n` +
+              `Have you saved your credentials?`,
+            {
+              parse_mode: "Markdown",
+              ...Markup.inlineKeyboard([[Markup.button.callback("✅ Yes, I've Saved Them", "credentials_saved")]]),
+            }
+          )
+        } else {
+          await ctx.reply(
+            `❌ Failed to create account. Please try again or contact support.`,
+            {
+              ...Markup.inlineKeyboard([[Markup.button.callback("🔄 Try Again", "register_new")]]),
+            }
+          )
+        }
+      }
     }
-    // Handle password input
-    else if (session.awaitingInput === "password") {
+    // ── New user: password for a found existing account ───────────────────────
+    else if (session.awaitingInput === "existing_account_password") {
       const password = text.trim()
       const email = session.tempEmail!
 
@@ -1400,30 +1172,47 @@ bot.on(message("text"), async (ctx) => {
       const result = await auth.loginUser(email, password)
 
       if (result.success && result.userId) {
-        // Check if this account is already linked to a different Telegram
-        const user = await db.getUserById(result.userId)
+        let user = await db.getUserById(result.userId)
+
+        // Orphaned auth account — profile row missing
+        if (!user) {
+          console.log("🔧 No user_profile for userId:", result.userId, "— creating")
+          await db.createUserProfile(result.userId)
+          user = await db.getUserById(result.userId)
+        }
+
+        session.awaitingInput = null
 
         if (user?.telegram_id && user.telegram_id !== ctx.from.id.toString()) {
+          // Already linked to a DIFFERENT Telegram
           await ctx.reply(
             `⚠️ *Account Already Linked*\n\n` +
-              `This CoupX account is already linked to a different Telegram account.\n\n` +
-              `Please use that Telegram account or contact support.`,
-            { parse_mode: "Markdown" }
+              `This account (\`${email}\`) is already linked to a different Telegram.\n\n` +
+              `Please use that Telegram account or try a different CoupX account.`,
+            {
+              parse_mode: "Markdown",
+              ...Markup.inlineKeyboard([
+                [Markup.button.callback("🔑 Try Another Account", "register_existing")],
+              ]),
+            }
           )
-          session.awaitingInput = null
           return
         }
 
-        // If not linked, ask to link
-        if (!user?.telegram_id) {
+        if (user?.telegram_id === ctx.from.id.toString()) {
+          // Already linked to THIS Telegram — just log in
+          session.isAuthenticated = true
           session.userId = result.userId
           session.email = email
-          session.awaitingInput = null
-
+          await goToMenu(ctx, user!)
+        } else {
+          // Not linked — ask
+          session.tempLinkUserId = result.userId
+          session.tempLinkEmail = email
           await ctx.reply(
             `✅ *Login Successful!*\n\n` +
               `Do you want to link this CoupX account to your Telegram?\n\n` +
-              `This will allow you to access your account directly from this bot.`,
+              `_You can also unlink later from the CoupX Profile section._`,
             {
               parse_mode: "Markdown",
               ...Markup.inlineKeyboard([
@@ -1431,27 +1220,110 @@ bot.on(message("text"), async (ctx) => {
                   Markup.button.callback("✅ Yes, Link Account", "link_account_yes"),
                   Markup.button.callback("❌ No, Thanks", "link_account_no"),
                 ],
+                [Markup.button.callback("🔑 Use Another Account", "register_existing")],
               ]),
-            }
-          )
-        } else {
-          // Already linked to this Telegram
-          session.isAuthenticated = true
-          session.userId = result.userId
-          session.email = email
-          session.awaitingInput = null
-
-          await ctx.reply(
-            `✅ *Welcome back!*\n\n💰 Balance: ₹${user.wallet_balance.toFixed(2)}`,
-            {
-              parse_mode: "Markdown",
-              ...mainMenuKeyboard,
             }
           )
         }
       } else {
         await ctx.reply(
-          `❌ *Login Failed*\n\n${result.error || "Invalid email or password"}\n\nPlease try again or send /start to restart.`,
+          `❌ *Login Failed*\n\nInvalid password for \`${email}\`.\n\nPlease try again.`,
+          {
+            parse_mode: "Markdown",
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback("🔄 Try Again", "found_login")],
+              [Markup.button.callback("📧 Use Different Email", "found_other")],
+            ]),
+          }
+        )
+        session.awaitingInput = null
+      }
+    }
+    // ── Existing user login: email step ──────────────────────────────────────
+    else if (session.awaitingInput === "link_email") {
+      const email = text.trim().toLowerCase()
+
+      if (!email.includes("@") || !email.includes(".")) {
+        await ctx.reply("❌ Please enter a valid email address.")
+        return
+      }
+
+      session.tempEmail = email
+      session.awaitingInput = "link_password"
+
+      await ctx.reply(`📧 Email: \`${email}\`\n\n🔑 Now enter your password:`, {
+        parse_mode: "Markdown",
+        reply_markup: { force_reply: true },
+      })
+    }
+    // ── Existing user login: password step ───────────────────────────────────
+    else if (session.awaitingInput === "link_password") {
+      const password = text.trim()
+      const email = session.tempEmail!
+
+      await ctx.reply("🔄 Verifying credentials...")
+
+      const result = await auth.loginUser(email, password)
+
+      if (result.success && result.userId) {
+        let user = await db.getUserById(result.userId)
+
+        // Orphaned auth account — profile row missing
+        if (!user) {
+          console.log("🔧 No user_profile found for userId:", result.userId, "— creating profile")
+          await db.createUserProfile(result.userId)
+          user = await db.getUserById(result.userId)
+        }
+
+        session.awaitingInput = null
+
+        if (user?.telegram_id && user.telegram_id !== ctx.from.id.toString()) {
+          // Already linked to a DIFFERENT Telegram account
+          await ctx.reply(
+            `⚠️ *Account Already Linked*\n\n` +
+              `This CoupX account (\`${email}\`) is already linked to a different Telegram account.\n\n` +
+              `Please use that Telegram account, or login to a different CoupX account.`,
+            {
+              parse_mode: "Markdown",
+              ...Markup.inlineKeyboard([
+                [Markup.button.callback("🔑 Try Another Account", "register_existing")],
+                [Markup.button.callback("🆕 Create New Account", "register_new")],
+              ]),
+            }
+          )
+          return
+        }
+
+        if (user?.telegram_id === ctx.from.id.toString()) {
+          // Already linked to THIS Telegram — log in directly
+          session.isAuthenticated = true
+          session.userId = result.userId
+          session.email = email
+          await goToMenu(ctx, user!)
+        } else {
+          // Not linked to any Telegram — ask
+          session.tempLinkUserId = result.userId
+          session.tempLinkEmail = email
+          await ctx.reply(
+            `✅ *Login Successful!*\n\n` +
+              `Do you want to link this CoupX account to your Telegram?\n\n` +
+              `This will allow you to access your account directly from this bot.\n\n` +
+              `_You can unlink your Telegram later from the CoupX Profile section._`,
+            {
+              parse_mode: "Markdown",
+              ...Markup.inlineKeyboard([
+                [
+                  Markup.button.callback("✅ Yes, Link Account", "link_account_yes"),
+                  Markup.button.callback("❌ No, Thanks", "link_account_no"),
+                ],
+                [Markup.button.callback("🔑 Use Another Account", "register_existing")],
+              ]),
+            }
+          )
+        }
+      } else {
+        await ctx.reply(
+          `❌ *Login Failed*\n\nInvalid email or password. Please try again or send /start to restart.`,
           { parse_mode: "Markdown" }
         )
         session.awaitingInput = null

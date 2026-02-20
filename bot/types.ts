@@ -5,7 +5,7 @@ export interface UserSession {
   email?: string
   isAuthenticated: boolean
   pendingUserId?: string
-  awaitingInput?: "email" | "password" | "quantity" | "edit_name" | "edit_email" | "change_password_old" | "change_password_new" | "add_balance_amount" | null
+  awaitingInput?: "new_email" | "existing_account_password" | "link_email" | "link_password" | "quantity" | "edit_name" | "edit_email" | "change_password_old" | "change_password_new" | "add_balance_amount" | null
   tempEmail?: string
   // Shopping cart state
   selectedStoreId?: string
@@ -23,7 +23,10 @@ export interface UserSession {
   pendingStaticMessageId?: number
   // Password change state
   tempNewPassword?: string
-  // Account creation temp state
+  // Account creation / linking temp state
+  tempLinkUserId?: string    // userId of the account being considered for linking
+  tempLinkEmail?: string     // email of that account
+  // Legacy / secondary account helpers (kept for back-compat)
   tempExistingUserId?: string
   tempExistingEmail?: string
   tempNewUserId?: string
