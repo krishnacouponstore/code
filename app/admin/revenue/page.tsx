@@ -19,11 +19,11 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
 import {
-  useRevenueStats,
   useUpdateTransactionStatus,
   useRefundTransaction,
   type Transaction,
 } from "@/hooks/use-admin-transactions"
+import { useRevenueStats } from "@/hooks/use-revenue"
 import { formatCurrency, formatDate, formatTime } from "@/lib/utils"
 import {
   DollarSign,

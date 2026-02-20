@@ -32,12 +32,7 @@ export function useRecentTransactions(filters: RevenueFilters) {
   return useQuery({
     queryKey: ["recent-transactions", filters],
     queryFn: async () => {
-      let dateRange = mapTimeRange(filters.timeRange)
-
-      if (filters.dateRange?.from || filters.dateRange?.to) {
-        dateRange = "all"
-      }
-
+      const hasCustomRange = !!(filters.dateRange?.from || filters.dateRange?.to)
       return await getTransactions({
         page: filters.page || 0,
         pageSize: filters.pageSize || 50,
@@ -46,7 +41,9 @@ export function useRecentTransactions(filters: RevenueFilters) {
         method: filters.method,
         platform: filters.platform,
         sortBy: filters.sortBy,
-        dateRange,
+        dateRange: hasCustomRange ? "all" : mapTimeRange(filters.timeRange),
+        dateFrom: filters.dateRange?.from,
+        dateTo: filters.dateRange?.to,
       })
     },
     staleTime: 30 * 1000,
@@ -57,6 +54,9 @@ export function useRevenueStats(filters: RevenueFilters) {
   return useQuery({
     queryKey: ["revenue-stats", filters],
     queryFn: async () => {
+      if (filters.dateRange?.from || filters.dateRange?.to) {
+        return await getRevenueStats("all", filters.dateRange?.from, filters.dateRange?.to)
+      }
       const dateRange = mapTimeRange(filters.timeRange)
       return await getRevenueStats(dateRange)
     },

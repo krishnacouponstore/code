@@ -28,12 +28,13 @@ export interface RevenueStats {
   pendingAmount: number
   successfulCount: number
   refundedFailedCount: number
+  activeUsers: number
 }
 
 const GET_REVENUE_STATS = gql`
-  query GetRevenueStats($startDate: timestamptz) {
+  query GetRevenueStats($startDate: timestamptz, $endDate: timestamptz) {
     total_revenue: purchases_aggregate(
-      where: { created_at: { _gte: $startDate } }
+      where: { created_at: { _gte: $startDate, _lte: $endDate } }
     ) {
       aggregate {
         sum {
@@ -44,7 +45,7 @@ const GET_REVENUE_STATS = gql`
     pending_transactions: topups_aggregate(
       where: { 
         status: { _eq: "pending" }
-        created_at: { _gte: $startDate }
+        created_at: { _gte: $startDate, _lte: $endDate }
       }
     ) {
       aggregate {
@@ -57,7 +58,7 @@ const GET_REVENUE_STATS = gql`
     successful_transactions: topups_aggregate(
       where: { 
         status: { _eq: "success" }
-        created_at: { _gte: $startDate }
+        created_at: { _gte: $startDate, _lte: $endDate }
       }
     ) {
       aggregate {
@@ -67,11 +68,21 @@ const GET_REVENUE_STATS = gql`
     failed_refunded: topups_aggregate(
       where: { 
         status: { _in: ["failed", "refunded"] }
-        created_at: { _gte: $startDate }
+        created_at: { _gte: $startDate, _lte: $endDate }
       }
     ) {
       aggregate {
         count
+      }
+    }
+    active_users: topups_aggregate(
+      where: {
+        status: { _eq: "success" }
+        created_at: { _gte: $startDate, _lte: $endDate }
+      }
+    ) {
+      aggregate {
+        count(columns: user_id, distinct: true)
       }
     }
   }
@@ -148,32 +159,48 @@ const REFUND_TRANSACTION = gql`
   }
 `
 
-export async function getRevenueStats(dateRange?: string): Promise<RevenueStats> {
+export async function getRevenueStats(dateRange: string = "today", from?: string, to?: string): Promise<RevenueStats> {
   try {
     const client = getServerGraphQLClient()
 
-    // Calculate start date based on dateRange
     const now = new Date()
     let startDate: string
+    let endDate: string
 
-    switch (dateRange) {
-      case "today":
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-        break
-      case "7days":
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-        break
-      case "30days":
-        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
-        break
-      case "all":
-      default:
-        // Use a very old date to get all records
-        startDate = new Date("2000-01-01").toISOString()
+    if (from) {
+      // Custom date range from picker
+      startDate = new Date(from + "T00:00:00").toISOString()
+    } else {
+      switch (dateRange) {
+        case "today":
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+          break
+        case "7days":
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+          break
+        case "30days":
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString()
+          break
+        case "all":
+        default:
+          startDate = new Date("2000-01-01").toISOString()
+      }
+    }
+
+    if (to) {
+      // End of the selected day
+      endDate = new Date(to + "T23:59:59").toISOString()
+    } else if (!from) {
+      // For preset ranges: no upper bound
+      endDate = new Date("2100-01-01").toISOString()
+    } else {
+      // from set but no to: end of same day
+      endDate = new Date(from + "T23:59:59").toISOString()
     }
 
     const data = await client.request<any>(GET_REVENUE_STATS, {
-      startDate: startDate,
+      startDate,
+      endDate,
     })
 
     return {
@@ -181,6 +208,7 @@ export async function getRevenueStats(dateRange?: string): Promise<RevenueStats>
       pendingAmount: data.pending_transactions?.aggregate?.sum?.amount || 0,
       successfulCount: data.successful_transactions?.aggregate?.count || 0,
       refundedFailedCount: data.failed_refunded?.aggregate?.count || 0,
+      activeUsers: data.active_users?.aggregate?.count || 0,
     }
   } catch (error) {
     console.error("Error fetching revenue stats:", error)
@@ -189,6 +217,7 @@ export async function getRevenueStats(dateRange?: string): Promise<RevenueStats>
       pendingAmount: 0,
       successfulCount: 0,
       refundedFailedCount: 0,
+      activeUsers: 0,
     }
   }
 }
@@ -202,10 +231,12 @@ export async function getTransactions(params: {
   platform?: string
   sortBy?: string
   dateRange?: string
+  dateFrom?: string
+  dateTo?: string
 }): Promise<{ transactions: Transaction[]; total: number }> {
   try {
     const client = getServerGraphQLClient()
-    const { page, pageSize, search, status, method, platform, sortBy, dateRange } = params
+    const { page, pageSize, search, status, method, platform, sortBy, dateRange, dateFrom, dateTo } = params
 
     // Build where clause
     const where: any = {}
@@ -247,7 +278,13 @@ export async function getTransactions(params: {
     }
 
     // Date range filter
-    if (dateRange && dateRange !== "all") {
+    if (dateFrom || dateTo) {
+      // Custom date range from picker
+      const dateCondition: any = {}
+      if (dateFrom) dateCondition._gte = new Date(dateFrom + "T00:00:00").toISOString()
+      if (dateTo) dateCondition._lte = new Date(dateTo + "T23:59:59").toISOString()
+      conditions.push({ created_at: dateCondition })
+    } else if (dateRange && dateRange !== "all") {
       const now = new Date()
       let startDate: Date
       switch (dateRange) {
