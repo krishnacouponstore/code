@@ -55,6 +55,7 @@ export default function AdminOrdersPage() {
   const [couponFilter, setCouponFilter] = useState<string>("all")
   const [dateRange, setDateRange] = useState<DateRangeType | undefined>(undefined)
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount_high" | "amount_low">("newest")
+  const [platformFilter, setPlatformFilter] = useState<"all" | "website" | "telegrambot">("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null)
   const [showOrderDetails, setShowOrderDetails] = useState(false)
@@ -69,6 +70,7 @@ export default function AdminOrdersPage() {
     limit: ordersPerPage,
     status: statusFilter === "all" ? undefined : statusFilter,
     slotId: couponFilter === "all" ? undefined : couponFilter,
+    platform: platformFilter === "all" ? undefined : platformFilter,
     dateRange: dateRange
       ? {
           from: dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
@@ -96,7 +98,7 @@ export default function AdminOrdersPage() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [statusFilter, couponFilter, dateRange, sortBy])
+  }, [statusFilter, couponFilter, platformFilter, dateRange, sortBy])
 
   // Auth check
   useEffect(() => {
@@ -193,6 +195,7 @@ export default function AdminOrdersPage() {
         search: debouncedSearch,
         status: statusFilter,
         slotId: couponFilter,
+        platform: platformFilter === "all" ? undefined : platformFilter,
         dateRange,
       })
 
@@ -371,6 +374,16 @@ export default function AdminOrdersPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={platformFilter} onValueChange={(v) => setPlatformFilter(v as typeof platformFilter)}>
+              <SelectTrigger className="bg-background border-border">
+                <SelectValue placeholder="Platform" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Platforms</SelectItem>
+                <SelectItem value="website">🌐 Website</SelectItem>
+                <SelectItem value="telegrambot">🤖 Telegram Bot</SelectItem>
+              </SelectContent>
+            </Select>
             <DatePickerWithRange value={dateRange} onChange={setDateRange} />
             <div className="flex items-center justify-between space-x-2">
               <div className="flex items-center space-x-2">
@@ -407,6 +420,7 @@ export default function AdminOrdersPage() {
                   <TableHead className="text-muted-foreground text-center">Qty</TableHead>
                   <TableHead className="text-muted-foreground text-right">Total</TableHead>
                   <TableHead className="text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-muted-foreground">Platform</TableHead>
                   <TableHead className="text-muted-foreground">Date</TableHead>
                   <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                 </TableRow>
@@ -437,13 +451,16 @@ export default function AdminOrdersPage() {
                         <Skeleton className="h-4 w-24" />
                       </TableCell>
                       <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
                         <Skeleton className="h-8 w-8 ml-auto" />
                       </TableCell>
                     </TableRow>
                   ))
                 ) : orders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                       No orders found
                     </TableCell>
                   </TableRow>
@@ -463,6 +480,17 @@ export default function AdminOrdersPage() {
                         ₹{order.total_price.toFixed(2)}
                       </TableCell>
                       <TableCell>{getStatusBadge(order.status)}</TableCell>
+                      <TableCell>
+                        {order.platform === "telegrambot" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400">
+                            🤖 Telegram Bot
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">
+                            🌐 Website
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {format(new Date(order.created_at), "dd MMM yyyy")}
                       </TableCell>

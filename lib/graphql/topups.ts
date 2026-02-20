@@ -52,6 +52,7 @@ export const CREATE_TOPUP = gql`
     $userId: uuid!
     $amount: numeric!
     $transactionId: String!
+    $platform: String
   ) {
     insert_topups_one(
       object: {
@@ -59,6 +60,7 @@ export const CREATE_TOPUP = gql`
         amount: $amount
         transaction_id: $transactionId
         status: "pending"
+        platform: $platform
       }
     ) {
       id

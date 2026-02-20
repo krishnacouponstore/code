@@ -10,6 +10,7 @@ export interface Transaction {
   payment_method: string | null
   razorpay_order_id: string | null
   razorpay_payment_id: string | null
+  platform: string | null
   status: "pending" | "success" | "failed" | "refunded"
   verified_at: string | null
   created_at: string
@@ -95,6 +96,7 @@ const GET_TRANSACTIONS = gql`
       payment_method
       razorpay_order_id
       razorpay_payment_id
+      platform
       status
       verified_at
       created_at
@@ -197,12 +199,13 @@ export async function getTransactions(params: {
   search?: string
   status?: string
   method?: string
+  platform?: string
   sortBy?: string
   dateRange?: string
 }): Promise<{ transactions: Transaction[]; total: number }> {
   try {
     const client = getServerGraphQLClient()
-    const { page, pageSize, search, status, method, sortBy, dateRange } = params
+    const { page, pageSize, search, status, method, platform, sortBy, dateRange } = params
 
     // Build where clause
     const where: any = {}
@@ -236,6 +239,11 @@ export async function getTransactions(params: {
       }
       const methods = methodMap[method] || [method.toLowerCase()]
       conditions.push({ payment_method: { _in: methods } })
+    }
+
+    // Platform filter
+    if (platform && platform !== "all") {
+      conditions.push({ platform: { _eq: platform } })
     }
 
     // Date range filter
@@ -292,6 +300,7 @@ export async function getTransactions(params: {
       payment_method: t.payment_method,
       razorpay_order_id: t.razorpay_order_id,
       razorpay_payment_id: t.razorpay_payment_id,
+      platform: t.platform || null,
       status: t.status,
       verified_at: t.verified_at,
       created_at: t.created_at,

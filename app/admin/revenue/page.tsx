@@ -62,6 +62,7 @@ export default function AdminRevenuePage() {
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "success" | "failed" | "refunded">("all")
   const [methodFilter, setMethodFilter] = useState<"all" | "UPI" | "Card" | "NetBanking" | "Admin">("all")
+  const [platformFilter, setPlatformFilter] = useState<"all" | "website" | "telegrambot">("all")
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "amount_high" | "amount_low">("newest")
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [timeRange, setTimeRange] = useState<"today" | "week" | "month" | "year">("today")
@@ -83,6 +84,7 @@ export default function AdminRevenuePage() {
     search: debouncedSearch || undefined,
     status: statusFilter !== "all" ? statusFilter : undefined,
     method: methodFilter !== "all" ? methodFilter : undefined,
+    platform: platformFilter !== "all" ? platformFilter : undefined,
     sortBy,
   }
 
@@ -176,7 +178,7 @@ export default function AdminRevenuePage() {
   }
 
   const exportToCSV = () => {
-    const headers = ["Transaction ID", "Date", "User", "Email", "Amount", "Method", "Order ID", "Payment ID", "Status"]
+    const headers = ["Transaction ID", "Date", "User", "Email", "Amount", "Method", "Platform", "Payment ID", "Status"]
     const rows = transactions.map((t) => [
       t.transaction_id || t.id,
       `${formatDate(t.created_at)} ${formatTime(t.created_at)}`,
@@ -184,7 +186,7 @@ export default function AdminRevenuePage() {
       t.user.email,
       t.amount.toFixed(2),
       t.payment_method || "-",
-      t.razorpay_order_id || "-",
+      t.platform || "website",
       t.razorpay_payment_id || "-",
       t.status,
     ])
@@ -463,6 +465,22 @@ export default function AdminRevenuePage() {
               </SelectContent>
             </Select>
             <Select
+              value={platformFilter}
+              onValueChange={(v) => {
+                setPlatformFilter(v as typeof platformFilter)
+                setPage(0)
+              }}
+            >
+              <SelectTrigger className="w-[150px] bg-secondary border-border text-foreground">
+                <SelectValue placeholder="Platform" />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border">
+                <SelectItem value="all">All Platforms</SelectItem>
+                <SelectItem value="website">🌐 Website</SelectItem>
+                <SelectItem value="telegrambot">🤖 Telegram Bot</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
               value={sortBy}
               onValueChange={(v) => {
                 setSortBy(v as typeof sortBy)
@@ -520,7 +538,7 @@ export default function AdminRevenuePage() {
                     <TableHead className="text-muted-foreground">User</TableHead>
                     <TableHead className="text-muted-foreground">Amount</TableHead>
                     <TableHead className="text-muted-foreground">Method</TableHead>
-                    <TableHead className="text-muted-foreground">IMB Order ID</TableHead>
+                    <TableHead className="text-muted-foreground">Platform</TableHead>
                     <TableHead className="text-muted-foreground">Status</TableHead>
                     <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                   </TableRow>
@@ -554,26 +572,14 @@ export default function AdminRevenuePage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {txn.razorpay_order_id ? (
-                          <div className="flex items-center gap-1">
-                            <code className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded max-w-[100px] truncate">
-                              {txn.razorpay_order_id}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => copyToClipboard(txn.razorpay_order_id!, txn.id)}
-                            >
-                              {copiedId === txn.id ? (
-                                <Check className="h-3 w-3 text-green-500" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </div>
+                        {txn.platform === "telegrambot" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400">
+                            🤖 Telegram Bot
+                          </span>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">
+                            🌐 Website
+                          </span>
                         )}
                       </TableCell>
                       <TableCell>{getStatusBadge(txn.status)}</TableCell>

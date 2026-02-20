@@ -8,6 +8,7 @@ export type OrderFilters = {
   limit: number
   status?: "completed" | "failed" | "refunded"
   slotId?: string
+  platform?: string
   dateRange?: {
     from?: string
     to?: string
@@ -26,6 +27,7 @@ export function useOrders(filters: OrderFilters) {
         search: filters.search,
         status: filters.status,
         slotId: filters.slotId,
+        platform: filters.platform,
         sortBy: filters.sortBy,
       })
       return result

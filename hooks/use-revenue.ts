@@ -14,6 +14,7 @@ export type RevenueFilters = {
   search?: string
   status?: string
   method?: string
+  platform?: string
   sortBy?: string
 }
 
@@ -43,6 +44,7 @@ export function useRecentTransactions(filters: RevenueFilters) {
         search: filters.search,
         status: filters.status,
         method: filters.method,
+        platform: filters.platform,
         sortBy: filters.sortBy,
         dateRange,
       })

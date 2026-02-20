@@ -88,6 +88,7 @@ export const CREATE_PURCHASE = gql`
     $unitPrice: numeric!
     $totalPrice: numeric!
     $orderNumber: String!
+    $platform: String
   ) {
     insert_purchases_one(object: {
       user_id: $userId
@@ -97,6 +98,7 @@ export const CREATE_PURCHASE = gql`
       total_price: $totalPrice
       order_number: $orderNumber
       status: "completed"
+      platform: $platform
     }) {
       id
       order_number

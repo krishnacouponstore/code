@@ -402,6 +402,7 @@ export class DatabaseService {
               unit_price: $unitPrice
               total_price: $totalPrice
               status: "completed"
+              platform: "telegrambot"
             }
           ) {
             id

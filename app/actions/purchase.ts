@@ -36,6 +36,7 @@ interface PurchaseInput {
   quantity: number
   unitPrice: number
   totalPrice: number
+  platform?: string
 }
 
 interface PurchaseResult {
@@ -61,7 +62,7 @@ function generateOrderNumber(): string {
 }
 
 export async function processPurchase(input: PurchaseInput): Promise<PurchaseResult> {
-  const { userId, slotId, quantity, unitPrice, totalPrice } = input
+  const { userId, slotId, quantity, unitPrice, totalPrice, platform = "website" } = input
 
   try {
     const client = getAdminClient()
@@ -116,6 +117,7 @@ export async function processPurchase(input: PurchaseInput): Promise<PurchaseRes
       unitPrice,
       totalPrice,
       orderNumber,
+      platform,
     })
     const purchaseId = purchaseResult.insert_purchases_one.id
 

@@ -12,7 +12,8 @@ const CREATE_TOPUP = `
       amount: $amount,
       transaction_id: $transactionId,
       status: "pending",
-      payment_method: "UPI"
+      payment_method: "UPI",
+      platform: "telegrambot"
     }) {
       id
       transaction_id

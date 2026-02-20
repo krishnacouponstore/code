@@ -17,6 +17,7 @@ export type AdminOrder = {
   unit_price: number
   total_price: number
   status: "completed" | "failed" | "refunded"
+  platform: string
   created_at: string
   codes: string[]
 }
@@ -36,10 +37,11 @@ export async function getAllOrders(params: {
   search?: string
   status?: string
   slotId?: string
+  platform?: string
   dateRange?: "today" | "7days" | "30days" | "all"
   sortBy?: "newest" | "oldest" | "amount_high" | "amount_low"
 }): Promise<{ orders: AdminOrder[]; total: number }> {
-  const { limit = 25, offset = 0, search, status, slotId, dateRange = "all", sortBy = "newest" } = params
+  const { limit = 25, offset = 0, search, status, slotId, platform, dateRange = "all", sortBy = "newest" } = params
 
   try {
     const client = getServerGraphQLClient()
@@ -61,6 +63,10 @@ export async function getAllOrders(params: {
 
     if (slotId && slotId !== "all") {
       whereConditions.push(`{slot_id: {_eq: "${slotId}"}}`)
+    }
+
+    if (platform && platform !== "all") {
+      whereConditions.push(`{platform: {_eq: "${platform}"}}`)
     }
 
     // Date range filter
@@ -117,6 +123,7 @@ export async function getAllOrders(params: {
           unit_price
           total_price
           status
+          platform
           created_at
           user_profile {
             id
@@ -158,6 +165,7 @@ export async function getAllOrders(params: {
       unit_price: Number(p.unit_price),
       total_price: Number(p.total_price),
       status: p.status || "completed",
+      platform: p.platform || "website",
       created_at: p.created_at,
       codes: (p.coupons || []).map((c: any) => c.code),
     }))
@@ -289,6 +297,7 @@ export async function getOrderById(orderId: string): Promise<AdminOrder | null> 
           unit_price
           total_price
           status
+          platform
           created_at
           user_profile {
             id
@@ -328,6 +337,7 @@ export async function getOrderById(orderId: string): Promise<AdminOrder | null> 
       unit_price: Number(p.unit_price),
       total_price: Number(p.total_price),
       status: p.status || "completed",
+      platform: p.platform || "website",
       created_at: p.created_at,
       codes: (p.coupons || []).map((c: any) => c.code),
     }
@@ -342,6 +352,7 @@ export async function exportOrders(params: {
   search?: string
   status?: string
   slotId?: string
+  platform?: string
   dateRange?: "today" | "7days" | "30days" | "all"
 }): Promise<AdminOrder[]> {
   // Fetch all matching orders without pagination
