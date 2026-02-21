@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
         userId,
         amount,
         transactionId: orderId,
+        platform: "website",
       })
     } catch (dbError: any) {
       console.error("Database error creating topup:", dbError)
