@@ -48,14 +48,16 @@ export async function POST(request: NextRequest) {
     // Parse webhook payload
     const contentType = request.headers.get("content-type") || ""
 
+    // Read the raw body once so we can both parse it and relay it verbatim.
+    const rawBody = await request.text()
+
     let webhookData: IMBWebhookPayload
 
     if (contentType.includes("application/json")) {
-      webhookData = await request.json()
+      webhookData = rawBody ? JSON.parse(rawBody) : ({} as IMBWebhookPayload)
     } else {
       // Parse form-encoded data
-      const formData = await request.text()
-      const params = new URLSearchParams(formData)
+      const params = new URLSearchParams(rawBody)
       webhookData = {
         status: params.get("status") || "",
         order_id: params.get("order_id") || "",
@@ -87,6 +89,29 @@ export async function POST(request: NextRequest) {
     if (!order_id) {
       console.error("Missing order_id in webhook")
       return NextResponse.json({ error: "Missing order_id" }, { status: 400 })
+    }
+
+    // RELAY: cookie-marthunt orders (COOK*) belong to a different app on the same
+    // IMB merchant. IMB allows only one webhook URL, so CoupX forwards those
+    // callbacks verbatim to the cookie-marthunt webhook and stops here.
+    const relayId = order_id || result?.orderId || ""
+    if (relayId.startsWith("COOK")) {
+      const relayUrl =
+        process.env.COOKIE_WEBHOOK_URL ||
+        "https://cookies.marthunt.tech/api/imb/webhook"
+      try {
+        await fetch(relayUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": contentType || "application/x-www-form-urlencoded",
+          },
+          body: rawBody,
+        })
+        console.log("Relayed COOK order to cookie-marthunt:", relayId)
+      } catch (e) {
+        console.error("Failed to relay to cookie-marthunt:", e)
+      }
+      return NextResponse.json({ message: "Relayed" }, { status: 200 })
     }
 
     // Get database client
