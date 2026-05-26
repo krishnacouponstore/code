@@ -114,6 +114,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Relayed" }, { status: 200 })
     }
 
+    // RELAY: KartHunt APK orders (KARTAPK*) — forwarded to the KartHunt bot
+    // webhook server running at apk.marthunt.tech.
+    if (relayId.startsWith("KARTAPK")) {
+      const relayUrl =
+        process.env.KARTHUNT_WEBHOOK_URL ||
+        "https://apk.marthunt.tech/api/webhook"
+      try {
+        await fetch(relayUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": contentType || "application/x-www-form-urlencoded",
+          },
+          body: rawBody,
+        })
+        console.log("Relayed KARTAPK order to karthunt:", relayId)
+      } catch (e) {
+        console.error("Failed to relay to karthunt:", e)
+      }
+      return NextResponse.json({ message: "Relayed" }, { status: 200 })
+    }
+
     // Get database client
     const client = getAdminClient()
 
