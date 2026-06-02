@@ -135,6 +135,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Relayed" }, { status: 200 })
     }
 
+    // RELAY: Marthunt platform orders (MART*) — forwarded to the marthunt backend
+    // webhook. A shared secret header lets marthunt reject anything not from us.
+    if (relayId.startsWith("MART")) {
+      const relayUrl =
+        process.env.MARTHUNT_WEBHOOK_URL ||
+        "https://api.marthunt.tech/webhooks/imb"
+      try {
+        await fetch(relayUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": contentType || "application/x-www-form-urlencoded",
+            "x-relay-secret": process.env.MARTHUNT_RELAY_SECRET || "",
+          },
+          body: rawBody,
+        })
+        console.log("Relayed MART order to marthunt:", relayId)
+      } catch (e) {
+        console.error("Failed to relay to marthunt:", e)
+      }
+      return NextResponse.json({ message: "Relayed" }, { status: 200 })
+    }
+
     // Get database client
     const client = getAdminClient()
 
