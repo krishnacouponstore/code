@@ -437,9 +437,12 @@ export async function sendBroadcast(message: string) {
     const sendUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
     let sent = 0
     let failed = 0
+    const errors: string[] = []
 
     // Telegram allows ~30 msgs/sec to different users. Send in batches of 25 with
     // a short pause between batches to stay well within the limit.
+    // NOTE: we send PLAIN TEXT (no parse_mode). Legacy Markdown rejects the whole
+    // message on any stray _ * [ ` in admin-typed text — which made every send fail.
     const BATCH = 25
     for (let i = 0; i < chatIds.length; i += BATCH) {
       const batch = chatIds.slice(i, i + BATCH)
@@ -451,27 +454,41 @@ export async function sendBroadcast(message: string) {
             body: JSON.stringify({
               chat_id: chatId,
               text,
-              parse_mode: "Markdown",
               disable_web_page_preview: false,
             }),
           }).then(async (res) => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            const json = await res.json()
-            if (!json.ok) throw new Error(json.description || "Telegram error")
+            const json = await res.json().catch(() => ({}))
+            if (!res.ok || !json.ok) {
+              throw new Error(json.description || `HTTP ${res.status}`)
+            }
             return true
           })
         )
       )
       for (const r of results) {
         if (r.status === "fulfilled") sent++
-        else failed++
+        else {
+          failed++
+          if (r.reason?.message) errors.push(r.reason.message)
+        }
       }
       if (i + BATCH < chatIds.length) {
         await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
 
-    return { success: true, total: chatIds.length, sent, failed }
+    // Surface a sample of the real Telegram errors so failures aren't silent.
+    const uniqueErrors = Array.from(new Set(errors)).slice(0, 3)
+    return {
+      success: sent > 0,
+      total: chatIds.length,
+      sent,
+      failed,
+      error:
+        sent === 0 && uniqueErrors.length
+          ? `All sends failed: ${uniqueErrors.join("; ")}`
+          : undefined,
+    }
   } catch (error: any) {
     console.error("Error sending broadcast:", error)
     return { success: false, error: error.message }
