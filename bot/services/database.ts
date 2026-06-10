@@ -306,14 +306,15 @@ export class DatabaseService {
   }
 
   /**
-   * Fetch ALL available (published, in-stock) coupons across every store.
-   * Used to render coupon names directly as reply-keyboard buttons.
+   * Fetch ALL published coupons across every store — including out-of-stock ones,
+   * so they still appear as reply-keyboard buttons (tapping shows "out of stock").
+   * Only drafts (is_published = false) are hidden.
    */
   async getAllAvailableCoupons(): Promise<Coupon[]> {
     const query = gql`
       query GetAllAvailableCoupons {
         slots(
-          where: { available_stock: { _gt: 0 }, is_published: { _eq: true } }
+          where: { is_published: { _eq: true } }
           order_by: { name: asc }
         ) {
           id

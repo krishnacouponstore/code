@@ -62,37 +62,53 @@ bot.use((ctx, next) => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PERSISTENT REPLY KEYBOARD
-// Layout: available coupon names on top (2 per row), then the always-visible
-// fixed menu rows. The whole thing is persistent so the menu is shown everywhere.
+// REPLY KEYBOARDS (stateful)
+// MAIN screen   : coupon buttons + [👤 Profile] [💰 Balance] [📢 Get Updates]
+// PROFILE screen: [📦 Recent Orders] [🔙 Back to Menu]
+// BALANCE screen: [➕ Add Balance] [📋 Topup History] [🔙 Back to Menu]
 // ─────────────────────────────────────────────────────────────────────────────
-const COUPON_BTN_PREFIX = "🎟️ "
-const FIXED_MENU_ROWS: string[][] = [
-  ["💰 Balance", "📦 Recent Purchases"],
-  ["➕ Add Balance", "📋 Topup History"],
-  [`📢 ${BRAND} Updates`, "👤 Profile"],
-  ["❓ Help"],
-]
-// Plain text of all fixed-menu buttons (used by the text router to detect taps).
-const MENU_BUTTONS = FIXED_MENU_ROWS.flat()
 
-// Build the persistent keyboard for a given list of available coupons.
+// Invisible zero-width marker prefixed to coupon buttons so the text router can
+// distinguish a coupon tap from arbitrary text — the user never sees it, and the
+// admin's own emoji/label on the coupon name shows exactly as entered.
+const COUPON_MARKER = "⁣" // INVISIBLE SEPARATOR
+
+// Fixed button labels
+const BTN_PROFILE = "👤 Profile"
+const BTN_BALANCE = "💰 Balance"
+const BTN_UPDATES = "📢 Get Updates"
+const BTN_RECENT_ORDERS = "📦 Recent Orders"
+const BTN_ADD_BALANCE = "➕ Add Balance"
+const BTN_TOPUP_HISTORY = "📋 Topup History"
+const BTN_BACK = "🔙 Back to Menu"
+
+const MAIN_BUTTONS = [BTN_PROFILE, BTN_BALANCE, BTN_UPDATES]
+
+// MAIN keyboard: coupon buttons (invisible-marked) + the 3 fixed buttons.
 function buildMainKeyboard(coupons: { name: string }[]) {
   const rows: string[][] = []
-  // Coupons, 2 per row, prefixed so the text router can recognise them.
   for (let i = 0; i < coupons.length; i += 2) {
-    const row = [COUPON_BTN_PREFIX + coupons[i].name]
-    if (coupons[i + 1]) row.push(COUPON_BTN_PREFIX + coupons[i + 1].name)
+    const row = [COUPON_MARKER + coupons[i].name]
+    if (coupons[i + 1]) row.push(COUPON_MARKER + coupons[i + 1].name)
     rows.push(row)
   }
-  rows.push(...FIXED_MENU_ROWS)
+  rows.push([BTN_PROFILE, BTN_BALANCE], [BTN_UPDATES])
   return Markup.keyboard(rows).resize().persistent()
 }
 
-// Fetch coupons and build the persistent keyboard.
 async function mainKeyboard() {
   const coupons = await db.getAllAvailableCoupons()
   return buildMainKeyboard(coupons)
+}
+
+// PROFILE sub-screen keyboard
+function profileKeyboard() {
+  return Markup.keyboard([[BTN_RECENT_ORDERS], [BTN_BACK]]).resize().persistent()
+}
+
+// BALANCE sub-screen keyboard
+function balanceKeyboard() {
+  return Markup.keyboard([[BTN_ADD_BALANCE, BTN_TOPUP_HISTORY], [BTN_BACK]]).resize().persistent()
 }
 
 console.log(" Bot configured, registering commands...")
@@ -575,7 +591,7 @@ bot.action("show_purchases", async (ctx) => {
       ),
     ])
 
-    await ctx.editMessageText("📦 *Your Recent Purchases:*", {
+    await ctx.editMessageText("📦 *Your Recent Orders:*", {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard(buttons),
     })
@@ -597,10 +613,13 @@ bot.on(message("text"), async (ctx) => {
   // Skip if it's a command
   if (text.startsWith("/")) return
 
-  // Menu buttons and coupon buttons ALWAYS take priority over any pending input
-  // state. Without this, tapping a menu/coupon button while awaitingInput ===
+  // Menu/sub-screen buttons and coupon buttons ALWAYS take priority over any
+  // pending input state. Without this, tapping one while awaitingInput ===
   // "add_balance_amount" would be treated as an invalid balance amount.
-  const isMenuTap = MENU_BUTTONS.includes(text) || text.startsWith(COUPON_BTN_PREFIX)
+  const ALL_NAV_BUTTONS = [
+    ...MAIN_BUTTONS, BTN_RECENT_ORDERS, BTN_ADD_BALANCE, BTN_TOPUP_HISTORY, BTN_BACK,
+  ]
+  const isMenuTap = ALL_NAV_BUTTONS.includes(text) || text.includes(COUPON_MARKER)
   if (session.isAuthenticated && isMenuTap) {
     // Cancel any running payment timer
     if (session.pendingBalanceTimer) {
@@ -869,12 +888,13 @@ bot.on(message("text"), async (ctx) => {
         )
       }
     }
-    // Handle main menu buttons
+    // Handle navigation buttons (main + sub-screens)
     else if (session.isAuthenticated) {
-      // ── COUPON TAP (reply-keyboard coupon button) ──────────────────────────
-      if (text.startsWith(COUPON_BTN_PREFIX)) {
+      // ── COUPON TAP (invisible-marked reply button) ─────────────────────────
+      if (text.includes(COUPON_MARKER)) {
         session.awaitingInput = undefined
-        const couponName = text.slice(COUPON_BTN_PREFIX.length).trim()
+        // Strip every marker char (in case Telegram preserves it anywhere).
+        const couponName = text.split(COUPON_MARKER).join("").trim()
 
         const coupons = await db.getAllAvailableCoupons()
         const coupon = coupons.find((c: any) => c.name === couponName)
@@ -882,10 +902,73 @@ bot.on(message("text"), async (ctx) => {
           await ctx.reply("❌ That coupon is no longer available.", await mainKeyboard())
           return
         }
+        // Out-of-stock: still listed, but tapping just informs the user.
+        if (!coupon.quantity || coupon.quantity <= 0) {
+          await ctx.reply(
+            `😔 *${coupon.name}* is currently *out of stock*.\n\nCheck back soon — we restock regularly!`,
+            { parse_mode: "Markdown" }
+          )
+          return
+        }
         await openCouponBuy(ctx, coupon.id)
       }
-      // ── ADD BALANCE (reply-keyboard button) ────────────────────────────────
-      else if (text === "➕ Add Balance") {
+      // ── BACK TO MENU → restore the main keyboard ───────────────────────────
+      else if (text === BTN_BACK) {
+        session.awaitingInput = undefined
+        await ctx.reply("🏠 Main menu", await mainKeyboard())
+      }
+      // ── PROFILE → switch to the Profile sub-screen ─────────────────────────
+      else if (text === BTN_PROFILE) {
+        session.awaitingInput = undefined
+        const user = await db.getUserById(session.userId!)
+        const stats = await db.getUserStats(session.userId!)
+        if (user) {
+          await ctx.reply(
+            `👤 *Your ${BRAND} Profile*\n\n` +
+              `👨 Name: ${user.name}\n` +
+              `💰 Balance: ₹${user.wallet_balance.toFixed(2)}\n` +
+              `🎟️ Total Coupons Bought: ${stats.totalCouponsBought}`,
+            { parse_mode: "Markdown", ...profileKeyboard() }
+          )
+        }
+      }
+      // ── BALANCE → switch to the Balance sub-screen ─────────────────────────
+      else if (text === BTN_BALANCE) {
+        session.awaitingInput = undefined
+        const user = await db.getUserById(session.userId!)
+        if (user) {
+          await ctx.reply(
+            `💰 *Your Wallet*\n\n` +
+              `💵 Current Balance: ₹${user.wallet_balance.toFixed(2)}\n` +
+              `🛍️ Total Spent: ₹${(user.total_spent || 0).toFixed(2)}`,
+            { parse_mode: "Markdown", ...balanceKeyboard() }
+          )
+        }
+      }
+      // ── RECENT ORDERS (Profile sub-screen) ─────────────────────────────────
+      else if (text === BTN_RECENT_ORDERS) {
+        session.awaitingInput = undefined
+        const purchases = await db.getUserPurchases(session.userId!, 10)
+        if (purchases.length === 0) {
+          await ctx.reply(
+            "📦 *Recent Orders*\n\nYou haven't made any purchases yet.\nTap a coupon from the menu to get started!",
+            { parse_mode: "Markdown" }
+          )
+          return
+        }
+
+        const buttons = purchases.map((purchase: any) => [
+          Markup.button.callback(
+            `${purchase.slot.store?.name || "Store"} - ${purchase.slot.name} - ₹${purchase.total_price}`,
+            `purchase_${purchase.id}`
+          ),
+        ])
+
+        await ctx.reply("📦 *Your Recent Orders:*", { parse_mode: "Markdown" })
+        await ctx.reply("Select an order:", Markup.inlineKeyboard(buttons))
+      }
+      // ── ADD BALANCE (Balance sub-screen) ───────────────────────────────────
+      else if (text === BTN_ADD_BALANCE) {
         session.awaitingInput = "add_balance_amount"
         await ctx.reply(
           `💰 *Add Balance*\n\n` +
@@ -896,8 +979,8 @@ bot.on(message("text"), async (ctx) => {
           { parse_mode: "Markdown" }
         )
       }
-      // ── TOPUP HISTORY (reply-keyboard button) ──────────────────────────────
-      else if (text === "📋 Topup History") {
+      // ── TOPUP HISTORY (Balance sub-screen) ─────────────────────────────────
+      else if (text === BTN_TOPUP_HISTORY) {
         session.awaitingInput = undefined
         const topups = await db.getTopupHistory(session.userId!, 10)
         if (topups.length === 0) {
@@ -918,79 +1001,8 @@ bot.on(message("text"), async (ctx) => {
           parse_mode: "Markdown",
         })
       }
-      // BALANCE MENU
-      else if (text === "💰 Balance") {
-        session.awaitingInput = undefined
-        const user = await db.getUserById(session.userId!)
-        if (user) {
-          await ctx.reply(
-            `💰 *Your Wallet*\n\n` +
-              `💵 Current Balance: ₹${user.wallet_balance.toFixed(2)}\n` +
-              `🛍️ Total Spent: ₹${(user.total_spent || 0).toFixed(2)}\n\n` +
-              `_Use ➕ Add Balance below to top up._`,
-            { parse_mode: "Markdown" }
-          )
-        }
-      }
-      // RECENT PURCHASES MENU
-      else if (text === "📦 Recent Purchases") {
-        session.awaitingInput = undefined
-        const purchases = await db.getUserPurchases(session.userId!, 10)
-        if (purchases.length === 0) {
-          await ctx.reply(
-            "📦 *Recent Purchases*\n\nYou haven't made any purchases yet.\nTap a coupon below to get started!",
-            { parse_mode: "Markdown" }
-          )
-          return
-        }
-
-        const buttons = purchases.map((purchase: any) => [
-          Markup.button.callback(
-            `${purchase.slot.store?.name || "Store"} - ${purchase.slot.name} - ₹${purchase.total_price}`,
-            `purchase_${purchase.id}`
-          ),
-        ])
-
-        await ctx.reply("📦 *Your Recent Purchases:*", { parse_mode: "Markdown" })
-        await ctx.reply("Select a purchase:", Markup.inlineKeyboard(buttons))
-      }
-      // PROFILE MENU
-      else if (text === "👤 Profile") {
-        session.awaitingInput = undefined
-        const user = await db.getUserById(session.userId!)
-        const stats = await db.getUserStats(session.userId!)
-        if (user) {
-          await ctx.reply(
-            `👤 *Your ${BRAND} Profile*\n\n` +
-              `👨 Name: ${user.name}\n` +
-              `💰 Balance: ₹${user.wallet_balance.toFixed(2)}\n` +
-              `🎟️ Total Coupons Bought: ${stats.totalCouponsBought}`,
-            { parse_mode: "Markdown" }
-          )
-        }
-      }
-      // HELP MENU
-      else if (text === "❓ Help") {
-        session.awaitingInput = undefined
-        await ctx.reply(
-          `❓ *Help & Support*\n\n` +
-            `🌐 Website: ${SITE_URL}\n` +
-            `📢 Updates Channel: ${REQUIRED_CHANNEL}\n\n` +
-            `*Available Commands:*\n` +
-            `/start - Restart the bot\n\n` +
-            `*Menu Options:*\n` +
-            `🎟️ Coupons - Tap any coupon below to buy\n` +
-            `💰 Balance - Check your wallet\n` +
-            `➕ Add Balance - Top up your wallet\n` +
-            `📋 Topup History - Past top-ups\n` +
-            `📦 Recent Purchases - View your orders\n` +
-            `👤 Profile - Your account\n` +
-            `❓ Help - This message`,
-          { parse_mode: "Markdown" }
-        )
-      }
-      // UPDATES - Redirect to channel
-      else if (text === `📢 ${BRAND} Updates`) {
+      // ── GET UPDATES → channel link ─────────────────────────────────────────
+      else if (text === BTN_UPDATES) {
         session.awaitingInput = undefined
         await ctx.reply(
           `📢 *Join Our Official Channel!*\n\n` +
