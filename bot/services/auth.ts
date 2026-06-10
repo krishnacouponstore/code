@@ -47,9 +47,8 @@ export class AuthService {
   }
 
   /**
-   * Create a new CoupX account.
-   * Telegram linking is intentionally NOT done here — the caller handles it after
-   * the user confirms they have saved their credentials.
+   * Create a new Hunt Coupon Store account.
+   * Telegram linking is handled by the caller (ensureUserForTelegram).
    */
   async createAccount(email: string, displayName: string): Promise<AuthResult> {
     try {

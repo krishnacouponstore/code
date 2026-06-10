@@ -401,3 +401,79 @@ export async function getUserPurchaseHistory(userId: string) {
     return { success: false, purchases: [], error: error.message }
   }
 }
+
+// Send a broadcast Telegram message to every user who has linked their Telegram.
+// Admin-only: invoked from the gated /admin/users page. Uses the bot token to
+// call the Telegram Bot API directly for each linked telegram_id.
+export async function sendBroadcast(message: string) {
+  try {
+    const text = (message || "").trim()
+    if (!text) {
+      return { success: false, error: "Message cannot be empty" }
+    }
+
+    const botToken = process.env.TELEGRAM_BOT_TOKEN
+    if (!botToken) {
+      return { success: false, error: "TELEGRAM_BOT_TOKEN is not set on the server" }
+    }
+
+    const client = getAdminClient()
+    const query = gql`
+      query GetTelegramRecipients {
+        user_profiles(where: { telegram_id: { _is_null: false }, is_blocked: { _eq: false } }) {
+          telegram_id
+        }
+      }
+    `
+    const data: any = await client.request(query)
+    const chatIds: string[] = (data.user_profiles || [])
+      .map((p: any) => p.telegram_id)
+      .filter((id: any): id is string => !!id)
+
+    if (chatIds.length === 0) {
+      return { success: false, error: "No users with a linked Telegram account" }
+    }
+
+    const sendUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
+    let sent = 0
+    let failed = 0
+
+    // Telegram allows ~30 msgs/sec to different users. Send in batches of 25 with
+    // a short pause between batches to stay well within the limit.
+    const BATCH = 25
+    for (let i = 0; i < chatIds.length; i += BATCH) {
+      const batch = chatIds.slice(i, i + BATCH)
+      const results = await Promise.allSettled(
+        batch.map((chatId) =>
+          fetch(sendUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text,
+              parse_mode: "Markdown",
+              disable_web_page_preview: false,
+            }),
+          }).then(async (res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const json = await res.json()
+            if (!json.ok) throw new Error(json.description || "Telegram error")
+            return true
+          })
+        )
+      )
+      for (const r of results) {
+        if (r.status === "fulfilled") sent++
+        else failed++
+      }
+      if (i + BATCH < chatIds.length) {
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+    }
+
+    return { success: true, total: chatIds.length, sent, failed }
+  } catch (error: any) {
+    console.error("Error sending broadcast:", error)
+    return { success: false, error: error.message }
+  }
+}

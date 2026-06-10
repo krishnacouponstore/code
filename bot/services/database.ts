@@ -305,6 +305,40 @@ export class DatabaseService {
     }
   }
 
+  /**
+   * Fetch ALL available (published, in-stock) coupons across every store.
+   * Used to render coupon names directly as reply-keyboard buttons.
+   */
+  async getAllAvailableCoupons(): Promise<Coupon[]> {
+    const query = gql`
+      query GetAllAvailableCoupons {
+        slots(
+          where: { available_stock: { _gt: 0 }, is_published: { _eq: true } }
+          order_by: { name: asc }
+        ) {
+          id
+          name
+          description
+          available_stock
+          store_id
+        }
+      }
+    `
+
+    try {
+      const data: any = await this.client.request(query)
+      const slots = data.slots || []
+      return slots.map((slot: any) => ({
+        ...slot,
+        quantity: slot.available_stock,
+        price: 0,
+      }))
+    } catch (error) {
+      console.error("Error fetching all available coupons:", error)
+      return []
+    }
+  }
+
   async getSlotWithPrice(slotId: string): Promise<any> {
     const query = gql`
       query GetSlotWithPricingTiers($slotId: uuid!) {

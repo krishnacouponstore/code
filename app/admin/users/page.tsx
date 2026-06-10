@@ -10,6 +10,7 @@ import { AdjustBalanceModal } from "@/components/admin/adjust-balance-modal"
 import { BlockUserDialog } from "@/components/admin/block-user-dialog"
 import { UnblockUserDialog } from "@/components/admin/unblock-user-dialog"
 import { DeleteUserDialog } from "@/components/admin/delete-user-dialog"
+import { SendBroadcastModal } from "@/components/admin/send-broadcast-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -32,6 +33,7 @@ import {
   ArrowUp,
   UserPlus,
   Shield,
+  Send,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -66,6 +68,7 @@ export default function AdminUsersPage() {
   const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false)
   const [isUnblockDialogOpen, setIsUnblockDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isBroadcastOpen, setIsBroadcastOpen] = useState(false)
 
   const stats = useMemo(() => {
     return {
@@ -222,9 +225,15 @@ export default function AdminUsersPage() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground">Users Management</h1>
-          <p className="text-muted-foreground mt-1">View and manage registered users</p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Users Management</h1>
+            <p className="text-muted-foreground mt-1">View and manage registered users</p>
+          </div>
+          <Button onClick={() => setIsBroadcastOpen(true)} className="shrink-0">
+            <Send className="mr-2 h-4 w-4" />
+            Send Broadcast
+          </Button>
         </div>
 
         {/* Stats Summary */}
@@ -604,6 +613,8 @@ export default function AdminUsersPage() {
         user={selectedUser}
         onConfirm={confirmDelete}
       />
+
+      <SendBroadcastModal open={isBroadcastOpen} onOpenChange={setIsBroadcastOpen} />
     </div>
   )
 }
