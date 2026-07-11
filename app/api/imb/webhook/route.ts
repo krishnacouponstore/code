@@ -157,6 +157,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Relayed" }, { status: 200 })
     }
 
+    // RELAY: Minthunt platform orders (MINT*) — forwarded to the minthunt backend
+    // webhook. A shared secret header lets minthunt reject anything not from us.
+    if (relayId.startsWith("MINT")) {
+      const relayUrl =
+        process.env.MINTHUNT_WEBHOOK_URL ||
+        "https://api.minthunt.tech/webhooks/imb"
+      try {
+        await fetch(relayUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": contentType || "application/x-www-form-urlencoded",
+            "x-relay-secret": process.env.MINTHUNT_RELAY_SECRET || "",
+          },
+          body: rawBody,
+        })
+        console.log("Relayed MINT order to minthunt:", relayId)
+      } catch (e) {
+        console.error("Failed to relay to minthunt:", e)
+      }
+      return NextResponse.json({ message: "Relayed" }, { status: 200 })
+    }
+
     // Get database client
     const client = getAdminClient()
 
