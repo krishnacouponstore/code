@@ -162,9 +162,9 @@ export async function POST(request: NextRequest) {
     if (relayId.startsWith("MINT")) {
       const relayUrl =
         process.env.MINTHUNT_WEBHOOK_URL ||
-        "https://api.minthunt.tech/webhooks/imb"
+        "https://api.minthunt.store/webhooks/imb"
       try {
-        await fetch(relayUrl, {
+        const relayRes = await fetch(relayUrl, {
           method: "POST",
           headers: {
             "Content-Type": contentType || "application/x-www-form-urlencoded",
@@ -172,7 +172,16 @@ export async function POST(request: NextRequest) {
           },
           body: rawBody,
         })
-        console.log("Relayed MINT order to minthunt:", relayId)
+        if (!relayRes.ok) {
+          // A non-throwing fetch to a dead/misconfigured host (wrong domain, DNS
+          // pointed elsewhere, etc.) still "succeeds" as far as fetch() is concerned —
+          // only the status code reveals it never actually reached minthunt's handler.
+          // Logged loudly here since this relay always returns 200 to IMB either way
+          // (IMB doesn't retry on our 200), so this log is the only trace of a failure.
+          console.error("Relay to minthunt returned non-OK status:", relayRes.status, relayId)
+        } else {
+          console.log("Relayed MINT order to minthunt:", relayId)
+        }
       } catch (e) {
         console.error("Failed to relay to minthunt:", e)
       }
